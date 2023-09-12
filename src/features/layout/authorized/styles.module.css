@@ -1,0 +1,250 @@
+.headerContainer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 23px 50px 13px 50px;
+  position: relative;
+  z-index: 2;
+  right: 0;
+  left: 0;
+  top: 0;
+  /* background: #ffffff; */
+  /* background: linear-gradient(59.3deg, #DFF2E7 -6.75%, #FBFBFB 89.42%); */
+  /* box-shadow: 0px 1px 10px rgba(52, 68, 55, 0.1); */
+}
+
+
+.headerContainer img {
+  /* display: none; */
+}
+.page {
+  margin: 0px 0px 15px 0px;
+  padding: 10px 50px 5px 50px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.flexHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: fit-content;
+}
+
+.flexHeader img {
+  width: 56px;
+  height: 56px;
+  cursor: pointer;
+}
+
+.searchBar {
+  position: relative;
+  width: 470px;
+  height: 55px;
+  margin-right: 15px;
+}
+
+.searchBar input,
+.searchBarSm input {
+  width: 100%;
+  height: 100%;
+  padding: 5px 40px 5px 10px;
+  border: 0.5px solid gainsboro;
+  border-radius: 8px;
+  outline: none;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.searchIcon {
+  position: absolute;
+  right: 10px;
+  top: 0;
+  bottom: 0;
+  height: 100%;
+  /* padding: 2px 0 2px 0; */
+  display: flex;
+  align-items: center;
+}
+.flex {
+  display: flex;
+  /* height: 100vh; */
+  position: fixed;
+  right: 0;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  padding-bottom: 20px;
+  /* background: #ffffff; */
+  background: linear-gradient(59.3deg, #dff2e7 -6.75%, #fbfbfb 89.42%);
+}
+
+.relative {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.sideBarContainer {
+  width: 22%;
+  height: 100%;
+}
+
+.sidebarInner {
+  height: 88vh;
+  padding: 9% 0% 0% 12%;
+  text-align: center;
+  /* border-right: 0.5px solid gainsboro; */
+}
+
+.navLinksContainer {
+  height: 100%;
+  position: relative;
+  margin: 20px 0px 0px 0px;
+  padding: 10% 0% 0% 0%;
+  background: linear-gradient(189.36deg, #32c36c 6.79%, #0a8000 115.07%);
+  border-radius: 30px;
+  text-align: center;
+}
+
+.modalContainer {
+  position: absolute;
+  right: 150px;
+  top: 105%;
+  background-color: white;
+  box-shadow: 0px 1px 10px 2px rgba(52, 68, 55, 0.06);
+  border-radius: 15px;
+  width: 200px;
+  padding: 10px 0;
+}
+
+.profileContainer {
+  display: flex;
+  padding: 20px;
+  align-items: center;
+}
+
+.profileContainer img {
+  width: 70px;
+  height: 70px;
+  margin: 0 25px 0 10px;
+}
+
+.profileText h3 {
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.profileText p {
+  font-weight: 300;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.modalContainer button {
+  border: none;
+  padding: 9px 30px;
+  display: block;
+  font-weight: 300;
+  font-size: 16px;
+  line-height: 16px;
+  /* background-color: #ffffff !important; */
+}
+
+.profileLinksContainer {
+  padding: 10px;
+  display: block;
+}
+
+.linksContainer {
+  display: flex;
+  align-items: center;
+}
+
+.logoutContainer {
+  padding: 10px 15px;
+}
+
+.navLogout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.navLogout p {
+  font-weight: 300;
+  font-size: 18px;
+  line-height: 20px;
+}
+.footer {
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 14px;
+  white-space: nowrap;
+  text-align: center;
+  width: 100%;
+  color: #344437;
+}
+button {
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  /* padding: 10px 30px; */
+  cursor: pointer;
+}
+@media screen and (max-width: 1400px) {
+  /* .page {
+    margin: 60px 0px 0px 25px;
+    padding: 60px 40px 100px 0px;
+    overflow-y: auto;
+    height: 100%;
+  } */
+}
+
+@media screen and (max-width: 800px) {
+  .page {
+    padding: 10px 17px 45px 17px;
+    margin: 0px 0px 45px 0px;
+  }
+  .headerContainer {
+    padding: 22px 20px 0px 20px;
+    display: block;
+  }
+  .headerContainer img {
+    display: flex;
+    justify-content: center;
+    margin:0px;
+    /* width: 50px; */
+  }
+  .flexHeaderSm {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .smContainer {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background-color: white;
+    width: 85%;
+    z-index: 50;
+  }
+  .logoSm {
+    display: flex;
+    padding: 35px 0 0 20px;
+  }
+  .navLinksContainer {
+    padding: 5px 20px;
+    margin: 40px 0 70px 0;
+  }
+  .navLogout {
+    padding: 12px 0;
+  }
+  .searchBarSm {
+    position: relative;
+    width: 220px;
+    height: 48px;
+  }
+}

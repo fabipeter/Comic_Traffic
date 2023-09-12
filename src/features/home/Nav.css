@@ -1,0 +1,65 @@
+.nav {
+  position: sticky;
+  top: 0;
+  padding: 20px;
+  width: 100%;
+  height: 60px;
+  z-index: 100;
+  
+  /* Animations */
+  transition-timing-function: ease-in;
+  transition: all 0.5s;
+}
+.nav__contents {
+  display: flex;
+  justify-content: space-between;
+  height: 5.375rem;
+  width: 100%;
+  /* max-width: calc(100% - 6rem); */
+  /* max-width: calc(83.33333333333334% - 6rem); */
+}
+.nav__black {
+  background-color: var(--body_background);
+}
+.nav__right {
+  position: fixed !important;
+  right: 40px;
+  top: 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+}
+.nav__signin__button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  color: #fff;
+  background-image: var(--button_background);
+  border: none;
+  cursor: pointer;
+  outline: none;
+  border-radius: 0.25rem;
+}
+.nav__signin__button:hover {
+  background-image: var(--alt_button_background);
+}
+
+.nav__logo {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 192.5px;
+  height: 30px;
+  cursor: pointer;
+  object-fit: contain;
+  padding-left: 0px;
+  color: aliceblue;
+  /* transform: rotate(90deg); */
+}
+
+.nav__avatar {
+  position: fixed;
+  right: 20px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+}

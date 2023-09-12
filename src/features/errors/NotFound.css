@@ -1,0 +1,133 @@
+.notfoundpage__banner {
+  position: relative;
+  height: 100vh;
+  background: rgb(0 0 0 / 40%);
+  color: white;
+  object-fit: contain;
+  display: flex;
+  align-items: center;
+}
+
+.notfound__contents {
+  display: flex;
+  flex: 2 0;
+  flex-direction: column;
+  margin: 0 1em;
+  position: relative;
+  text-align: center;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  z-index: 1;
+}
+
+.notfound__contents:before {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 0.5) 0,
+    rgba(0, 0, 0, 0.2) 45%,
+    rgba(0, 0, 0, 0.1) 55%,
+    transparent 70%
+  );
+  bottom: -10vw;
+  content: "";
+  left: 10vw;
+  position: absolute;
+  right: 10vw;
+  top: -10vw;
+  z-index: 0;
+}
+.notfound__contents h1 {
+    font-size: 6em;
+    font-weight: 500;
+    margin-bottom: 2vw;
+    z-index: 1;
+}
+
+.notfound__contents p {
+  font-size: 2.2em;
+  font-weight: 300;
+}
+.notfound__contents p {
+  color: inherit;
+  margin-top: 0;
+  margin-bottom: 30px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.57);
+}
+
+.error-page--content--buttons {
+  display: flex;
+  justify-content: center;
+}
+.error-page--content--buttons > a {
+  text-decoration: none;
+}
+.ltr-18ezbm2.hasLabel {
+  padding-left: 2.4rem;
+  padding-right: 2.4rem;
+}
+.ltr-18ezbm2.color-primary {
+  background-color: white;
+  color: black;
+}
+.ltr-18ezbm2.color-primary:hover {
+    background-color: rgba(220, 219, 219, 0.65);
+    color: rgb(249, 249, 249);
+  }
+.ltr-18ezbm2 {
+  -webkit-align-items: center;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  -ms-appearance: none;
+  appearance: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  opacity: 1;
+  padding: 0.8rem;
+  position: relative;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  will-change: background-color, color;
+  word-break: break-word;
+  white-space: nowrap;
+}
+
+.ltr-1vh9doa {
+  font-size: 1.6rem;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 500;
+  line-height: 2.4rem;
+}
+.error-page--content--errorCode {
+  align-items: flex-end;
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  margin-top: 2em;
+}
+.error-page--content--errorCode span {
+  border-left: 2px solid #e50914;
+  font-size: 2.4em;
+  font-weight: 100;
+  letter-spacing: 0.1em;
+  line-height: 2.2em;
+  padding: 0 1vw;
+}

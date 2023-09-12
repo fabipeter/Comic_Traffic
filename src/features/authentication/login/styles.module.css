@@ -1,0 +1,380 @@
+* {
+  font-weight: 700;
+}
+
+.loginPage {
+  padding: 5% 15% 0% 15%;
+  background-color: var(--body_background);
+  height: 100vh;
+}
+
+.header {
+  font-weight: 900;
+  /* font-style: normal; */
+  font-size: 18px;
+  line-height: 29px;
+  /* margin-top: 30px; */
+  padding: 40px 0px;
+  color: #000000;
+  font-family: "Montserrat";
+}
+
+.acc {
+  min-height: 75%;
+  padding-top: 15%;
+}
+
+.button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 15px !important;
+}
+.button span {
+  font-family: "Montserrat" !important;
+  font-size: 11px !important;
+  font-weight: 200 !important;
+}
+
+.positive {
+  background-color: #32c36c !important;
+  width: 100%;
+  height: 75px;
+  border-radius: 20px !important;
+}
+.next {
+  margin-top: 2% !important;
+}
+.form > * {
+  margin: 20px 0px;
+}
+.groupHeader {
+  padding-bottom: 6px !important;
+}
+
+.justCenterCenter {
+  display: flex !important;
+  justify-content: space-between !important;
+  -webkit-flex-direction: flex !important;
+  flex-direction: unset !important;
+  -webkit-flex-direction: unset !important;
+  -ms-flex-direction: unset !important;
+  flex-direction: unset !important;
+  -webkit-box-flex-wrap: unset !important;
+  -webkit-flex-wrap: unset !important;
+  -ms-flex-wrap: unset !important;
+  flex-wrap: unset !important;
+}
+
+.justCenterCenter > * {
+  /* margin-right: 30px !important; */
+  margin-left: 0px !important;
+}
+
+.justCenterCenter div > label {
+  margin-right: 45px !important;
+  margin-left: 0px !important;
+}
+.required {
+  font-size: 10px;
+  line-height: 12px;
+  letter-spacing: 0.01em;
+  font-weight: 100;
+  color: #e63511;
+  padding-bottom: 16px !important;
+}
+.info {
+  font-style: normal;
+  font-weight: 400;
+  font-size: 8px;
+  line-height: 10px;
+  padding-top: 16px !important;
+}
+.sterlinks {
+  color: #32c36c !important;
+  background-color: transparent;
+  display: flex;
+  justify-content: end;
+}
+.sterlinks span {
+  font-family: "AppleGothic";
+  font-size: 10px;
+}
+
+.sterlinks span:hover {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.verifyAccountModal {
+  /* min-width: 500px; */
+  width: 600px;
+  min-height: 570px;
+  padding: 0px;
+}
+
+.verifyAccountModal h2 {
+  font-size: 24px;
+  margin: 0px 0px 0px 0px;
+  padding: 20px 20px 10px 20px;
+  border-bottom: 1px solid var(--body_color_grey);
+  text-align: center;
+}
+
+.verifyAccountModal p {
+  font-size: 16px;
+  line-height: 20px;
+  text-align: center;
+  color: #000000;
+  padding: 60px 20px 40px 20px;
+}
+.welcomeText {
+  font-size: 20px;
+  padding: 20px 40px 20px 40px;
+}
+.loginForm {
+  padding: 10px 40px 10px 40px;
+}
+.infotext {
+  font-size: 12px;
+  font-weight: 100;
+  color: var(--terms_color);
+}
+.termslink {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--terms_color);
+  width: fit-content;
+}
+.termslink:hover {
+  text-decoration: underline;
+  cursor: pointer;
+}
+.btnCancel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.negative {
+  background: #ffe8e8 !important;
+  color: #e63511 !important;
+  border-radius: 5px;
+  width: 248px;
+  height: 50px;
+}
+
+.negative:hover {
+  background: #eec1c1 !important;
+  /* color: white !important; */
+}
+
+.loader {
+  padding: 60px 20px 80px 20px;
+}
+
+.loader ::after {
+  border-color: orange transparent transparent !important;
+}
+
+/* imported */
+.forgotPassword {
+  display: flex;
+  color: rgba(255, 255, 255, 0.87);
+  justify-content: flex-end;
+  padding: 10px 0;
+  width: 100%;
+}
+
+.loginErrorContainer {
+  background: #ff34423b;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  color: #ff3441;
+  padding: 20px 0;
+}
+
+.loginErrorContainer p {
+  margin: 0;
+}
+
+.forgotPassword button {
+  font-weight: 300;
+  font-size: 17px;
+  line-height: 17px;
+  color: rgba(255, 255, 255, 0.87);
+  width: fit-content;
+}
+
+.forgot {
+  cursor: pointer;
+}
+
+.forgot:hover {
+  color: #36b44a;
+  text-decoration: underline;
+}
+
+.rememberMe {
+  color: rgba(255, 255, 255, 0.87);
+  display: flex;
+  align-items: center;
+  padding: 20px 0;
+}
+
+.rememberMe p {
+  margin: 0 0 0 15px;
+}
+
+.signUp {
+  color: #ffffff;
+  text-align: center;
+  padding: 23px 0;
+}
+
+.signUp span {
+  color: #36b44a;
+  cursor: pointer;
+}
+
+.emoji {
+  position: absolute;
+  top: 70%;
+  left: -20%;
+}
+
+.btnVisibility {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 3%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.flexForm {
+  display: flex;
+  justify-content: space-between;
+}
+.flexForm .formHolder {
+  width: 48%;
+}
+.formHolder label {
+  font-family: "AppleGothic";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 12px;
+  color: #828282;
+}
+::placeholder {
+  color: #dde2e5;
+}
+
+.buttonContainer {
+  margin-top: 30px;
+}
+
+.rememberMe span {
+  color: #36b44a;
+}
+
+.passwordMisMatch {
+  color: #ff3441;
+  display: flex;
+  margin-top: 10px;
+}
+
+.passwordMisMatch img {
+  margin-right: 10px;
+}
+.signuplink{
+  text-align: center;
+}
+/* Social Login */
+.or {
+  display: flex;
+}
+.or hr {
+  border: none;
+  border-bottom: 1px solid var(--body_color_grey);
+  width: 40%;
+  padding-top: 3px;
+}
+
+.or span {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text_color_grey);
+}
+
+.socialButtons {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0px;
+  gap: 10px;
+}
+.socialButton {
+  background-color: unset !important;
+  border: 1px solid var(--body_color_grey) !important;
+  color: var(--text_color_grey);
+  width: 100%;
+  height: 75px;
+  border-radius: 20px !important;
+}
+@media screen and (max-width: 800px) {
+  ::placeholder {
+    color: rgba(52, 68, 55, 0.3);
+  }
+  .forgotPassword {
+    color: #2f3930;
+    font-size: 0.9rem;
+  }
+  .rememberMe {
+    color: #2f3930;
+    font-size: 0.9rem;
+  }
+  .signUp {
+    color: #2f3930;
+  }
+  .emoji {
+    display: none;
+  }
+
+  .container {
+    width: 100%;
+    background: transparent;
+    padding: 20px 0;
+    margin-bottom: 40px;
+  }
+
+  .container label {
+    color: #344437;
+  }
+}
+
+@media screen and (max-width: 800px) {
+  .next {
+    margin-top: 5%;
+  }
+  .acc {
+    min-height: 70%;
+    padding-top: 30%;
+  }
+  .positive {
+    background-color: #32c36c !important;
+    /* width: 248px; */
+    height: 50px;
+  }
+  .form > * {
+    margin: 30px 0px;
+    /* text-align: center; */
+  }
+  .verifyAccountModal {
+    width: inherit;
+    min-height: 400px;
+    padding: 20px;
+  }
+}

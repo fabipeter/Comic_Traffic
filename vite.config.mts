@@ -5,6 +5,15 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
+    headers: {
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), unload=*",
+    },
+  },
+  preview: {
+    port: 3000,
+    headers: {
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), unload=*",
+    },
   },
   build: {
     outDir: "build",

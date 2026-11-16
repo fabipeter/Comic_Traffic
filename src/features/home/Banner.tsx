@@ -1,141 +1,238 @@
 import React, { useState, useEffect } from "react";
 import "./Banner.css";
-import tmdbagent from "../../app/api/tmdbagent";
+import { observer } from "mobx-react-lite";
+import { useStore } from "../../app/stores/store";
+import { AggregatedMediaItem } from "../../app/api/ratingApis";
+
 const Banner = () => {
-  const [movie, setMovie] = useState<any>({});
+  const { ratingStore } = useStore();
+  const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [searchInput, setSearchInput] = useState("");
+
+  const featuredItems = ratingStore.catalog.slice(0, 6);
+  const featured: AggregatedMediaItem =
+    featuredItems[featuredIndex % Math.max(1, featuredItems.length)] ||
+    ratingStore.catalog[0];
 
   useEffect(() => {
-    const fetchData = async () => {
-      const request = await tmdbagent.instance.get(
-        tmdbagent.requests.fetchNetflixOriginals
+    const timer = setInterval(() => {
+      setFeaturedIndex(
+        (prev) => (prev + 1) % Math.max(1, featuredItems.length)
       );
-      // console.log(request.data.results[0])
-      setMovie(
-        request.data.results[
-          Math.floor(Math.random() * request.data.results.length - 1)
-        ]
-      );
-      return request;
-    };
+    }, 8500);
+    return () => clearInterval(timer);
+  }, [featuredItems.length]);
 
-    fetchData();
-  }, []);
-
-  const truncate = (desc: string, n: number) => {
-    return desc?.length > n ? desc.substring(0, n - 1) + "..." : desc;
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    ratingStore.setSearchQuery(searchInput);
+    if (searchInput.trim().length >= 2) {
+      await ratingStore.executeLiveMultiApiSearch(searchInput);
+    }
+    const catalogEl = document.getElementById("ct-catalog-explorer");
+    if (catalogEl) {
+      catalogEl.scrollIntoView({ behavior: "smooth" });
+    }
   };
+
+  if (!featured) return null;
+
+  const { cumulativeRating } = featured;
+  const avg = cumulativeRating.finalCumulativeAverage;
+  const ringOffset = 283 - (Math.min(100, Math.max(0, avg)) / 100) * 283;
+
   return (
     <header
       className="banner"
       style={{
         backgroundSize: "cover",
-        backgroundImage:
-          movie && movie.backdrop_path
-            ? `url('${process.env.REACT_APP_TMDB_MOVIE_BANNER_BASE_URL}${movie?.backdrop_path}')`
-            : "#000",
+        backgroundImage: `linear-gradient(95deg, rgba(6,9,17,0.97) 0%, rgba(11,17,30,0.82) 52%, rgba(6,9,17,0.55) 100%), url('${
+          featured.backdropUrl || featured.posterUrl
+        }')`,
         backgroundPosition: "center center",
       }}
     >
+      <div className="banner__ambient_glow" />
+
       <div className="banner__contents">
-        <div>
-          <h1
-            data-uia="nmhp-card-hero-text-title"
-            className="default-ltr-cache-19f4kxn ejqbulh8"
-          >
-            Movies, Tv Shows and more.
-          </h1>
-          <p
-            data-uia="nmhp-card-hero-text-subtitle"
-            className="default-ltr-cache-1ndpmgo ejqbulh7"
-          >
-            View Movies and Tv series details and their cumulative ratings.
-          </p>
-          <div className="default-ltr-cache-1asgq30 ejqbulh4">
-            <div className="default-ltr-cache-inkrn e1w590cc2">
-              <form
-                data-uia="email-form"
-                className=" default-ltr-cache-1u8qly9"
-                aria-label="Sign up or restart your membership with Netflix."
-              >
-                <h3 className="default-ltr-cache-btlj1u e1w590cc1">
-                  {/* Discover movies, tv shows and much more */}
-                </h3>
-                <div
-                  data-issplitform="false"
-                  data-hasmessage="false"
-                  className="default-ltr-cache-1jbflut e1w590cc0"
-                >
-                  <div
-                    data-uia="field-email+container"
-                    className=" e1skmawq1 default-ltr-cache-17kww2f ea3diy34"
-                  >
-                    <label
-                      htmlFor="63616ea9d28fd"
-                      data-uia="field-email+label"
-                      className="default-ltr-cache-hyhv56 ea3diy31"
-                    >
-                      Search movies or series
-                    </label>
-                    <div className="default-ltr-cache-dk343m ea3diy33">
-                      <input
-                        autoComplete=""
-                        minLength={5}
-                        maxLength={50}
-                        type="text"
-                        id="63616ea9d28fd"
-                        name="searchword"
-                        // data-uia="field-email"
-                        // value=""
-                        placeholder="Search..."
-                        // onChange={(e) =>
-                        //   setLoginDetails({
-                        //     ...loginDetails,
-                        //     email: e.target.value,
-                        //   })
-                        // }
-                      />
-                    </div>
-                  </div>
-                  <button
-                    className=" e1ax5wel1 default-ltr-cache-f1k880"
-                    data-uia="nmhp-card-cta+hero_fuji"
-                    type="button"
-                    // onClick={() => setSignIn(true)}
-                  >
-                    Search
-                    {/* <div
-                      aria-hidden="true"
-                      className="default-ltr-cache-17uj5h e1ax5wel0"
-                    >
-                      <span
-                        dir="ltr"
-                        className="default-ltr-cache-l3xpob e1boxt2d0"
-                      >
-                        <svg
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          data-mirrorinrtl="true"
-                          className="default-ltr-cache-0 e1mhci4z1"
-                          data-name="ChevronRight"
-                          aria-hidden="true"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            clipRule="evenodd"
-                            d="M15.5859 12L8.29303 19.2928L9.70725 20.7071L17.7072 12.7071C17.8948 12.5195 18.0001 12.2652 18.0001 12C18.0001 11.7347 17.8948 11.4804 17.7072 11.2928L9.70724 3.29285L8.29303 4.70706L15.5859 12Z"
-                            fill="currentColor"
-                          ></path>
-                        </svg>
-                      </span>
-                    </div> */}
-                  </button>
-                </div>
-              </form>
+        <div className="adx-hero-grid">
+          {/* Left Spotlight Column */}
+          <div className="ct-banner-inner">
+            <div className="ct-banner-badges">
+              <span className="adx-spotlight-rank">
+                🔥 SPOTLIGHT #{featuredIndex + 1}
+              </span>
+              <span className="ct-banner-tag-featured">
+                ⚡ COMIC TRAFFIC CUMULATIVE INDEX
+              </span>
+              <span className="ct-banner-tag-type">
+                {featured.mediaType === "ComicBook"
+                  ? "📚 Comic Book / Graphic Novel"
+                  : featured.mediaType === "TvSeries"
+                  ? "📺 TV Series"
+                  : "🎬 Movie"}
+              </span>
+              <span className="ct-banner-tag-tier">
+                ★ {cumulativeRating.consensusTier}
+              </span>
             </div>
-            <div className="center-pixel default-ltr-cache-1qms9jn ekwtkbw0"></div>
+
+            <h1
+              data-uia="nmhp-card-hero-text-title"
+              className="ct-banner-main-title"
+            >
+              {featured.title}{" "}
+              <span className="adx-hero-year">({featured.releaseYear})</span>
+            </h1>
+
+            <div className="adx-hero-meta-strip">
+              <span className="adx-meta-chip adx-chip-hd">HD • 4K</span>
+              <span className="adx-meta-chip">{featured.ageRating}</span>
+              <span className="adx-meta-chip">
+                {featured.runtimeOrIssueCount}
+              </span>
+              <span className="adx-meta-chip">{featured.publisherOrStudio}</span>
+              {featured.genres.slice(0, 3).map((g) => (
+                <span key={g} className="adx-meta-genre">
+                  {g}
+                </span>
+              ))}
+            </div>
+
+            <p className="ct-banner-subtitle">{featured.overview}</p>
+
+            {/* Final Cumulative Average & Multi-Source Highlights */}
+            <div className="ct-banner-rating-ribbon">
+              <div className="ct-banner-final-score-box">
+                <div className="ct-banner-final-num">
+                  {cumulativeRating.finalCumulativeAverage.toFixed(1)}%
+                </div>
+                <div className="ct-banner-final-meta">
+                  <strong>FINAL CUMULATIVE AVERAGE</strong>
+                  <span>
+                    {cumulativeRating.finalStarScoreOutOfTen.toFixed(2)}/10 •{" "}
+                    {cumulativeRating.activeSourceCount} Rating APIs •{" "}
+                    {cumulativeRating.totalAggregatedVotes.toLocaleString()}{" "}
+                    Votes
+                  </span>
+                </div>
+              </div>
+
+              <div className="ct-banner-source-pills">
+                {cumulativeRating.sources.slice(0, 5).map((src) => (
+                  <div
+                    key={src.sourceId}
+                    className="ct-banner-source-pill"
+                    style={{ borderLeft: `3px solid ${src.accentColor}` }}
+                  >
+                    <small>{src.sourceName}</small>
+                    <strong>{src.rawScoreDisplay}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="ct-banner-action-row">
+              <button
+                type="button"
+                className="ct-primary-cta-btn adx-glow-cta"
+                onClick={() => ratingStore.openDetailModal(featured)}
+              >
+                ▶ Explore Multi-API Hub & Reviews
+              </button>
+              <button
+                type="button"
+                className="ct-secondary-cta-btn"
+                onClick={() =>
+                  ratingStore.upsertWatchlistItem(featured, "PlanToWatch")
+                }
+              >
+                + Sync to Watchlist / Reading List
+              </button>
+              <button
+                type="button"
+                className="ct-secondary-cta-btn"
+                onClick={() => {
+                  if (
+                    !ratingStore.comparisonIds.includes(featured.externalId)
+                  ) {
+                    ratingStore.toggleComparisonItem(featured.externalId);
+                  }
+                  ratingStore.setCompareModalOpen(true);
+                }}
+              >
+                ⚔️ Compare in Arena
+              </button>
+            </div>
+
+            {/* Search Bar across Movies, TV Series, and Comic Books */}
+            <form onSubmit={handleSearch} className="ct-hero-search-form">
+              <input
+                type="text"
+                placeholder="Quick Search: Watchmen, Saga, Batman, Spider-Verse, Invincible..."
+                value={searchInput}
+                onChange={(e) => {
+                  setSearchInput(e.target.value);
+                  ratingStore.setSearchQuery(e.target.value);
+                }}
+                className="ct-hero-search-input"
+              />
+              <button type="submit" className="ct-hero-search-btn">
+                {ratingStore.isSearchingLiveApis
+                  ? "Aggregating APIs..."
+                  : "Search All APIs"}
+              </button>
+            </form>
+          </div>
+
+          {/* Right AnimeDex Spotlight Poster + SVG Cumulative Ring Card */}
+          <div className="adx-hero-poster-showcase">
+            <div
+              className="adx-poster-glass-frame"
+              onClick={() => ratingStore.openDetailModal(featured)}
+            >
+              <img
+                src={featured.posterUrl}
+                alt={featured.title}
+                className="adx-hero-poster-img"
+              />
+              <div className="adx-poster-ring-badge">
+                <svg viewBox="0 0 100 100" className="adx-svg-ring">
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    className="adx-svg-ring-bg"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    className="adx-svg-ring-progress"
+                    style={{ strokeDashoffset: ringOffset }}
+                  />
+                </svg>
+                <div className="adx-ring-center-text">
+                  <strong>{avg.toFixed(1)}%</strong>
+                  <small>INDEX</small>
+                </div>
+              </div>
+            </div>
+
+            {/* Spotlight Carousel Indicator Dots */}
+            <div className="adx-spotlight-dots">
+              {featuredItems.map((it, idx) => (
+                <button
+                  key={it.externalId}
+                  type="button"
+                  aria-label={`Spotlight ${idx + 1}: ${it.title}`}
+                  className={`adx-spotlight-dot ${
+                    idx === featuredIndex % featuredItems.length ? "active" : ""
+                  }`}
+                  onClick={() => setFeaturedIndex(idx)}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -144,4 +241,4 @@ const Banner = () => {
   );
 };
 
-export default Banner;
+export default observer(Banner);

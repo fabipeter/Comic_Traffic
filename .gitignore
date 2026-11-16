@@ -5,6 +5,13 @@
 /.pnp
 .pnp.js
 
+# local toolchains & caches
+/.local
+/Library
+**/bin/
+**/obj/
+**/.local/
+
 # testing
 /coverage
 
@@ -12,14 +19,20 @@
 /build
 .firebase
 .firebaserc
+.vercel
 
-# misc
-.DS_Store
+# environment & secret files (never commit to public GitHub)
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+**/appsettings.Development.json
+**/appsettings.Production.json
+**/appsettings.Local.json
 
+# misc
+.DS_Store
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

@@ -2,7 +2,6 @@ import { makeAutoObservable, reaction, runInAction } from "mobx";
 // import { ServerError } from "../models/serverError";
 import { UserProfile } from "../models/user";
 import { toast } from "react-toastify";
-import { router } from "../router/Routes";
 import jwt_decode from "jwt-decode";
 import agent from "../api/agent";
 import { store } from "./store";
@@ -111,7 +110,9 @@ export default class CommonStore {
     window.localStorage.removeItem("mToken");
     window.localStorage.removeItem("user");
     window.localStorage.removeItem("profileStatus");
-    router.navigate("/");
+    if (typeof window !== "undefined") {
+      window.history.pushState({}, "", "/");
+    }
     // toast.info("Your session has expired, please login again");
   }
 }

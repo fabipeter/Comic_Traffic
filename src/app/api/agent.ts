@@ -9,60 +9,34 @@ import { store } from "../stores/store";
 //   });
 // };
 
-axios.defaults.baseURL = process.env.REACT_APP_API_URL;
+const legacyHttp = axios.create({
+  baseURL: "/api",
+});
 
 const responseBody = <T>(response: AxiosResponse<T>) => response.data;
 
-axios.interceptors.request.use((config) => {
+legacyHttp.interceptors.request.use((config) => {
   const token = store.commonStore.token;
   if (token && config.headers) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-axios.interceptors.response.use(
+legacyHttp.interceptors.response.use(
   async (response) => {
-    // if (process.env.NODE_ENV === "development") await sleep(1000);
-    // const pagination = response.headers["pagination"];
-    // if (pagination) {
-    //   response.data = new PaginatedResult(
-    //     response.data,
-    //     JSON.parse(pagination)
-    //   );
-    //   return response as AxiosResponse<PaginatedResult<any>>;
-    // }
     return response;
   },
   (error: AxiosError) => {
-    try {
-      console.log(error);
-      const { status, config, headers } = error.response as AxiosResponse;
-      const headerContent: string = `${headers["www-authenticate"]}`;
-      // console.log(error.response);
+    if (error.response) {
+      const { status, headers } = error.response as AxiosResponse;
+      const headerContent: string = `${headers?.["www-authenticate"] || ""}`;
       switch (status) {
         case 400:
-          // if (config.method === "get" && data.errors.hasOwnProperty("id")) {
-          //   router.navigate("/not-found");
-          // }
-          // if (data.errors) {
-          //   const modalStateErrors = [];
-          //   for (const key in data.errors) {
-          //     if (data.errors[key]) {
-          //       modalStateErrors.push(data.errors[key]);
-          //     }
-          //   }
-          //   throw modalStateErrors.flat();
-          // } else {
-          //   toast.error(data);
-          // }
           toast.error("Invalid Request");
           break;
         case 401:
           if (headerContent.includes('Bearer error="invalid_token"')) {
             window.localStorage.removeItem("jwt");
-            // window.localStorage.removeItem("refreshToken");
-            // window.localStorage.removeItem("mToken");
             window.localStorage.removeItem("user");
-            // window.localStorage.removeItem("profileStatus");
             router.navigate("/");
             toast.info("Your session has expired, please login again");
           } else toast.error("unauthorised");
@@ -74,27 +48,20 @@ axios.interceptors.response.use(
           router.navigate("/not-found");
           break;
         case 500:
-          // store.commonStore.setServerError(data);
           toast.error("Service Downtime");
-          // router.navigate("/server-error");
           break;
       }
-      return Promise.reject(error);
-    } catch (error) {
-      console.log(`${error}`);
-      if (navigator.onLine === false)
-        toast.warning("Please check your internet connection");
-      else toast.error("Service Downtime");
     }
+    return Promise.reject(error);
   }
 );
 
 const requests = {
-  get: <T>(url: string) => axios.get<T>(url).then(responseBody),
+  get: <T>(url: string) => legacyHttp.get<T>(url).then(responseBody),
   post: <T>(url: string, body: {}) =>
-    axios.post<T>(url, body).then(responseBody),
-  put: <T>(url: string, body: {}) => axios.put<T>(url, body).then(responseBody),
-  del: <T>(url: string) => axios.delete<T>(url).then(responseBody),
+    legacyHttp.post<T>(url, body).then(responseBody),
+  put: <T>(url: string, body: {}) => legacyHttp.put<T>(url, body).then(responseBody),
+  del: <T>(url: string) => legacyHttp.delete<T>(url).then(responseBody),
 };
 
 

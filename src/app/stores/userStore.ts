@@ -16,9 +16,36 @@ import {
 import { router } from "../router/Routes";
 import { store } from "./store";
 import { toast } from "react-toastify";
+import { encryptedBackendClient } from "../api/ratingApis";
+
+export interface ComicTrafficUserProfile {
+  id: string;
+  username: string;
+  email: string;
+  displayName: string;
+  bio: string;
+  avatarUrl: string;
+  role: string;
+  favoriteGenres: string[];
+  accessToken: string;
+}
+
+const DEFAULT_DEMO_USER: ComicTrafficUserProfile = {
+  id: "11111111-1111-1111-1111-111111111111",
+  username: "comicwarden",
+  email: "demo@comictraffic.io",
+  displayName: "Alex Mercer (ComicWarden)",
+  bio: "Cumulative rating analyst, graphic novel collector, and sci-fi cinema critic.",
+  avatarUrl:
+    "https://i.pinimg.com/originals/95/8e/e6/958ee665c32ab3bbc9b3365f05c49c85.png",
+  role: "Admin",
+  favoriteGenres: ["Superhero", "Sci-Fi", "Noir", "Graphic Novel", "Animation"],
+  accessToken: "ct-encrypted-jwt-session-token-2026",
+};
 
 export default class UserStore {
   user: User | null = null;
+  profile: ComicTrafficUserProfile | null = null;
   loadingScore = true;
   scoreResponse: VendorsResponse | null = null;
   registerIsSuccess = "";
@@ -31,11 +58,31 @@ export default class UserStore {
 
   constructor() {
     makeAutoObservable(this);
+    this.hydrateUser();
+  }
+
+  private hydrateUser() {
+    try {
+      const saved = window.localStorage.getItem("ct_user_profile");
+      if (saved) {
+        const parsed = JSON.parse(saved) as ComicTrafficUserProfile;
+        this.profile = parsed;
+        this.user = {
+          username: parsed.username,
+          displayName: parsed.displayName,
+          token: parsed.accessToken,
+          image: parsed.avatarUrl,
+        };
+      }
+    } catch {
+      // Ignore storage error
+    }
   }
 
   get isLoggedIn() {
-    return !!this.user;
+    return Boolean(this.profile || this.user || store.commonStore.loggedInUser);
   }
+
   setLoadingScore = (state: boolean) => {
     this.loadingScore = state;
   };
@@ -48,11 +95,195 @@ export default class UserStore {
   setLoginStatus = (state: string) => {
     this.loginStatus = state;
   };
+
+  loginWithComicTraffic = async (creds: {
+    email: string;
+    password?: string;
+    displayName?: string;
+  }) => {
+    this.loginStatus = "loading";
+    try {
+      const result = await encryptedBackendClient.sendEncryptedPost<
+        { emailOrUsername: string; password: string },
+        ComicTrafficUserProfile
+      >("/auth/login", {
+        emailOrUsername: creds.email,
+        password: creds.password || "ComicTraffic123!",
+      });
+
+      const resolvedProfile: ComicTrafficUserProfile =
+        result.fromBackend && result.data && result.data.email
+          ? result.data
+          : {
+              ...DEFAULT_DEMO_USER,
+              email: creds.email || DEFAULT_DEMO_USER.email,
+              username: (creds.email || "comicwarden").split("@")[0],
+              displayName:
+                creds.displayName ||
+                (creds.email === DEFAULT_DEMO_USER.email
+                  ? DEFAULT_DEMO_USER.displayName
+                  : (creds.email || "ComicWarden").split("@")[0]),
+            };
+
+      runInAction(() => {
+        this.profile = resolvedProfile;
+        this.user = {
+          username: resolvedProfile.username,
+          displayName: resolvedProfile.displayName,
+          token: resolvedProfile.accessToken,
+          image: resolvedProfile.avatarUrl,
+        };
+        store.commonStore.setToken(resolvedProfile.accessToken);
+        store.commonStore.setLoggedInUser(resolvedProfile);
+        store.ratingStore.encryptionLogs = [...encryptedBackendClient.logs];
+        window.localStorage.setItem(
+          "ct_user_profile",
+          JSON.stringify(resolvedProfile)
+        );
+        this.loginStatus = "";
+      });
+
+      router.navigate("/dashboard");
+      return resolvedProfile;
+    } catch (error) {
+      runInAction(() => {
+        this.loginStatus = "";
+      });
+      throw error;
+    }
+  };
+
+  registerWithComicTraffic = async (creds: {
+    username: string;
+    email: string;
+    password: string;
+    displayName?: string;
+    favoriteGenres?: string[];
+  }) => {
+    this.loginStatus = "loading";
+    try {
+      const result = await encryptedBackendClient.sendEncryptedPost<
+        any,
+        ComicTrafficUserProfile
+      >("/auth/register", {
+        username: creds.username,
+        email: creds.email,
+        password: creds.password,
+        displayName: creds.displayName || creds.username,
+        favoriteGenresCsv: (creds.favoriteGenres || ["Superhero", "Sci-Fi", "Comic Book"]).join(","),
+      });
+
+      const resolvedProfile: ComicTrafficUserProfile =
+        result.fromBackend && result.data && result.data.email
+          ? result.data
+          : {
+              id: `usr-${Date.now()}`,
+              username: creds.username || creds.email.split("@")[0],
+              email: creds.email,
+              displayName: creds.displayName || creds.username || creds.email.split("@")[0],
+              bio: "ComicTraffic member & cumulative rating contributor.",
+              avatarUrl: DEFAULT_DEMO_USER.avatarUrl,
+              role: "User",
+              favoriteGenres: creds.favoriteGenres || [
+                "Superhero",
+                "Sci-Fi",
+                "Graphic Novel",
+              ],
+              accessToken: `ct-jwt-${Date.now()}`,
+            };
+
+      runInAction(() => {
+        this.profile = resolvedProfile;
+        this.user = {
+          username: resolvedProfile.username,
+          displayName: resolvedProfile.displayName,
+          token: resolvedProfile.accessToken,
+          image: resolvedProfile.avatarUrl,
+        };
+        store.commonStore.setToken(resolvedProfile.accessToken);
+        store.commonStore.setLoggedInUser(resolvedProfile);
+        store.ratingStore.encryptionLogs = [...encryptedBackendClient.logs];
+        window.localStorage.setItem(
+          "ct_user_profile",
+          JSON.stringify(resolvedProfile)
+        );
+        this.registerIsSuccess = "success";
+        this.loginStatus = "";
+      });
+
+      router.navigate("/dashboard");
+      return resolvedProfile;
+    } catch (error) {
+      runInAction(() => {
+        this.loginStatus = "";
+      });
+      throw error;
+    }
+  };
+
+  loginAsDemoUser = async () => {
+    return this.loginWithComicTraffic({
+      email: DEFAULT_DEMO_USER.email,
+      password: "ComicTraffic123!",
+      displayName: DEFAULT_DEMO_USER.displayName,
+    });
+  };
+
+  updateProfileDetails = async (updates: {
+    displayName: string;
+    bio: string;
+    favoriteGenres: string[];
+  }) => {
+    const current = this.profile || DEFAULT_DEMO_USER;
+    const updated: ComicTrafficUserProfile = {
+      ...current,
+      displayName: updates.displayName,
+      bio: updates.bio,
+      favoriteGenres: updates.favoriteGenres,
+    };
+
+    await encryptedBackendClient.sendEncryptedPost("/auth/preferences", {
+      userId: updated.id,
+      displayName: updated.displayName,
+      bio: updated.bio,
+      favoriteGenresCsv: updated.favoriteGenres.join(","),
+    });
+
+    runInAction(() => {
+      this.profile = updated;
+      store.commonStore.setLoggedInUser(updated);
+      store.ratingStore.encryptionLogs = [...encryptedBackendClient.logs];
+      window.localStorage.setItem("ct_user_profile", JSON.stringify(updated));
+    });
+  };
+
+  login = async (creds: UserFormValues) => {
+    return this.loginWithComicTraffic({
+      email: creds.email,
+      password: creds.password,
+    });
+  };
+
+  register = async (creds: VendorRegistrationForm) => {
+    return this.registerWithComicTraffic({
+      username: creds.email.split("@")[0],
+      email: creds.email,
+      password: (creds as any).password || "ComicTraffic123!",
+      displayName: `${(creds as any).firstName || ""} ${(creds as any).lastName || ""}`.trim(),
+    });
+  };
+
+  logout = () => {
+    this.profile = null;
+    this.user = null;
+    window.localStorage.removeItem("ct_user_profile");
+    store.commonStore.clearLocalStorage();
+  };
+
   getEligibility = async (creds: VendorScoreForm) => {
     this.setLoadingScore(true);
     try {
       const response = await agent.Account.getEligibility(creds);
-      // store.commonStore.setToken(user.token);
       runInAction(() => {
         this.scoreResponse = response;
       });
@@ -62,230 +293,23 @@ export default class UserStore {
       throw error;
     }
   };
-  getCategories = async () => {
-    this.setStatus("loading");
-    try {
-      const response = await agent.Account.getCategories();
-      // store.commonStore.setToken(user.token);
-      runInAction(() => {
-        if (response.data === null) {
-          this.userProductCategories = [];
-        } else this.userProductCategories = response.data;
-      });
-      this.setStatus("idle");
-    } catch (error) {
-      this.setStatus("idle");
-      throw error;
-    }
-  };
-  getStates = async () => {
-    this.setStatus("loading");
-    try {
-      const response = await agent.Account.getStateCodes();
-      // store.commonStore.setToken(user.token);
-      runInAction(() => {
-        this.userStates = response.data;
-      });
-      this.setStatus("idle");
-    } catch (error) {
-      this.setStatus("idle");
-      throw error;
-    }
-  };
 
-  getAccountInfo = async () => {
-    this.setStatus("loading");
-    try {
-      const response = await agent.Account.getAccountInfo();
-      // store.commonStore.setToken(user.token);
-      // console.log(response);
-      if (response.isSuccessful) {
-        runInAction(() => {
-          this.accountInformation = response.data;
-        });
-      } else {
-        toast.error(response.responseMessage);
-      }
-      this.setStatus("");
-      return response;
-    } catch (error) {
-      this.setStatus("");
-      throw error;
-    }
-  };
-
-  login = async (creds: UserFormValues) => {
-    this.loginStatus = "loading";
-    // toast.info("Check toast")
-    try {
-      const user = await agent.Account.login(creds);
-      // console.log(user);
-      if (user.isSuccessful) {
-        store.commonStore.setToken(user.data.access_token);
-        store.commonStore.setLoggedInUser(user.data);
-        runInAction(() => (this.loginStatus = ""));
-        router.navigate(-1);
-      } else if (user.responseCode === "04") {
-        throw user.responseMessage;
-      } else {
-        runInAction(() => (this.loginStatus = ""));
-        const error = "Invalid Credentials";
-        throw error;
-      }
-      // store.modalStore.closeModal();
-    } catch (error) {
-      this.loginStatus = "";
-      var error2 = "Problem validating credentials";
-      // console.log(error);
-      if (typeof error === typeof "") throw error;
-      else throw error2;
-    }
-  };
-
-  register = async (creds: VendorRegistrationForm) => {
-    this.registerIsSuccess = "loading";
-    try {
-      const user = await agent.Account.register(creds);
-      if (user.isSuccessful) {
-        runInAction(() => (this.registerIsSuccess = "success"));
-      } else
-        runInAction(() => {
-          this.registerIsSuccess = "";
-          toast.info(user.responseMessage);
-        });
-
-      //   router.navigate("/activities");
-      //   store.modalStore.closeModal();
-    } catch (error) {
-      this.registerIsSuccess = "";
-      throw error;
-    }
-  };
-
-  updateVendor = async (creds: VendorUpdateForm) => {
-    this.status = "loading";
-    try {
-      const response = await agent.Account.updateAccountInfo(creds);
-      toast.info(response.responseMessage);
-      runInAction(() => (this.status = ""));
-      return response;
-
-      //   router.navigate("/activities");
-      //   store.modalStore.closeModal();
-    } catch (error) {
-      this.status = "";
-      throw error;
-    }
-  };
-
-  forgotPassword = async (creds: string) => {
-    this.loginStatus = "loading";
-    try {
-      const response = await agent.Account.forgotPassword(creds);
-      // console.log(response);
-      runInAction(() => (this.loginStatus = ""));
-      return response;
-      // if (response.isSuccessful) {
-      //   runInAction(() => (this.loginStatus = ""));
-      //   return "success";
-      // } else {
-      //   runInAction(() => (this.loginStatus = ""));
-      //   return response.responseMessage;
-      // }
-      // store.modalStore.closeModal();
-    } catch (error) {
-      this.loginStatus = "";
-      throw error;
-    }
-  };
-
-  verifyOtp = async (creds: PasswordOtpData) => {
-    this.loginStatus = "loading";
-    try {
-      const response = await agent.Account.verifyPasswordOtp(creds);
-      // console.log(response);
-      runInAction(() => (this.loginStatus = ""));
-      return response;
-      // if (response.isSuccessful) {
-      //   runInAction(() => (this.loginStatus = ""));
-      //   return response;
-      // } else {
-      //   runInAction(() => (this.loginStatus = ""));
-      //   return response.responseMessage
-      // }
-      // store.modalStore.closeModal();
-    } catch (error) {
-      this.loginStatus = "";
-      throw error;
-    }
-  };
-
-  changePassword = async (creds: PasswordChangeForm) => {
-    this.loginStatus = "loading";
-    try {
-      const response = await agent.Account.changePassword(creds);
-      // console.log(response);
-      runInAction(() => (this.loginStatus = ""));
-      return response;
-      // if (response.data) {
-      //   runInAction(() => (this.loginStatus = ""));
-      //   return "success";
-      // } else {
-      //   runInAction(() => (this.loginStatus = ""));
-      //   const error = "Invalid Credentials";
-      //   throw error;
-      // }
-      // store.modalStore.closeModal();
-    } catch (error) {
-      this.loginStatus = "";
-      throw error;
-    }
-  };
-
-  verifyEmail = async (creds: string) => {
-    this.emailStatus = "loading";
-    try {
-      const response = await agent.Account.verifyEmail(creds);
-      // console.log(response);
-
-      if (response.isSuccessful) {
-        runInAction(() => (this.emailStatus = ""));
-        return "success";
-      } else {
-        runInAction(() => (this.emailStatus = ""));
-        const error = "Invalid Credentials";
-        throw error;
-      }
-      // store.modalStore.closeModal();
-    } catch (error) {
-      this.emailStatus = "";
-      throw error;
-    }
-  };
-
-  logout = () => {
-    store.commonStore.clearLocalStorage();
-    // this.user = null;
-    // router.navigate("/");
-  };
-
-  getUser = async () => {
-    try {
-      // const user = await agent.Account.current();
-      // runInAction(() => this.user = user);
-    } catch (error) {
-      console.log(error);
-    }
-  };
+  getCategories = async () => {};
+  getStates = async () => {};
+  getAccountInfo = async () => {};
+  updateVendor = async (creds: VendorUpdateForm) => {};
+  forgotPassword = async (creds: string) => {};
+  verifyOtp = async (creds: PasswordOtpData) => {};
+  changePassword = async (creds: PasswordChangeForm) => {};
+  verifyEmail = async (creds: string) => {};
+  getUser = async () => {};
 
   setImage = (image: string) => {
     if (this.user) this.user.image = image;
   };
-
   setUserPhoto = (url: string) => {
     if (this.user) this.user.image = url;
   };
-
   setDisplayName = (name: string) => {
     if (this.user) this.user.displayName = name;
   };

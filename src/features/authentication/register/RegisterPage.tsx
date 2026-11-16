@@ -1,181 +1,168 @@
 import React, { useState } from "react";
-import Modal from "../../../app/common/modals/Custom";
-import { Form, useNavigate } from "react-router-dom";
-import styles from "./styles.module.css";
-import { Alert } from "@mui/material";
-import { Formik, ErrorMessage } from "formik";
-import { Label, Button } from "semantic-ui-react";
-import { InputTemp } from "../../../app/common/form/Custom";
+import { useNavigate } from "react-router-dom";
+import { observer } from "mobx-react-lite";
 import { useStore } from "../../../app/stores/store";
-import { LoginForm } from "../../../app/models/user";
-import { authSchema } from "../../../app/validation/validationSchema";
-import {
-  LoginSocialGoogle,
-  LoginSocialFacebook,
-  LoginSocialApple,
-} from "reactjs-social-login";
+import Nav from "../../home/Nav";
+
+const AVAILABLE_GENRE_OPTIONS = [
+  "Superhero",
+  "Graphic Novel",
+  "Sci-Fi",
+  "Noir",
+  "Animation",
+  "Fantasy",
+  "Horror",
+  "Indie Comic",
+];
 
 const RegisterPage = () => {
   const navigate = useNavigate();
-  const [inputField, setInputField] = useState(new LoginForm());
-  const { userStore, commonStore } = useStore();
-  const { login, loginStatus } = userStore;
-  const { token } = commonStore;
-  const [resInfo, setResInfo] = useState<{
-    status: boolean | null;
-    message: string;
-  }>({
-    status: false,
-    message: "",
-  });
-  const google_client_id = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-  const facebook_app_id = process.env.REACT_APP_FACEBOOK_APP_ID;
-  const apple_client_id = process.env.REACT_APP_APPLE_CLIENT_ID;
-  return (
-    <div className={styles.registerPage}>
-      <Modal
-        variant="unstyled"
-        style={{ position: "fixed", zIndex: "2" }}
-        openModal={true}
-        closeModal={() => navigate(-1)}
-      >
-        <div className={styles.verifyAccountModal}>
-          <h2>SignUp</h2>
-          <div className={styles.welcomeText}>Welcome to BudgetXplora</div>
-          <Formik
-            initialValues={inputField}
-            enableReinitialize
-            onSubmit={(values) => {
-              //   clearError();
-              login(values).catch((error: string) =>
-                setResInfo({
-                  status: true,
-                  message: error,
-                })
-              );
-            }}
-            validationSchema={authSchema.login}
-          >
-            {({
-              dirty,
-              touched,
-              errors,
-              getFieldProps,
-              handleSubmit,
-              values,
-              setFieldValue,
-              isValid,
-              isSubmitting,
-            }) => {
-              return (
-                <Form onSubmit={handleSubmit} className={styles.loginForm}>
-                  <InputTemp
-                    label="Email Address"
-                    labelStyle={{
-                      fontFamily: "AppleGothic",
-                      color: "#828282",
-                      fontSize: "12px",
-                    }}
-                    inputStyle={{ borderRadius: "15px" }}
-                    inputType={"email"}
-                    placeholder="email@host.co.."
-                    {...getFieldProps("email")}
-                    name="email"
-                  />
-                  <ErrorMessage
-                    name={"email"}
-                    render={(error: any) => (
-                      <Label basic color="red" content={error} />
-                    )}
-                  />
+  const { userStore } = useStore();
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([
+    "Superhero",
+    "Graphic Novel",
+    "Sci-Fi",
+  ]);
+  const [errorMessage, setErrorMessage] = useState("");
 
-                  <div className={styles.infotext}>
-                    We’ll send you an otp via mail to confirm your email. By
-                    clicking the continue you accept our
-                  </div>
-                  <div className={styles.termslink}>Terms and Conditions</div>
-                  {/* <div className={styles.sterlinks}>
-                    <span onClick={() => navigate("/change-password")}>
-                      Forgot Password?
-                    </span>{" "}
-                  </div> */}
-                  <div className={styles.next}>
-                    {/* {resInfo.status && touched && dirty && (
-                      <Alert variant="danger" onClose={clearError} dismissible>
-                        {resInfo.message}
-                      </Alert>
-                    )} */}
-                    <Button
-                      positive
-                      className={styles.positive}
-                      disabled={!dirty || !isValid}
-                      type="submit"
-                      loading={loginStatus === "loading"}
-                    >
-                      <div className={styles.button}>Continue</div>
-                    </Button>
-                  </div>
-                </Form>
-              );
-            }}
-          </Formik>
-          <div className={styles.loginForm}>
-            <div className={styles.or}>
-              {" "}
-              <hr />
-              <span>or</span>
-              <hr />
-            </div>
-            <div className={styles.socialButtons}>
-              <div>
-                <LoginSocialGoogle
-                  client_id={google_client_id ? google_client_id : ""}
-                  discoveryDocs=""
-                  access_type=""
-                  onResolve={({ provider, data }) => {
-                    console.log(provider, data);
-                  }}
-                  onReject={(error) => {
-                    console.log(error);
-                  }}
-                >
-                  <Button className={styles.socialButton} type="button">
-                    <div className={styles.button}>Google</div>
-                  </Button>
-                </LoginSocialGoogle>
-              </div>
-              <div>
-                <LoginSocialFacebook
-                  appId={facebook_app_id ? facebook_app_id : ""}
-                  onResolve={({ provider, data }) => {
-                    console.log(provider, data);
-                  }}
-                  onReject={(error) => {
-                    console.log(error);
-                  }}
-                >
-                  <Button className={styles.socialButton} type="button">
-                    <div className={styles.button}>Facebook</div>
-                  </Button>
-                </LoginSocialFacebook>
-              </div>
-              {/* <div>
-                <LoginSocialApple
-                  client_id={apple_client_id ? apple_client_id : ""}
-                  onResolve={() => {}}
-                  onReject={() => {}}
-                >
-                  <Button className={styles.socialButton} type="button" disabled>
-                    <div className={styles.button}>Apple</div>
-                  </Button>
-                </LoginSocialApple>
-              </div> */}
-            </div>
+  const toggleGenre = (genre: string) => {
+    setSelectedGenres((prev) =>
+      prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
+    );
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage("");
+    try {
+      await userStore.registerWithComicTraffic({
+        username,
+        email,
+        password,
+        displayName: displayName || username,
+        favoriteGenres: selectedGenres,
+      });
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Registration failed.");
+    }
+  };
+
+  return (
+    <div className="ct-auth-page">
+      <Nav />
+      <div className="ct-auth-card-wrapper">
+        <div className="ct-auth-card">
+          <div className="ct-auth-badge">
+            ⚡ Join the Comic Traffic Community
           </div>
+          <h2>Create Your Comic Traffic Account</h2>
+          <p className="ct-auth-subtitle">
+            Build custom comic & movie lists, contribute to cumulative scores, and personalize rating API weights.
+          </p>
+
+          {errorMessage && (
+            <div className="ct-auth-error" role="alert">
+              {errorMessage}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="ct-auth-form">
+            <div className="ct-form-field">
+              <label htmlFor="ct-reg-username">Username</label>
+              <input
+                id="ct-reg-username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="e.g. nightwing_reader"
+                required
+              />
+            </div>
+
+            <div className="ct-form-field">
+              <label htmlFor="ct-reg-display">Display Name</label>
+              <input
+                id="ct-reg-display"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="e.g. Dick Grayson"
+                required
+              />
+            </div>
+
+            <div className="ct-form-field">
+              <label htmlFor="ct-reg-email">Email Address</label>
+              <input
+                id="ct-reg-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="reader@comictraffic.io"
+                required
+              />
+            </div>
+
+            <div className="ct-form-field">
+              <label htmlFor="ct-reg-password">Password</label>
+              <input
+                id="ct-reg-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                required
+              />
+            </div>
+
+            <div className="ct-form-field">
+              <label>Favorite Genres</label>
+              <div className="ct-genre-picker">
+                {AVAILABLE_GENRE_OPTIONS.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    className={`ct-genre-pick-btn ${
+                      selectedGenres.includes(g) ? "selected" : ""
+                    }`}
+                    onClick={() => toggleGenre(g)}
+                  >
+                    {selectedGenres.includes(g) ? "✓ " : "+ "}
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="ct-primary-cta-btn ct-full-btn"
+              disabled={userStore.loginStatus === "loading"}
+            >
+              {userStore.loginStatus === "loading"
+                ? "Creating Profile..."
+                : "Create Account"}
+            </button>
+          </form>
+
+          <p className="ct-auth-footer-text">
+            Already have an account?{" "}
+            <button
+              type="button"
+              className="ct-inline-link-btn"
+              onClick={() => navigate("/login")}
+            >
+              Sign In
+            </button>
+          </p>
         </div>
-      </Modal>
+      </div>
     </div>
   );
 };
 
-export default RegisterPage;
+export default observer(RegisterPage);

@@ -1,133 +1,74 @@
+.notfoundpage {
+  min-height: 100vh;
+  background: var(--adx-bg-primary, #07050a);
+  color: #f8fafc;
+}
+
 .notfoundpage__banner {
   position: relative;
-  height: 100vh;
-  background: rgb(0 0 0 / 40%);
+  min-height: calc(100vh - 70px);
+  background: radial-gradient(
+      circle at 50% 25%,
+      var(--adx-accent-soft, rgba(225, 29, 72, 0.22)) 0%,
+      transparent 60%
+    ),
+    var(--adx-bg-primary, #07050a);
   color: white;
-  object-fit: contain;
   display: flex;
   align-items: center;
+  justify-content: center;
+  padding: 24px;
 }
 
 .notfound__contents {
-  display: flex;
-  flex: 2 0;
-  flex-direction: column;
-  margin: 0 1em;
-  position: relative;
+  max-width: 640px;
+  background: var(--adx-bg-card, rgba(15, 10, 20, 0.9));
+  border: 1px solid var(--adx-border, rgba(225, 29, 72, 0.35));
+  border-radius: 24px;
+  padding: 42px 28px;
   text-align: center;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  user-select: none;
-  z-index: 1;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
 }
 
-.notfound__contents:before {
-  background: radial-gradient(
-    ellipse at center,
-    rgba(0, 0, 0, 0.5) 0,
-    rgba(0, 0, 0, 0.2) 45%,
-    rgba(0, 0, 0, 0.1) 55%,
-    transparent 70%
-  );
-  bottom: -10vw;
-  content: "";
-  left: 10vw;
-  position: absolute;
-  right: 10vw;
-  top: -10vw;
-  z-index: 0;
+.adx-404-badge {
+  display: inline-block;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--adx-accent-soft, rgba(225, 29, 72, 0.2));
+  border: 1px solid var(--adx-border, rgba(225, 29, 72, 0.5));
+  color: var(--adx-accent-bright, #ff2a5f);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin-bottom: 16px;
 }
+
 .notfound__contents h1 {
-    font-size: 6em;
-    font-weight: 500;
-    margin-bottom: 2vw;
-    z-index: 1;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 900;
+  margin: 0 0 14px;
+  color: #ffffff;
 }
 
 .notfound__contents p {
-  font-size: 2.2em;
-  font-weight: 300;
-}
-.notfound__contents p {
-  color: inherit;
-  margin-top: 0;
-  margin-bottom: 30px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.57);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #cbd5e1;
+  margin: 0 0 24px;
 }
 
 .error-page--content--buttons {
   display: flex;
   justify-content: center;
 }
-.error-page--content--buttons > a {
-  text-decoration: none;
-}
-.ltr-18ezbm2.hasLabel {
-  padding-left: 2.4rem;
-  padding-right: 2.4rem;
-}
-.ltr-18ezbm2.color-primary {
-  background-color: white;
-  color: black;
-}
-.ltr-18ezbm2.color-primary:hover {
-    background-color: rgba(220, 219, 219, 0.65);
-    color: rgb(249, 249, 249);
-  }
-.ltr-18ezbm2 {
-  -webkit-align-items: center;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
-  align-items: center;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  -ms-appearance: none;
-  appearance: none;
-  border: 0;
-  border-radius: 4px;
-  cursor: pointer;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
-  display: flex;
-  -webkit-box-pack: center;
-  -ms-flex-pack: center;
-  -webkit-justify-content: center;
-  justify-content: center;
-  opacity: 1;
-  padding: 0.8rem;
-  position: relative;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-  will-change: background-color, color;
-  word-break: break-word;
-  white-space: nowrap;
+
+.error-page--content--errorCode {
+  margin-top: 24px;
+  font-size: 0.85rem;
+  color: #94a3b8;
 }
 
-.ltr-1vh9doa {
-  font-size: 1.6rem;
-  font-weight: 400;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  display: block;
-  font-size: 1.6rem;
-  font-weight: 500;
-  line-height: 2.4rem;
-}
-.error-page--content--errorCode {
-  align-items: flex-end;
-  display: flex;
-  flex: 1;
-  justify-content: center;
-  margin-top: 2em;
-}
 .error-page--content--errorCode span {
-  border-left: 2px solid #e50914;
-  font-size: 2.4em;
-  font-weight: 100;
-  letter-spacing: 0.1em;
-  line-height: 2.2em;
-  padding: 0 1vw;
+  border-left: 3px solid var(--adx-accent, #e11d48);
+  padding-left: 10px;
 }

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="ctBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a1122" />
+      <stop offset="55%" stop-color="#0f1b38" />
+      <stop offset="100%" stop-color="#060911" />
+    </linearGradient>
+    <linearGradient id="ctBorderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#1e40af" />
+      <stop offset="100%" stop-color="#64748b" />
+    </linearGradient>
+    <linearGradient id="ctAccentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa" />
+      <stop offset="50%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <linearGradient id="ctBoltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7dd3fc" />
+      <stop offset="100%" stop-color="#38bdf8" />
+    </linearGradient>
+    <filter id="ctGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#1e40af" flood-opacity="0.55" />
+    </filter>
+  </defs>
+
+  <!-- Outer Rounded Hexagonal Shield Base -->
+  <rect x="6" y="6" width="116" height="116" rx="28" fill="url(#ctBgGrad)" stroke="url(#ctBorderGrad)" stroke-width="5" />
+
+  <!-- Subtle Comic Panel Halftone Grid Lines -->
+  <path d="M22 44 H106 M22 84 H106 M64 18 V110" stroke="#334155" stroke-width="1.5" stroke-opacity="0.4" stroke-dasharray="4 4" />
+
+  <!-- Stylized 'C' (Comic) Outer Arc -->
+  <path
+    d="M66 26 C41 26 24 42 24 64 C24 86 41 102 66 102 C77 102 86 98 93 91 L82 80 C77 85 72 87 65 87 C49 87 39 77 39 64 C39 51 49 41 65 41 C72 41 77 43 82 48 L93 37 C86 30 77 26 66 26 Z"
+    fill="url(#ctAccentGrad)"
+    filter="url(#ctGlow)"
+  />
+
+  <!-- Stylized 'T' (Traffic) + Lightning Signal Bolt -->
+  <path
+    d="M54 44 H104 L98 57 H84 V98 H69 V57 H50 Z"
+    fill="#f8fafc"
+    filter="url(#ctGlow)"
+  />
+
+  <!-- Dynamic Sky-Navy Lightning Crest Accent -->
+  <polygon
+    points="94,20 76,47 89,47 79,72 106,41 92,41"
+    fill="url(#ctBoltGrad)"
+  />
+</svg>

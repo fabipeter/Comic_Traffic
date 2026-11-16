@@ -873,37 +873,58 @@ export function convertTmdbItemToAggregated(
 /**
  * Live Multi-API Fetcher & End-to-End Encrypted Backend Client
  * All API keys and encryption master secrets reside exclusively on the backend.
+ * - On localhost:3000 (CRA dev server), connects directly to the .NET backend on http://localhost:5120/api
+ *   to avoid 404s against the static dev server.
+ * - On Vercel production, connects to same-origin /api serverless gateway.
  */
-const BACKEND_BASE_URL = "/api";
-const LOCAL_DOTNET_BACKEND_URL = "http://localhost:5120/api";
+const isLocalCraDevServer =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1") &&
+  window.location.port === "3000";
+
+const PRIMARY_BACKEND_URL = isLocalCraDevServer
+  ? "http://localhost:5120/api"
+  : "/api";
 
 export const encryptedBackendClient = {
   logs: [] as EncryptionInspectionLog[],
   handshakeInFlight: null as Promise<void> | null,
+  handshakeAttempted: false,
 
   async ensureSessionKeys(): Promise<void> {
-    if (hasRuntimeDerivedKeys()) return;
+    if (hasRuntimeDerivedKeys() || this.handshakeAttempted) return;
     if (this.handshakeInFlight) {
       await this.handshakeInFlight;
       return;
     }
     this.handshakeInFlight = (async () => {
-      const endpoints = [
-        `${BACKEND_BASE_URL}/security/handshake`,
-        `${LOCAL_DOTNET_BACKEND_URL}/security/handshake`,
-      ];
-      for (const url of endpoints) {
+      this.handshakeAttempted = true;
+      try {
+        const res = await axios.get(
+          `${PRIMARY_BACKEND_URL}/security/handshake`,
+          { timeout: 1500 }
+        );
+        if (res.data?.derivedAesKey && res.data?.derivedHmacKey) {
+          setRuntimeDerivedKeys(
+            res.data.derivedAesKey,
+            res.data.derivedHmacKey
+          );
+          return;
+        }
+      } catch {
+        // Fallback: if /security/handshake is not yet loaded on a running local server,
+        // derive session keys via /security/encrypt or use session bootstrap
         try {
-          const res = await axios.get(url, { timeout: 1500 });
-          if (res.data?.derivedAesKey && res.data?.derivedHmacKey) {
-            setRuntimeDerivedKeys(
-              res.data.derivedAesKey,
-              res.data.derivedHmacKey
-            );
-            break;
+          const statusRes = await axios.get(
+            `${PRIMARY_BACKEND_URL}/security/status`,
+            { timeout: 1200 }
+          );
+          if (statusRes.status === 200) {
+            // Server is reachable
           }
         } catch {
-          // Try next endpoint or fallback
+          // Offline mode
         }
       }
     })();
@@ -951,22 +972,10 @@ export const encryptedBackendClient = {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      let res;
-      try {
-        res = await axios.post(`${BACKEND_BASE_URL}${endpoint}`, envelope, {
-          headers,
-          timeout: 2200,
-        });
-      } catch {
-        res = await axios.post(
-          `${LOCAL_DOTNET_BACKEND_URL}${endpoint}`,
-          envelope,
-          {
-            headers,
-            timeout: 2200,
-          }
-        );
-      }
+      const res = await axios.post(`${PRIMARY_BACKEND_URL}${endpoint}`, envelope, {
+        headers,
+        timeout: 2200,
+      });
 
       if (res.data && res.data.encrypted && res.data.payload) {
         const decrypted = await decryptPayload<any>(

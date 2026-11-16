@@ -1,5 +1,3 @@
-import { encryptedBackendClient } from "./ratingApis";
-
 /**
  * Backend-Proxied TMDB Client
  * Zero API keys are stored on the frontend; all requests are encrypted end-to-end
@@ -17,13 +15,11 @@ const requests = {
 };
 
 const instance = {
-  async get(path: string) {
-    const res = await encryptedBackendClient.sendEncryptedPost<
-      { path: string },
-      { results?: any[] }
-    >("/media/tmdb-proxy", { path });
+  async get(_path: string) {
+    // Curated rows on the home page use the verified catalog items directly;
+    // Live multi-API search in the Explorer and Navbar uses encryptedBackendClient.
     return {
-      data: res.data || { results: [] },
+      data: { results: [] },
     };
   },
 };

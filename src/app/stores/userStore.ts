@@ -15,7 +15,6 @@ import {
 } from "../models/user";
 import { router } from "../router/Routes";
 import { store } from "./store";
-import { toast } from "react-toastify";
 import { encryptedBackendClient } from "../api/ratingApis";
 
 export interface ComicTrafficUserProfile {

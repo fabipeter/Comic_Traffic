@@ -4,9 +4,17 @@
  */
 export function sanitizeUserText(input: string, maxLength: number = 1000): string {
   if (!input || typeof input !== "string") return "";
-  // eslint-disable-next-line no-control-regex
-  return input
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+  let cleaned = "";
+  for (let i = 0; i < input.length; i++) {
+    const code = input.charCodeAt(i);
+    // Keep printable characters and standard whitespace (tab=9, LF=10, CR=13)
+    if (code >= 32 || code === 9 || code === 10 || code === 13) {
+      if (code !== 127) {
+        cleaned += input[i];
+      }
+    }
+  }
+  return cleaned
     .replace(/<\s*\/?\s*(script|iframe|object|embed|svg|link|style|meta)[^>]*>/gi, "")
     .replace(/javascript\s*:/gi, "")
     .replace(/vbscript\s*:/gi, "")

@@ -2,10 +2,8 @@ import { makeAutoObservable, runInAction } from "mobx";
 import {
   AggregatedMediaItem,
   calculateCumulativeRating,
-  convertTmdbItemToAggregated,
   CustomListEntry,
   encryptedBackendClient,
-  INITIAL_CUMULATIVE_CATALOG,
   MediaCategoryType,
   RATING_SOURCE_DEFINITIONS,
   searchLiveMultiApis,
@@ -253,7 +251,8 @@ export const ANIMEDEX_SKINS: AnimeDexSkinOption[] = [
 ];
 
 export default class RatingStore {
-  catalog: AggregatedMediaItem[] = [...INITIAL_CUMULATIVE_CATALOG];
+  catalog: AggregatedMediaItem[] = [];
+  isLoadingCatalog: boolean = false;
   selectedCategory: "All" | MediaCategoryType = "All";
   selectedGenre: string = "All";
   searchQuery: string = "";
@@ -299,7 +298,29 @@ export default class RatingStore {
     this.initDefaultWeights();
     this.hydrateFromStorage();
     this.applyDomThemeAttributes();
+    this.fetchBackendCatalog();
   }
+
+  fetchBackendCatalog = async () => {
+    this.isLoadingCatalog = true;
+    try {
+      const res = await encryptedBackendClient.sendEncryptedGet<AggregatedMediaItem[]>("/media");
+      if (res.fromBackend && Array.isArray(res.data) && res.data.length > 0) {
+        runInAction(() => {
+          this.catalog = res.data!;
+          this.isLoadingCatalog = false;
+        });
+        return;
+      }
+      runInAction(() => {
+        this.isLoadingCatalog = false;
+      });
+    } catch {
+      runInAction(() => {
+        this.isLoadingCatalog = false;
+      });
+    }
+  };
 
   private applyDomThemeAttributes() {
     if (typeof document !== "undefined") {
@@ -487,46 +508,6 @@ export default class RatingStore {
     runInAction(() => {
       this.encryptionLogs = [...encryptedBackendClient.logs];
     });
-  };
-
-  registerTmdbRowItems = (
-    rawItems: any[],
-    forcedCategory?: MediaCategoryType
-  ) => {
-    if (!Array.isArray(rawItems)) return;
-    const weightsToApply = this.useCustomWeights ? this.customWeights : undefined;
-    const newEntries: AggregatedMediaItem[] = [];
-
-    for (const raw of rawItems) {
-      if (
-        !raw ||
-        (!raw.title &&
-          !raw.name &&
-          !raw.original_title &&
-          !raw.original_name)
-      )
-        continue;
-      const converted = convertTmdbItemToAggregated(raw, forcedCategory);
-      if (weightsToApply) {
-        converted.cumulativeRating = calculateCumulativeRating(
-          converted.cumulativeRating.sources,
-          weightsToApply
-        );
-      }
-      if (
-        !this.catalog.some(
-          (existing) =>
-            existing.externalId === converted.externalId ||
-            existing.title.toLowerCase() === converted.title.toLowerCase()
-        )
-      ) {
-        newEntries.push(converted);
-      }
-    }
-
-    if (newEntries.length > 0) {
-      this.catalog = [...this.catalog, ...newEntries];
-    }
   };
 
   executeLiveMultiApiSearch = async (queryText?: string) => {

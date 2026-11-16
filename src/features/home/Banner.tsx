@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import "./Banner.css";
 import { observer } from "mobx-react-lite";
+import { useNavigate } from "react-router-dom";
 import { useStore } from "../../app/stores/store";
 import { AggregatedMediaItem } from "../../app/api/ratingApis";
 
 const Banner = () => {
-  const { ratingStore } = useStore();
+  const { ratingStore, userStore } = useStore();
+  const navigate = useNavigate();
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const [searchInput, setSearchInput] = useState("");
 
@@ -143,9 +145,13 @@ const Banner = () => {
               <button
                 type="button"
                 className="ct-secondary-cta-btn"
-                onClick={() =>
-                  ratingStore.upsertWatchlistItem(featured, "PlanToWatch")
-                }
+                onClick={() => {
+                  if (!userStore.isLoggedIn) {
+                    navigate("/login");
+                    return;
+                  }
+                  ratingStore.upsertWatchlistItem(featured, "PlanToWatch");
+                }}
               >
                 + Sync to Watchlist / Reading List
               </button>

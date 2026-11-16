@@ -7,8 +7,8 @@ import Nav from "../../home/Nav";
 const LoginPage = () => {
   const navigate = useNavigate();
   const { userStore } = useStore();
-  const [email, setEmail] = useState("demo@comictraffic.io");
-  const [password, setPassword] = useState("ComicTraffic123!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -17,13 +17,10 @@ const LoginPage = () => {
     try {
       await userStore.loginWithComicTraffic({ email, password });
     } catch (err: any) {
-      setErrorMessage(err?.message || "Unable to sign in. Please check credentials.");
+      setErrorMessage(
+        err?.message || "Unable to sign in. Please check credentials."
+      );
     }
-  };
-
-  const handleQuickDemo = async () => {
-    setErrorMessage("");
-    await userStore.loginAsDemoUser();
   };
 
   return (
@@ -53,7 +50,7 @@ const LoginPage = () => {
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="demo@comictraffic.io"
+                placeholder="you@example.com"
                 required
               />
             </div>
@@ -80,18 +77,6 @@ const LoginPage = () => {
                 : "Sign In"}
             </button>
           </form>
-
-          <div className="ct-auth-divider">
-            <span>or instant analyst access</span>
-          </div>
-
-          <button
-            type="button"
-            className="ct-secondary-cta-btn ct-full-btn"
-            onClick={handleQuickDemo}
-          >
-            ⚡ One-Click Demo Login (Alex Mercer / ComicWarden)
-          </button>
 
           <p className="ct-auth-footer-text">
             New to ComicTraffic?{" "}

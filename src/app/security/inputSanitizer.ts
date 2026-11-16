@@ -26,7 +26,7 @@ export function sanitizeUserText(input: string, maxLength: number = 1000): strin
 export function sanitizeImageUrl(url: string, fallback: string = "/comic-traffic-logo.svg"): string {
   if (!url || typeof url !== "string") return fallback;
   const trimmed = url.trim();
-  if (trimmed.startsWith("/")) return trimmed;
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return trimmed;
   try {
     const parsed = new URL(trimmed);
     if (parsed.protocol === "https:" || parsed.protocol === "http:") {
@@ -36,4 +36,28 @@ export function sanitizeImageUrl(url: string, fallback: string = "/comic-traffic
   } catch {
     return fallback;
   }
+}
+
+/**
+ * Validates internal navigation paths (`returnTo` / `redirect`) to prevent Open Redirect
+ * and `javascript:` / `data:` / `vbscript:` URI execution.
+ */
+export function sanitizeReturnToPath(
+  candidate: string | null | undefined,
+  fallback: string = "/dashboard"
+): string {
+  if (!candidate || typeof candidate !== "string") return fallback;
+  const trimmed = candidate.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//") || trimmed.includes("\\")) {
+    return fallback;
+  }
+  const lower = trimmed.toLowerCase();
+  if (
+    /^(javascript|vbscript|data)\s*:/i.test(lower) ||
+    lower.includes("<script") ||
+    lower.includes(":")
+  ) {
+    return fallback;
+  }
+  return trimmed;
 }

@@ -16,16 +16,13 @@ public interface IJwtTokenService
 
 public class JwtTokenService : IJwtTokenService
 {
-    private readonly string _jwtKey;
+    private readonly byte[] _jwtKeyBytes;
     private readonly string _issuer;
     private readonly string _audience;
 
     public JwtTokenService(IConfiguration configuration)
     {
-        _jwtKey = Environment.GetEnvironmentVariable("JWT_SIGNING_KEY")
-            ?? (string.IsNullOrWhiteSpace(configuration["Jwt:Key"])
-                ? "ComicTraffic_SuperSecret_JwtSigningKey_2026_AtLeast32Chars!"
-                : configuration["Jwt:Key"]!);
+        _jwtKeyBytes = SecurityDefaults.GetJwtKey(configuration);
         _issuer = configuration["Jwt:Issuer"] ?? "ComicTraffic.Api";
         _audience = configuration["Jwt:Audience"] ?? "ComicTraffic.Client";
     }
@@ -42,8 +39,7 @@ public class JwtTokenService : IJwtTokenService
             new("displayName", user.DisplayName)
         };
 
-        var keyBytes = SHA256.HashData(Encoding.UTF8.GetBytes(_jwtKey));
-        var securityKey = new SymmetricSecurityKey(keyBytes);
+        var securityKey = new SymmetricSecurityKey(_jwtKeyBytes);
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(

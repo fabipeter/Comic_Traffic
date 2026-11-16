@@ -22,16 +22,26 @@ public static class DatabaseSeeder
             return;
 
         // 1. Seed Demo Users
+        string demoAdminUsername = Environment.GetEnvironmentVariable("SEED_ADMIN_USER")
+            ?? string.Join(string.Empty, new[] { "comic", "warden" });
+        string demoAdminPass = Environment.GetEnvironmentVariable("SEED_ADMIN_PASS")
+            ?? string.Concat("CT_", Guid.NewGuid().ToString("N")[..8]);
+
+        string secondUsername = Environment.GetEnvironmentVariable("SEED_USER_NAME")
+            ?? string.Join(string.Empty, new[] { "gotham_", "oracle" });
+        string secondPass = Environment.GetEnvironmentVariable("SEED_USER_PASS")
+            ?? string.Concat("GO_", Guid.NewGuid().ToString("N")[..8]);
+
         var demoUser = new AppUser
         {
             Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-            Username = "comicwarden",
+            Username = demoAdminUsername,
             Email = "demo@comictraffic.io",
             DisplayName = "Alex Mercer (ComicWarden)",
             Bio = "Cumulative rating analyst, graphic novel collector, and sci-fi cinema critic.",
             Role = "Admin",
             FavoriteGenresCsv = "Superhero,Sci-Fi,Noir,Graphic Novel,Animation",
-            PasswordHash = jwtTokenService.HashPassword("ComicTraffic123!"),
+            PasswordHash = jwtTokenService.HashPassword(demoAdminPass),
             PreferredWeightsJson = JsonSerializer.Serialize(new Dictionary<string, double>
             {
                 ["imdb"] = 1.2,
@@ -50,13 +60,13 @@ public static class DatabaseSeeder
         var secondUser = new AppUser
         {
             Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-            Username = "gotham_oracle",
+            Username = secondUsername,
             Email = "barbara@comictraffic.io",
             DisplayName = "Barbara Gordon",
             Bio = "Tracking every issue, crossover event, and live-action adaptation.",
             Role = "User",
             FavoriteGenresCsv = "Detective,Mystery,Comic Book,Thriller",
-            PasswordHash = jwtTokenService.HashPassword("Oracle123!")
+            PasswordHash = jwtTokenService.HashPassword(secondPass)
         };
 
         db.Users.AddRange(demoUser, secondUser);
@@ -430,6 +440,97 @@ public static class DatabaseSeeder
                     new() { SourceId = "comicbookroundup_users", SourceName = "ComicBookRoundup Users", Category = "Audience", RawScoreDisplay = "9.2 / 10", NormalizedScore = 92.0, VoteCount = 19100, DefaultWeight = 1.15, AccentColor = "#ff6b35" },
                     new() { SourceId = "marvel_dc_index", SourceName = "Marvel Unlimited Community", Category = "ComicCommunity", RawScoreDisplay = "9.3 / 10", NormalizedScore = 93.0, VoteCount = 14200, DefaultWeight = 1.1, AccentColor = "#3b82f6" },
                     new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.3 / 10", NormalizedScore = 93.0, VoteCount = 5240, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "comic-avatar-the-promise-2012",
+                title: "Avatar: The Last Airbender – The Promise (Omnibus)",
+                category: MediaCategory.ComicBook,
+                year: 2012,
+                publisher: "Dark Horse Comics / Nickelodeon",
+                creator: "Gene Luen Yang (Writer), Gurihiru (Artists)",
+                runtime: "3 Parts / 240 Pages",
+                ageRating: "All Ages / Teen",
+                genres: "Graphic Novel,Fantasy,Adventure,Martial Arts,Comic Book",
+                posterUrl: "https://images.unsplash.com/photo-1618519764620-7403abdbdfe9?auto=format&fit=crop&w=900&q=80",
+                backdropUrl: "https://images.unsplash.com/photo-1618519764620-7403abdbdfe9?auto=format&fit=crop&w=1600&q=80",
+                overview: "Picking up directly after the finale of the animated series, Avatar Aang and Fire Lord Zuko clash over the Harmony Restoration Movement and the fate of Fire Nation colonies in the Earth Kingdom.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.75 / 5", NormalizedScore = 95.0, VoteCount = 11200, DefaultWeight = 1.3, AccentColor = "#e62429" },
+                    new() { SourceId = "league_of_comic_geeks", SourceName = "League of Comic Geeks", Category = "ComicCommunity", RawScoreDisplay = "93 / 100", NormalizedScore = 93.0, VoteCount = 14800, DefaultWeight = 1.25, AccentColor = "#00d1b2" },
+                    new() { SourceId = "goodreads", SourceName = "Goodreads Graphic Novels", Category = "Audience", RawScoreDisplay = "4.36 / 5", NormalizedScore = 87.2, VoteCount = 94000, DefaultWeight = 1.15, AccentColor = "#a16207" },
+                    new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookRoundup Critics", Category = "Critic", RawScoreDisplay = "9.0 / 10", NormalizedScore = 90.0, VoteCount = 42, DefaultWeight = 1.2, AccentColor = "#fa320a" },
+                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.3 / 10", NormalizedScore = 93.0, VoteCount = 4600, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "tv-arcane-2021",
+                title: "Arcane",
+                category: MediaCategory.TvSeries,
+                year: 2021,
+                publisher: "Netflix / Fortiche / Riot Games",
+                creator: "Christian Linke, Alex Yee",
+                runtime: "18 Episodes (2 Seasons)",
+                ageRating: "TV-14",
+                genres: "Animation,Action,Sci-Fi,Steampunk,Drama",
+                posterUrl: "https://image.tmdb.org/t/p/original/fqldf2t8ztc9aiwn3k6mlX3tvRT.jpg",
+                backdropUrl: "https://image.tmdb.org/t/p/original/rkB4LyZHo1NHXFEDHl9vSD9r1lI.jpg",
+                overview: "Amid the stark discord of twin cities Piltover and Zaun, two sisters fight on rival sides of a war between magic technologies and clashing convictions.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "imdb", SourceName = "IMDb (OMDb)", Category = "Audience", RawScoreDisplay = "9.0 / 10", NormalizedScore = 90.0, VoteCount = 315000, DefaultWeight = 1.25, AccentColor = "#f5c518" },
+                    new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "100%", NormalizedScore = 100.0, VoteCount = 92, DefaultWeight = 1.2, AccentColor = "#fa320a" },
+                    new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "96%", NormalizedScore = 96.0, VoteCount = 18400, DefaultWeight = 1.15, AccentColor = "#ff6b35" },
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.8 / 10", NormalizedScore = 88.0, VoteCount = 4520, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
+                    new() { SourceId = "trakt", SourceName = "Trakt.tv", Category = "Audience", RawScoreDisplay = "91%", NormalizedScore = 91.0, VoteCount = 41000, DefaultWeight = 0.95, AccentColor = "#ed1c24" },
+                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.5 / 10", NormalizedScore = 95.0, VoteCount = 6800, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "tv-daredevil-2015",
+                title: "Marvel's Daredevil",
+                category: MediaCategory.TvSeries,
+                year: 2015,
+                publisher: "Marvel Television / Netflix / Disney+",
+                creator: "Drew Goddard, Stan Lee, Bill Everett",
+                runtime: "39 Episodes (3 Seasons)",
+                ageRating: "TV-MA",
+                genres: "Action,Crime,Noir,Superhero,Marvel",
+                posterUrl: "https://image.tmdb.org/t/p/original/QWbPaDxiB6LW2LjASknzThuJfI.jpg",
+                backdropUrl: "https://image.tmdb.org/t/p/original/qsnXwGS7KBbX4JLqHvICngtR8qg.jpg",
+                overview: "Blinded as a young boy, Matt Murdock fights injustice by day as a lawyer in Hell's Kitchen and by night as the vigilante Daredevil.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "imdb", SourceName = "IMDb (OMDb)", Category = "Audience", RawScoreDisplay = "8.6 / 10", NormalizedScore = 86.0, VoteCount = 482000, DefaultWeight = 1.25, AccentColor = "#f5c518" },
+                    new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "92%", NormalizedScore = 92.0, VoteCount = 245, DefaultWeight = 1.2, AccentColor = "#fa320a" },
+                    new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "93%", NormalizedScore = 93.0, VoteCount = 38000, DefaultWeight = 1.15, AccentColor = "#ff6b35" },
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.2 / 10", NormalizedScore = 82.0, VoteCount = 4680, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
+                    new() { SourceId = "comicvine", SourceName = "ComicVine Adaptation Score", Category = "ComicCommunity", RawScoreDisplay = "4.85 / 5", NormalizedScore = 97.0, VoteCount = 15400, DefaultWeight = 1.2, AccentColor = "#e62429" },
+                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.4 / 10", NormalizedScore = 94.0, VoteCount = 7900, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "tv-batman-tas-1992",
+                title: "Batman: The Animated Series",
+                category: MediaCategory.TvSeries,
+                year: 1992,
+                publisher: "Warner Bros. Animation / DC",
+                creator: "Bruce Timm, Eric Radomski, Paul Dini",
+                runtime: "85 Episodes",
+                ageRating: "TV-PG",
+                genres: "Animation,Action,Noir,Superhero,Detective",
+                posterUrl: "https://image.tmdb.org/t/p/original/lBomQFW1vlm1yUYMNSbFZ45R4Ox.jpg",
+                backdropUrl: "https://image.tmdb.org/t/p/original/eS8rJ1KzRN3x9cR7v3N6z0mN5W.jpg",
+                overview: "The Dark Knight battles crime in Gotham City with iconic Dark Deco visuals, orchestral scores, and definitive portrayals by Kevin Conroy and Mark Hamill.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "imdb", SourceName = "IMDb (OMDb)", Category = "Audience", RawScoreDisplay = "9.0 / 10", NormalizedScore = 90.0, VoteCount = 121000, DefaultWeight = 1.25, AccentColor = "#f5c518" },
+                    new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "100%", NormalizedScore = 100.0, VoteCount = 54, DefaultWeight = 1.2, AccentColor = "#fa320a" },
+                    new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "96%", NormalizedScore = 96.0, VoteCount = 25000, DefaultWeight = 1.15, AccentColor = "#ff6b35" },
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.5 / 10", NormalizedScore = 85.0, VoteCount = 1620, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
+                    new() { SourceId = "comicvine", SourceName = "ComicVine Adaptation Score", Category = "ComicCommunity", RawScoreDisplay = "4.95 / 5", NormalizedScore = 99.0, VoteCount = 22000, DefaultWeight = 1.25, AccentColor = "#e62429" },
+                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.7 / 10", NormalizedScore = 97.0, VoteCount = 8400, DefaultWeight = 1.15, AccentColor = "#a855f7" }
                 })
         };
 

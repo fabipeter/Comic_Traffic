@@ -7,7 +7,7 @@ namespace ComicTraffic.Api.Infrastructure.Security;
 public class EncryptedEnvelopeDto
 {
     public bool Encrypted { get; set; } = true;
-    public string Algorithm { get; set; } = "AES-256-CBC";
+    public string Algorithm { get; set; } = "AES-256-GCM";
     public string Iv { get; set; } = string.Empty;
     public string Payload { get; set; } = string.Empty;
     public string Signature { get; set; } = string.Empty;
@@ -35,18 +35,8 @@ public class PayloadEncryptionService : IPayloadEncryptionService
 
     public PayloadEncryptionService(IConfiguration configuration)
     {
-        string rawSecret = Environment.GetEnvironmentVariable("PAYLOAD_ENCRYPTION_KEY")
-            ?? (string.IsNullOrWhiteSpace(configuration["Security:PayloadEncryptionKey"])
-                ? "ComicTraffic_AES256_MasterSecretKey_2026!"
-                : configuration["Security:PayloadEncryptionKey"]!);
-        string rawHmac = Environment.GetEnvironmentVariable("PAYLOAD_HMAC_KEY")
-            ?? (string.IsNullOrWhiteSpace(configuration["Security:PayloadHmacKey"])
-                ? "ComicTraffic_HMAC256_IntegritySecretKey_2026!"
-                : configuration["Security:PayloadHmacKey"]!);
-
-        // Derive deterministic 256-bit (32-byte) keys using SHA-256
-        _encryptionKey = SHA256.HashData(Encoding.UTF8.GetBytes(rawSecret));
-        _hmacKey = SHA256.HashData(Encoding.UTF8.GetBytes(rawHmac));
+        _encryptionKey = SecurityDefaults.GetAesKey(configuration);
+        _hmacKey = SecurityDefaults.GetHmacKey(configuration);
     }
 
     public EncryptedEnvelopeDto EncryptObject<T>(T data)
@@ -60,20 +50,22 @@ public class PayloadEncryptionService : IPayloadEncryptionService
         if (plainTextJson == null)
             throw new ArgumentNullException(nameof(plainTextJson));
 
-        using var aes = Aes.Create();
-        aes.KeySize = 256;
-        aes.BlockSize = 128;
-        aes.Mode = CipherMode.CBC;
-        aes.Padding = PaddingMode.PKCS7;
-        aes.Key = _encryptionKey;
-        aes.GenerateIV();
-
         byte[] plainBytes = Encoding.UTF8.GetBytes(plainTextJson);
-        using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-        byte[] cipherBytes = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
+        byte[] nonce = RandomNumberGenerator.GetBytes(12);
+        byte[] tag = new byte[16];
+        byte[] cipherBytes = new byte[plainBytes.Length];
 
-        string ivBase64 = Convert.ToBase64String(aes.IV);
-        string payloadBase64 = Convert.ToBase64String(cipherBytes);
+        using (var aesGcm = new AesGcm(_encryptionKey, 16))
+        {
+            aesGcm.Encrypt(nonce, plainBytes, cipherBytes, tag);
+        }
+
+        byte[] combined = new byte[cipherBytes.Length + tag.Length];
+        Buffer.BlockCopy(cipherBytes, 0, combined, 0, cipherBytes.Length);
+        Buffer.BlockCopy(tag, 0, combined, cipherBytes.Length, tag.Length);
+
+        string ivBase64 = Convert.ToBase64String(nonce);
+        string payloadBase64 = Convert.ToBase64String(combined);
         long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
         string signature = ComputeHmac(ivBase64, payloadBase64, timestamp);
@@ -81,7 +73,7 @@ public class PayloadEncryptionService : IPayloadEncryptionService
         return new EncryptedEnvelopeDto
         {
             Encrypted = true,
-            Algorithm = "AES-256-CBC",
+            Algorithm = "AES-256-GCM",
             Iv = ivBase64,
             Payload = payloadBase64,
             Signature = signature,
@@ -105,20 +97,24 @@ public class PayloadEncryptionService : IPayloadEncryptionService
             }
         }
 
-        byte[] ivBytes = Convert.FromBase64String(envelope.Iv);
-        byte[] cipherBytes = Convert.FromBase64String(envelope.Payload);
+        byte[] nonce = Convert.FromBase64String(envelope.Iv);
+        byte[] combined = Convert.FromBase64String(envelope.Payload);
 
-        using var aes = Aes.Create();
-        aes.KeySize = 256;
-        aes.BlockSize = 128;
-        aes.Mode = CipherMode.CBC;
-        aes.Padding = PaddingMode.PKCS7;
-        aes.Key = _encryptionKey;
-        aes.IV = ivBytes;
+        if (combined.Length < 16)
+            throw new CryptographicException("Ciphertext payload too short for authenticated tag.");
 
-        using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-        byte[] decryptedBytes = decryptor.TransformFinalBlock(cipherBytes, 0, cipherBytes.Length);
-        return Encoding.UTF8.GetString(decryptedBytes);
+        int cipherLen = combined.Length - 16;
+        byte[] cipherBytes = new byte[cipherLen];
+        byte[] tag = new byte[16];
+        Buffer.BlockCopy(combined, 0, cipherBytes, 0, cipherLen);
+        Buffer.BlockCopy(combined, cipherLen, tag, 0, 16);
+
+        byte[] plainBytes = new byte[cipherLen];
+        using (var aesGcm = new AesGcm(_encryptionKey, 16))
+        {
+            aesGcm.Decrypt(nonce, cipherBytes, tag, plainBytes);
+        }
+        return Encoding.UTF8.GetString(plainBytes);
     }
 
     public T? DecryptObject<T>(EncryptedEnvelopeDto envelope)

@@ -1,17 +1,80 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, expect, test } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import {
+  AggregatedMediaItem,
   calculateCumulativeRating,
   ExternalRatingSource,
-  INITIAL_CUMULATIVE_CATALOG,
 } from "./app/api/ratingApis";
 import { encryptPayload, decryptPayload } from "./app/security/payloadCrypto";
-import { sanitizeUserText, sanitizeImageUrl } from "./app/security/inputSanitizer";
+import {
+  sanitizeUserText,
+  sanitizeImageUrl,
+  sanitizeReturnToPath,
+} from "./app/security/inputSanitizer";
 import RatingStore from "./app/stores/ratingStore";
 import { store } from "./app/stores/store";
 import LandingPage from "./features/home/LandingPage";
 import IndexProfilePage from "./features/dashboard/profile/IndexProfilePage";
+import LoginPage from "./features/authentication/login/LoginPage";
+
+const MOCK_BACKEND_CATALOG: AggregatedMediaItem[] = [
+  {
+    id: "101",
+    externalId: "comic-watchmen-1986",
+    title: "Watchmen #1–12 (Absolute Edition)",
+    mediaType: "ComicBook",
+    releaseYear: 1986,
+    publisherOrStudio: "DC Comics",
+    creatorOrDirector: "Alan Moore, Dave Gibbons",
+    runtimeOrIssueCount: "12 Issues",
+    ageRating: "Mature",
+    genres: ["Graphic Novel", "Superhero", "Noir"],
+    posterUrl: "/comic-traffic-logo.svg",
+    backdropUrl: "/comic-traffic-logo.svg",
+    overview: "A landmark graphic novel.",
+    cumulativeRating: calculateCumulativeRating([
+      {
+        sourceId: "comicvine",
+        sourceName: "ComicVine",
+        category: "ComicCommunity",
+        rawScoreDisplay: "4.9/5",
+        normalizedScore: 98,
+        voteCount: 34000,
+        defaultWeight: 1.3,
+        accentColor: "#e62429",
+      },
+    ]),
+  },
+  {
+    id: "201",
+    externalId: "movie-dark-knight-2008",
+    title: "The Dark Knight",
+    mediaType: "Movie",
+    releaseYear: 2008,
+    publisherOrStudio: "Warner Bros.",
+    creatorOrDirector: "Christopher Nolan",
+    runtimeOrIssueCount: "152 min",
+    ageRating: "PG-13",
+    genres: ["Action", "Superhero"],
+    posterUrl: "/comic-traffic-logo.svg",
+    backdropUrl: "/comic-traffic-logo.svg",
+    overview: "Batman faces the Joker.",
+    cumulativeRating: calculateCumulativeRating([
+      {
+        sourceId: "imdb",
+        sourceName: "IMDb",
+        category: "Audience",
+        rawScoreDisplay: "9.0/10",
+        normalizedScore: 90,
+        voteCount: 2900000,
+        defaultWeight: 1.3,
+        accentColor: "#f5c518",
+      },
+    ]),
+  },
+];
 
 describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
   test("1. calculateCumulativeRating computes Final Cumulative Average, Bayesian score, and Critic/Audience splits", () => {
@@ -110,7 +173,7 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
     );
   });
 
-  test("3. AES-256-CBC payload encryption & decryption round-trip preserves CQRS command data", async () => {
+  test("3. AES-256-GCM payload encryption & decryption round-trip preserves CQRS command data", async () => {
     const originalCommand = {
       externalMediaId: "comic-watchmen-1986",
       score: 98,
@@ -119,7 +182,7 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
 
     const envelope = await encryptPayload(originalCommand);
     expect(envelope.encrypted).toBe(true);
-    expect(envelope.algorithm).toBe("AES-256-CBC");
+    expect(envelope.algorithm).toBe("AES-256-GCM");
     expect(envelope.iv.length).toBeGreaterThan(8);
     expect(envelope.payload.length).toBeGreaterThan(8);
 
@@ -128,27 +191,26 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
   });
 
   test("4. RatingStore filters categories, supports General Search, and manages the 3 Compare Slots", () => {
-    const store = new RatingStore();
-    expect(store.catalog.length).toBeGreaterThanOrEqual(
-      INITIAL_CUMULATIVE_CATALOG.length
-    );
+    const testStore = new RatingStore();
+    testStore.catalog = [...MOCK_BACKEND_CATALOG];
+    expect(testStore.catalog.length).toBe(2);
 
-    store.setCategory("ComicBook");
-    expect(store.filteredCatalog.length).toBeGreaterThan(0);
+    testStore.setCategory("ComicBook");
+    expect(testStore.filteredCatalog.length).toBe(1);
     expect(
-      store.filteredCatalog.every((item) => item.mediaType === "ComicBook")
+      testStore.filteredCatalog.every((item) => item.mediaType === "ComicBook")
     ).toBe(true);
 
     // General search suggestions
-    const suggestions = store.searchSuggestions("Watchmen");
-    expect(suggestions.length).toBeGreaterThan(0);
+    const suggestions = testStore.searchSuggestions("Watchmen");
+    expect(suggestions.length).toBe(1);
 
     // 3-Slot Compare management (max 3 slots)
-    expect(store.comparisonSlots.length).toBe(3);
-    store.setComparisonSlot(0, "comic-saga-2012");
-    store.setComparisonSlot(1, "movie-logan-2017");
-    store.setComparisonSlot(2, "tv-xmen-97-2024");
-    expect(store.comparisonSlots).toEqual([
+    expect(testStore.comparisonSlots.length).toBe(3);
+    testStore.setComparisonSlot(0, "comic-saga-2012");
+    testStore.setComparisonSlot(1, "movie-logan-2017");
+    testStore.setComparisonSlot(2, "tv-xmen-97-2024");
+    expect(testStore.comparisonSlots).toEqual([
       "comic-saga-2012",
       "movie-logan-2017",
       "tv-xmen-97-2024",
@@ -156,6 +218,7 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
   });
 
   test("5. LandingPage renders General Search and the 3 Compare Search & Pick inputs", () => {
+    store.ratingStore.catalog = [...MOCK_BACKEND_CATALOG];
     render(
       <MemoryRouter>
         <LandingPage />
@@ -185,7 +248,19 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
   });
 
   test("6. User Dashboard requires sign-in and renders KPI Analytics and tabs once signed in", async () => {
-    await store.userStore.loginAsDemoUser();
+    const testUser = {
+      id: "test-user",
+      username: "testuser",
+      email: "test@example.com",
+      displayName: "Test User",
+      bio: "",
+      avatarUrl: "/comic-traffic-logo.svg",
+      role: "User",
+      favoriteGenres: [],
+      accessToken: `token_${Date.now()}`,
+    };
+    store.userStore.profile = testUser;
+    store.commonStore.setLoggedInUser(testUser);
     render(
       <MemoryRouter>
         <IndexProfilePage />
@@ -204,6 +279,18 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
         name: /Save Custom List/i,
       })
     ).toBeInTheDocument();
+  });
+
+  test("Login page does not expose demo login or prefilled demo credentials", () => {
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByText(/One-Click Demo Login/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Email or Username/i)).toHaveValue("");
+    expect(screen.getByLabelText(/Password/i)).toHaveValue("");
   });
 
   test("7. Theme & Layout features: Navy Blue, Sky Blue & Daylight skins, Lite Mode toggle, View Mode switcher (Grid/List/Rich)", () => {
@@ -233,5 +320,8 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
     expect(sanitizeImageUrl("https://image.tmdb.org/t/p/original/test.jpg")).toBe(
       "https://image.tmdb.org/t/p/original/test.jpg"
     );
+    expect(sanitizeReturnToPath("javascript:alert(document.cookie)")).toBe("/dashboard");
+    expect(sanitizeReturnToPath("//evil.example.com")).toBe("/dashboard");
+    expect(sanitizeReturnToPath("/dashboard")).toBe("/dashboard");
   });
 });

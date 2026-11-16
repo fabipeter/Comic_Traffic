@@ -33,6 +33,26 @@ public class PayloadEncryptionMiddleware
             return;
         }
 
+        // 0. Reject HTTP Request Smuggling / Desync & Header Injection vectors
+        if (context.Request.Headers.ContainsKey("Transfer-Encoding") &&
+            context.Request.Headers.ContainsKey("Content-Length"))
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await context.Response.WriteAsync("{\"isSuccessful\":false,\"message\":\"Ambiguous Transfer-Encoding and Content-Length headers are not permitted.\"}");
+            return;
+        }
+
+        if (HttpMethods.IsPost(context.Request.Method) || HttpMethods.IsPut(context.Request.Method))
+        {
+            var ct = context.Request.ContentType ?? string.Empty;
+            if (!ct.Contains("application/json", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.StatusCode = StatusCodes.Status415UnsupportedMediaType;
+                await context.Response.WriteAsync("{\"isSuccessful\":false,\"message\":\"Unsupported Media Type. Only application/json is accepted.\"}");
+                return;
+            }
+        }
+
         bool requestHasEncryptedHeader =
             context.Request.Headers.TryGetValue("X-Payload-Encrypted", out var reqEncHeader) &&
             string.Equals(reqEncHeader.ToString(), "true", StringComparison.OrdinalIgnoreCase);
@@ -102,7 +122,7 @@ public class PayloadEncryptionMiddleware
                 byte[] encryptedBytes = Encoding.UTF8.GetBytes(encryptedJson);
 
                 context.Response.Headers["X-Payload-Encrypted"] = "true";
-                context.Response.Headers["X-Encryption-Algorithm"] = "AES-256-CBC";
+                context.Response.Headers["X-Encryption-Algorithm"] = "AES-256-GCM";
                 context.Response.ContentType = "application/json; charset=utf-8";
                 context.Response.ContentLength = encryptedBytes.Length;
 

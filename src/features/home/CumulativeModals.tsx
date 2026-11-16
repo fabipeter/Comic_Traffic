@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { observer } from "mobx-react-lite";
+import { useNavigate } from "react-router-dom";
 import { useStore } from "../../app/stores/store";
 import {
   AggregatedMediaItem,
@@ -207,6 +208,7 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
 
 export const CumulativeDetailModal: React.FC = observer(() => {
   const { ratingStore, userStore } = useStore();
+  const navigate = useNavigate();
   const item = ratingStore.selectedItem;
 
   const [reviewScore, setReviewScore] = useState<number>(92);
@@ -227,6 +229,11 @@ export const CumulativeDetailModal: React.FC = observer(() => {
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userStore.isLoggedIn) {
+      ratingStore.closeDetailModal();
+      navigate("/login");
+      return;
+    }
     if (!reviewHeadline.trim() || !reviewText.trim()) return;
     setSubmitting(true);
     await ratingStore.submitReview({
@@ -246,6 +253,11 @@ export const CumulativeDetailModal: React.FC = observer(() => {
   };
 
   const handleWatchlistStatus = async (status: WatchlistEntry["status"]) => {
+    if (!userStore.isLoggedIn) {
+      ratingStore.closeDetailModal();
+      navigate("/login");
+      return;
+    }
     const parsedScore = personalScoreInput
       ? Math.max(0, Math.min(100, Number(personalScoreInput)))
       : existingWatchlist?.userPersonalScore ?? null;
@@ -554,7 +566,9 @@ export const CumulativeDetailModal: React.FC = observer(() => {
                 className="ct-primary-cta-btn"
                 disabled={submitting}
               >
-                {submitting
+                {!userStore.isLoggedIn
+                  ? "Sign In to Submit Review"
+                  : submitting
                   ? "Updating Cumulative Average..."
                   : "Submit Review & Recalculate Average"}
               </button>
@@ -888,6 +902,7 @@ export const KeyboardShortcutsModal: React.FC = observer(() => {
 
 export const CommunityBottomDrawer: React.FC = observer(() => {
   const { ratingStore, userStore } = useStore();
+  const navigate = useNavigate();
   const [quickComment, setQuickComment] = useState("");
   const [selectedMediaId, setSelectedMediaId] = useState(
     ratingStore.catalog[0]?.externalId || "comic-watchmen-1986"
@@ -895,6 +910,11 @@ export const CommunityBottomDrawer: React.FC = observer(() => {
 
   const handleQuickPost = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userStore.isLoggedIn) {
+      ratingStore.setCommunityDrawerOpen(false);
+      navigate("/login");
+      return;
+    }
     if (!quickComment.trim()) return;
     const target =
       ratingStore.catalog.find((c) => c.externalId === selectedMediaId) ||
@@ -989,7 +1009,7 @@ export const CommunityBottomDrawer: React.FC = observer(() => {
               className="adx-drawer-input"
             />
             <button type="submit" className="ct-primary-cta-btn">
-              Post Live
+              {userStore.isLoggedIn ? "Post Live" : "Sign In to Post"}
             </button>
           </form>
         </div>

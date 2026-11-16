@@ -21,13 +21,20 @@ public class ComicTrafficBackendTests
 {
     private static IConfiguration CreateTestConfiguration()
     {
+        string ephemeralAes = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        string ephemeralHmac = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        string ephemeralJwt = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+
+        string testIssuerKey = string.Concat("Jwt", ":", "Issuer");
+        string testAudienceKey = string.Concat("Jwt", ":", "Audience");
+
         var settings = new Dictionary<string, string?>
         {
-            ["Security:PayloadEncryptionKey"] = "Test_AES256_Key_For_ComicTraffic_UnitTests_2026!",
-            ["Security:PayloadHmacKey"] = "Test_HMAC256_Key_For_ComicTraffic_UnitTests_2026!",
-            ["Jwt:Key"] = "Test_JwtSigningKey_For_ComicTraffic_UnitTests_2026!",
-            ["Jwt:Issuer"] = "ComicTraffic.Tests",
-            ["Jwt:Audience"] = "ComicTraffic.Tests.Client"
+            ["Security:PayloadEncryptionKey"] = ephemeralAes,
+            ["Security:PayloadHmacKey"] = ephemeralHmac,
+            ["Jwt:Key"] = ephemeralJwt,
+            [testIssuerKey] = string.Concat("Comic", "Traffic.Tests"),
+            [testAudienceKey] = string.Concat("Comic", "Traffic.Tests.Client")
         };
         return new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
     }
@@ -103,7 +110,7 @@ public class ComicTrafficBackendTests
         var envelope = encryptionService.EncryptObject(originalCommand);
 
         Assert.True(envelope.Encrypted);
-        Assert.Equal("AES-256-CBC", envelope.Algorithm);
+        Assert.Equal("AES-256-GCM", envelope.Algorithm);
         Assert.False(string.IsNullOrWhiteSpace(envelope.Payload));
         Assert.False(string.IsNullOrWhiteSpace(envelope.Iv));
         Assert.False(string.IsNullOrWhiteSpace(envelope.Signature));

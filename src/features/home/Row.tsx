@@ -1,17 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import "./Row.css";
-import tmdbagent from "../../app/api/tmdbagent";
 import { observer } from "mobx-react-lite";
 import {
   AggregatedMediaItem,
-  convertTmdbItemToAggregated,
   MediaCategoryType,
 } from "../../app/api/ratingApis";
 import { useStore } from "../../app/stores/store";
 
 interface RowProps {
   title: string;
-  fetchUrl?: string;
   isLargeRow?: boolean;
   items?: AggregatedMediaItem[];
   categoryFilter?: MediaCategoryType;
@@ -19,44 +16,15 @@ interface RowProps {
 
 const Row: React.FC<RowProps> = ({
   title,
-  fetchUrl,
   isLargeRow,
   items,
   categoryFilter,
 }) => {
   const { ratingStore } = useStore();
-  const [fetchedItems, setFetchedItems] = useState<AggregatedMediaItem[]>([]);
-
-  useEffect(() => {
-    if (!fetchUrl) return;
-    let mounted = true;
-    const fetchData = async () => {
-      try {
-        const request = await tmdbagent.instance.get(fetchUrl);
-        const rawList = request.data?.results || [];
-        const converted: AggregatedMediaItem[] = rawList
-          .filter((m: any) => m && (m.poster_path || m.backdrop_path))
-          .map((m: any) => convertTmdbItemToAggregated(m, categoryFilter));
-
-        if (mounted && converted.length > 0) {
-          setFetchedItems(converted);
-          ratingStore.registerTmdbRowItems(rawList, categoryFilter);
-        }
-      } catch {
-        // Fallback to catalog items if offline or blocked
-      }
-    };
-    fetchData();
-    return () => {
-      mounted = false;
-    };
-  }, [fetchUrl, categoryFilter, ratingStore]);
 
   const displayList: AggregatedMediaItem[] =
     items && items.length > 0
       ? items
-      : fetchedItems.length > 0
-      ? fetchedItems
       : categoryFilter
       ? ratingStore.catalog.filter((c) => c.mediaType === categoryFilter)
       : ratingStore.catalog;
@@ -90,8 +58,14 @@ const Row: React.FC<RowProps> = ({
             >
               <div className="row__card_image_wrap">
                 <img
-                  className={`row__poster ${isLargeRow ? "row__posterLarge" : ""}`}
-                  src={isLargeRow ? item.posterUrl : item.backdropUrl || item.posterUrl}
+                  className={`row__poster ${
+                    isLargeRow ? "row__posterLarge" : ""
+                  }`}
+                  src={
+                    isLargeRow
+                      ? item.posterUrl
+                      : item.backdropUrl || item.posterUrl
+                  }
                   alt={item.title}
                   loading="lazy"
                 />

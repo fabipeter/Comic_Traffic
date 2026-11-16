@@ -71,10 +71,14 @@ public class SubmitReviewCommandHandler : IRequestHandler<SubmitReviewCommand, R
         double normalizedScore = Math.Clamp(request.Score, 0, 100);
         Enum.TryParse<MediaCategory>(request.MediaType, true, out var category);
 
+        string authorHandle = !string.IsNullOrWhiteSpace(request.Username)
+            ? request.Username.Trim()
+            : $"User_{request.UserId.ToString("N")[..6]}";
+
         var review = new UserReview
         {
             UserId = request.UserId,
-            Username = string.IsNullOrWhiteSpace(request.Username) ? "CommunityReviewer" : request.Username.Trim(),
+            Username = authorHandle,
             ExternalMediaId = request.ExternalMediaId,
             MediaTitle = request.MediaTitle,
             MediaType = category,

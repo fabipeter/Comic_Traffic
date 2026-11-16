@@ -4,7 +4,6 @@ import { useStore } from "../../app/stores/store";
 import Nav from "./Nav";
 import Banner from "./Banner";
 import Row from "./Row";
-import tmdbagent from "../../app/api/tmdbagent";
 import {
   CumulativeDetailModal,
   CompareModal,
@@ -478,17 +477,14 @@ const LandingPage = () => {
       />
       <Row
         title="🔥 Trending Across Global APIs Now"
-        fetchUrl={tmdbagent.requests.fetchTrending}
         isLargeRow
       />
       <Row
         title="🌟 All-Time Top Rated Cinema"
-        fetchUrl={tmdbagent.requests.fetchTopRated}
         categoryFilter="Movie"
       />
       <Row
         title="📺 Streaming Originals & Series"
-        fetchUrl={tmdbagent.requests.fetchNetflixOriginals}
         categoryFilter="TvSeries"
       />
 

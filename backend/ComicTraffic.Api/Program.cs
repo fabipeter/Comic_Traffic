@@ -106,11 +106,7 @@ builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<ICumulativeRatingCalculator, CumulativeRatingCalculator>();
 
 // Configure JWT Authentication
-string jwtKey = Environment.GetEnvironmentVariable("JWT_SIGNING_KEY")
-    ?? (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"])
-        ? "ComicTraffic_SuperSecret_JwtSigningKey_2026_AtLeast32Chars!"
-        : builder.Configuration["Jwt:Key"]!);
-byte[] keyBytes = SHA256.HashData(Encoding.UTF8.GetBytes(jwtKey));
+byte[] keyBytes = SecurityDefaults.GetJwtKey(builder.Configuration);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

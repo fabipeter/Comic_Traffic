@@ -92,8 +92,8 @@ public class GetUserDashboardQueryHandler : IRequestHandler<GetUserDashboardQuer
         return new UserDashboardSummaryDto
         {
             UserId = request.UserId,
-            Username = user?.Username ?? "comicwarden",
-            DisplayName = user?.DisplayName ?? "ComicWarden",
+            Username = user?.Username ?? string.Empty,
+            DisplayName = user?.DisplayName ?? "Member",
             TotalTrackedItems = watchlist.Count,
             TotalReviewsWritten = reviews.Count,
             MoviesTrackedCount = watchlist.Count(w => w.MediaType == MediaCategory.Movie),

@@ -130,39 +130,27 @@ public class MediaController : ControllerBase
         return Ok(new { isSuccessful = true, data = comparison });
     }
 
-    [HttpPost("tmdb-proxy")]
-    public async Task<IActionResult> TmdbProxy(
-        [FromBody] TmdbProxyRequestDto request,
+    [HttpPost("search-live")]
+    public async Task<IActionResult> SearchLiveMultiApis(
+        [FromBody] LiveSearchRequestDto request,
         CancellationToken ct)
     {
-        string tmdbApiKey = Environment.GetEnvironmentVariable("TMDB_API_KEY")
-            ?? HttpContext.RequestServices.GetRequiredService<IConfiguration>()["ExternalApis:TmdbApiKey"]
-            ?? string.Empty;
+        var items = await _mediator.Send(new SearchLiveExternalApisCommand(request.Query), ct);
+        return Ok(new { isSuccessful = true, count = items.Count, data = items });
+    }
 
-        string tmdbBaseUrl = Environment.GetEnvironmentVariable("TMDB_API_URL")
-            ?? HttpContext.RequestServices.GetRequiredService<IConfiguration>()["ExternalApis:TmdbApiUrl"]
-            ?? "https://api.themoviedb.org/3";
-
-        if (string.IsNullOrWhiteSpace(tmdbApiKey))
-        {
-            return Ok(new { isSuccessful = true, results = Array.Empty<object>(), source = "BackendCatalogFallback" });
-        }
-
-        string safePath = (request.Path ?? "/trending/all/week").Trim();
-        if (!safePath.StartsWith('/'))
-            safePath = "/" + safePath;
-
-        string separator = safePath.Contains('?') ? "&" : "?";
-        string targetUrl = $"{tmdbBaseUrl.TrimEnd('/')}{safePath}{separator}api_key={Uri.EscapeDataString(tmdbApiKey)}";
-
-        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(4) };
-        var response = await httpClient.GetAsync(targetUrl, ct);
-        string content = await response.Content.ReadAsStringAsync(ct);
-        return Content(content, "application/json");
+    [HttpPost("tmdb-row")]
+    public async Task<IActionResult> FetchTmdbRow(
+        [FromBody] TmdbRowRequestDto request,
+        CancellationToken ct)
+    {
+        var items = await _mediator.Send(new FetchTmdbCuratedRowCommand(request.Category, request.MediaType), ct);
+        return Ok(new { isSuccessful = true, count = items.Count, data = items });
     }
 }
 
-public record TmdbProxyRequestDto(string Path);
+public record LiveSearchRequestDto(string Query);
+public record TmdbRowRequestDto(string Category, string? MediaType = null);
 
 [ApiController]
 [Route("api/reviews")]
@@ -287,7 +275,8 @@ public class SecurityController : ControllerBase
     public IActionResult Decrypt([FromBody] EncryptedEnvelopeDto envelope)
     {
         string plainJson = _encryptionService.DecryptPayload(envelope);
-        return Content(plainJson, "application/json");
+        using var parsedDoc = System.Text.Json.JsonDocument.Parse(plainJson);
+        return new JsonResult(parsedDoc.RootElement.Clone());
     }
 
     [HttpGet("status")]
@@ -295,7 +284,7 @@ public class SecurityController : ControllerBase
     {
         return Ok(new
         {
-            algorithm = "AES-256-CBC + HMAC-SHA256",
+            algorithm = "AES-256-GCM + HMAC-SHA256",
             cqrsPattern = "MediatR 12.2 CQRS Pipeline",
             databaseProvider = "PostgreSQL (Npgsql.EntityFrameworkCore.PostgreSQL)",
             headerTrigger = "X-Payload-Encrypted: true"
@@ -305,22 +294,13 @@ public class SecurityController : ControllerBase
     [HttpGet("handshake")]
     public IActionResult Handshake([FromServices] IConfiguration config)
     {
-        string rawSecret = Environment.GetEnvironmentVariable("PAYLOAD_ENCRYPTION_KEY")
-            ?? (string.IsNullOrWhiteSpace(config["Security:PayloadEncryptionKey"])
-                ? "ComicTraffic_AES256_MasterSecretKey_2026!"
-                : config["Security:PayloadEncryptionKey"]!);
-        string rawHmac = Environment.GetEnvironmentVariable("PAYLOAD_HMAC_KEY")
-            ?? (string.IsNullOrWhiteSpace(config["Security:PayloadHmacKey"])
-                ? "ComicTraffic_HMAC256_IntegritySecretKey_2026!"
-                : config["Security:PayloadHmacKey"]!);
-
-        byte[] aesKeyBytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(rawSecret));
-        byte[] hmacKeyBytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(rawHmac));
+        byte[] aesKeyBytes = SecurityDefaults.GetAesKey(config);
+        byte[] hmacKeyBytes = SecurityDefaults.GetHmacKey(config);
 
         return Ok(new
         {
             isSuccessful = true,
-            algorithm = "AES-256-CBC",
+            algorithm = "AES-256-GCM",
             derivedAesKey = Convert.ToBase64String(aesKeyBytes),
             derivedHmacKey = Convert.ToBase64String(hmacKeyBytes),
             issuedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()

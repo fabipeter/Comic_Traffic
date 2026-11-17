@@ -4,6 +4,7 @@ import { observer } from "mobx-react-lite";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../../app/stores/store";
 import { AggregatedMediaItem } from "../../app/api/ratingApis";
+import { sanitizeImageUrl } from "../../app/security/inputSanitizer";
 
 const Banner = () => {
   const { ratingStore, userStore } = useStore();
@@ -27,14 +28,17 @@ const Banner = () => {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    ratingStore.setCategory("All");
     ratingStore.setSearchQuery(searchInput);
     if (searchInput.trim().length >= 2) {
       await ratingStore.executeLiveMultiApiSearch(searchInput);
     }
-    const catalogEl = document.getElementById("ct-catalog-explorer");
-    if (catalogEl) {
-      catalogEl.scrollIntoView({ behavior: "smooth" });
-    }
+    setTimeout(() => {
+      const catalogEl = document.getElementById("ct-catalog-explorer");
+      if (catalogEl) {
+        catalogEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 60);
   };
 
   if (!featured) return null;
@@ -48,9 +52,9 @@ const Banner = () => {
       className="banner"
       style={{
         backgroundSize: "cover",
-        backgroundImage: `linear-gradient(95deg, rgba(6,9,17,0.97) 0%, rgba(11,17,30,0.82) 52%, rgba(6,9,17,0.55) 100%), url('${
+        backgroundImage: `linear-gradient(95deg, rgba(6,9,17,0.97) 0%, rgba(11,17,30,0.82) 52%, rgba(6,9,17,0.55) 100%), url('${sanitizeImageUrl(
           featured.backdropUrl || featured.posterUrl
-        }')`,
+        )}')`,
         backgroundPosition: "center center",
       }}
     >
@@ -175,7 +179,7 @@ const Banner = () => {
             <form onSubmit={handleSearch} className="ct-hero-search-form">
               <input
                 type="text"
-                placeholder="Quick Search: Watchmen, Saga, Batman, Spider-Verse, Invincible..."
+                placeholder="Quick Search: The Flash, Watchmen, Batman, Spider-Verse, Invincible..."
                 value={searchInput}
                 onChange={(e) => {
                   setSearchInput(e.target.value);
@@ -198,7 +202,7 @@ const Banner = () => {
               onClick={() => ratingStore.openDetailModal(featured)}
             >
               <img
-                src={featured.posterUrl}
+                src={sanitizeImageUrl(featured.posterUrl)}
                 alt={featured.title}
                 className="adx-hero-poster-img"
               />

@@ -56,7 +56,16 @@ const LoginPage = () => {
             </div>
 
             <div className="ct-form-field">
-              <label htmlFor="ct-login-password">Password</label>
+              <div className="ct-form-field-header">
+                <label htmlFor="ct-login-password">Password</label>
+                <button
+                  type="button"
+                  className="ct-inline-link-btn ct-forgot-pwd-link"
+                  onClick={() => navigate("/forgot-password")}
+                >
+                  Forgot Password?
+                </button>
+              </div>
               <input
                 id="ct-login-password"
                 type="password"

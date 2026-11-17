@@ -1,5 +1,5 @@
 import { observer } from "mobx-react-lite";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useStore } from "../../app/stores/store";
 import Nav from "./Nav";
 import Banner from "./Banner";
@@ -17,11 +17,40 @@ import {
   MediaCategoryType,
   RATING_SOURCE_DEFINITIONS,
 } from "../../app/api/ratingApis";
-import { ExplorerViewMode } from "../../app/stores/ratingStore";
+import {
+  ExplorerViewMode,
+  matchesSearchItem,
+} from "../../app/stores/ratingStore";
 
 const LandingPage = () => {
   const { ratingStore } = useStore();
   const filtered = ratingStore.filteredCatalog;
+  const [visibleCount, setVisibleCount] = useState(48);
+
+  useEffect(() => {
+    setVisibleCount(48);
+  }, [
+    ratingStore.searchQuery,
+    ratingStore.selectedCategory,
+    ratingStore.selectedGenre,
+  ]);
+
+  const isSearching = ratingStore.searchQuery.trim().length > 0;
+  const allMatchingSearch = isSearching
+    ? ratingStore.catalog.filter((item) =>
+        matchesSearchItem(item, ratingStore.searchQuery)
+      )
+    : [];
+  const totalSearchMatches = allMatchingSearch.length;
+  const comicMatchesCount = allMatchingSearch.filter(
+    (i) => i.mediaType === "ComicBook"
+  ).length;
+  const movieMatchesCount = allMatchingSearch.filter(
+    (i) => i.mediaType === "Movie"
+  ).length;
+  const tvMatchesCount = allMatchingSearch.filter(
+    (i) => i.mediaType === "TvSeries"
+  ).length;
 
   const movieItems = [...ratingStore.catalog]
     .filter((c) => c.mediaType === "Movie")
@@ -57,8 +86,8 @@ const LandingPage = () => {
 
   const trendingItems = [...ratingStore.catalog].sort(
     (a, b) =>
-      b.cumulativeRating.totalSourcesVoteCount -
-      a.cumulativeRating.totalSourcesVoteCount
+      b.cumulativeRating.totalAggregatedVotes -
+      a.cumulativeRating.totalAggregatedVotes
   );
 
   const audienceFavorites = [...ratingStore.catalog].sort(
@@ -70,12 +99,20 @@ const LandingPage = () => {
   const handleExplorerSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (ratingStore.searchQuery.trim().length >= 2) {
-      await ratingStore.executeLiveMultiApiSearch(ratingStore.searchQuery);
+      await ratingStore.executeLiveMultiApiSearch(
+        ratingStore.searchQuery,
+        true,
+        true
+      );
     }
   };
 
   return (
-    <div className="homeScreen">
+    <div
+      className={`homeScreen ${
+        ratingStore.communityDrawerOpen ? "drawer-open" : ""
+      }`}
+    >
       <Nav />
       <Banner />
 
@@ -118,15 +155,32 @@ const LandingPage = () => {
           <div className="ct-explorer-top-row">
             <div className="ct-explorer-title-group">
               <div className="adx-section-eyebrow">
-                <span>DESCEND INTO THE ABYSS</span>
+                <span>{isSearching ? "LIVE SEARCH CONSENSUS" : "DESCEND INTO THE ABYSS"}</span>
                 <span className="adx-eyebrow-sep">•</span>
                 <span>MULTI-SOURCE CONSENSUS ENGINE</span>
               </div>
-              <h2>🏆 Cumulative Rating Explorer & General Search</h2>
+              <h2>
+                {isSearching
+                  ? `🔍 Search Results (${filtered.length})`
+                  : "🏆 Cumulative Rating Explorer & General Search"}
+              </h2>
               <p>
-                Every Movie, TV Series, and Comic Book ranked by its unified{" "}
-                <strong>Final Cumulative Average</strong> (Bayesian + Multi-API
-                Weighted Consensus).
+                {isSearching ? (
+                  <>
+                    Showing titles matching &ldquo;
+                    <strong>{ratingStore.searchQuery}</strong>
+                    &rdquo; &bull;{" "}
+                    <strong>{totalSearchMatches}</strong>{" "}
+                    {totalSearchMatches === 1 ? "match" : "matches"} found across
+                    all media categories.
+                  </>
+                ) : (
+                  <>
+                    Every Movie, TV Series, and Comic Book ranked by its unified{" "}
+                    <strong>Final Cumulative Average</strong> (Bayesian +
+                    Multi-API Weighted Consensus).
+                  </>
+                )}
               </p>
             </div>
 
@@ -134,28 +188,39 @@ const LandingPage = () => {
               {/* Category Quick Tabs */}
               <div className="ct-category-pill-bar">
                 {(["All", "ComicBook", "Movie", "TvSeries"] as const).map(
-                  (cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      className={`ct-cat-filter-pill ${
-                        ratingStore.selectedCategory === cat ? "active" : ""
-                      }`}
-                      onClick={() =>
-                        ratingStore.setCategory(
-                          cat as "All" | MediaCategoryType
-                        )
-                      }
-                    >
-                      {cat === "All"
-                        ? "All Media"
+                  (cat) => {
+                    const countLabel = isSearching
+                      ? cat === "All"
+                        ? ` (${totalSearchMatches})`
                         : cat === "ComicBook"
-                        ? "📚 Comics"
+                        ? ` (${comicMatchesCount})`
                         : cat === "Movie"
-                        ? "🎬 Movies"
-                        : "📺 TV Series"}
-                    </button>
-                  )
+                        ? ` (${movieMatchesCount})`
+                        : ` (${tvMatchesCount})`
+                      : "";
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        className={`ct-cat-filter-pill ${
+                          ratingStore.selectedCategory === cat ? "active" : ""
+                        }`}
+                        onClick={() =>
+                          ratingStore.setCategory(
+                            cat as "All" | MediaCategoryType
+                          )
+                        }
+                      >
+                        {cat === "All"
+                          ? `All Media${countLabel}`
+                          : cat === "ComicBook"
+                          ? `📚 Comics${countLabel}`
+                          : cat === "Movie"
+                          ? `🎬 Movies${countLabel}`
+                          : `📺 TV Series${countLabel}`}
+                      </button>
+                    );
+                  }
                 )}
               </div>
 
@@ -215,6 +280,56 @@ const LandingPage = () => {
                 : "🔍 Search Catalog & Live APIs"}
             </button>
           </form>
+
+          {/* Active Search Status Banner */}
+          {isSearching && (
+            <div className="ct-search-active-banner">
+              <div className="ct-search-active-info">
+                <span className="ct-search-active-pill">
+                  {ratingStore.isSearchingLiveApis
+                    ? "⏳ LIVE API SEARCHING..."
+                    : "🔍 SEARCH ACTIVE"}
+                </span>
+                <span>
+                  Query: <strong>&ldquo;{ratingStore.searchQuery}&rdquo;</strong> &bull;{" "}
+                  <strong>{filtered.length}</strong> matching {filtered.length === 1 ? "title" : "titles"}
+                  {filtered.length > visibleCount && (
+                    <> (showing top {visibleCount})</>
+                  )}
+                  {ratingStore.selectedCategory !== "All" && (
+                    <> in {ratingStore.selectedCategory === "ComicBook" ? "Comics" : ratingStore.selectedCategory === "Movie" ? "Movies" : "TV Series"}</>
+                  )}
+                  {ratingStore.selectedCategory !== "All" && totalSearchMatches > filtered.length && (
+                    <span className="ct-search-other-cat-hint">
+                      {" "}
+                      ({totalSearchMatches - filtered.length} more in other categories)
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="ct-search-active-btns">
+                {ratingStore.selectedCategory !== "All" && (
+                  <button
+                    type="button"
+                    className="ct-search-viewall-pill"
+                    onClick={() => ratingStore.setCategory("All")}
+                  >
+                    View All {totalSearchMatches} Results
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="ct-search-clear-pill"
+                  onClick={() => {
+                    ratingStore.setSearchQuery("");
+                    ratingStore.setCategory("All");
+                  }}
+                >
+                  ✕ Clear Search
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="ct-explorer-controls">
             <div className="ct-control-group">
@@ -285,133 +400,228 @@ const LandingPage = () => {
           </div>
         </div>
 
-        {/* Explorer Responsive Grid / List / Rich Thumbnail View */}
-        <div
-          className={`ct-explorer-grid adx-view-${ratingStore.explorerViewMode}`}
-        >
-          {filtered.slice(0, 24).map((item, idx) => {
-            const { cumulativeRating } = item;
-            const avg = cumulativeRating.finalCumulativeAverage;
-            const inCompare = ratingStore.comparisonIds.includes(
-              item.externalId
-            );
-
-            return (
-              <article key={item.externalId} className="ct-media-card">
-                <div
-                  className="ct-media-card-banner"
-                  onClick={() => ratingStore.openDetailModal(item)}
+        {/* Explorer Responsive Grid or No Results Message */}
+        {filtered.length === 0 ? (
+          <div className="ct-search-no-results-card">
+            <div className="ct-no-results-icon">🔍</div>
+            <h3>
+              No matching titles found for &ldquo;{ratingStore.searchQuery}&rdquo;
+            </h3>
+            {ratingStore.selectedCategory !== "All" && totalSearchMatches > 0 ? (
+              <div className="ct-no-results-suggestion-box">
+                <p>
+                  Found <strong>{totalSearchMatches}</strong> matching{" "}
+                  {totalSearchMatches === 1 ? "title" : "titles"} in other categories!
+                </p>
+                <button
+                  type="button"
+                  className="ct-primary-cta-btn"
+                  onClick={() => ratingStore.setCategory("All")}
                 >
-                  <img
-                    src={
-                      ratingStore.explorerViewMode === "thumbnail"
-                        ? item.backdropUrl || item.posterUrl
-                        : item.posterUrl
-                    }
-                    alt={item.title}
-                    loading="lazy"
-                  />
-                  <div className="adx-card-rank-pill">#{idx + 1}</div>
-                  <div className="ct-card-type-chip">
-                    {item.mediaType === "ComicBook"
-                      ? "📚 Comic Book"
-                      : item.mediaType === "TvSeries"
-                      ? "📺 TV Series"
-                      : "🎬 Movie"}
-                  </div>
-                  <div className="ct-card-cumulative-Orb">
-                    <span className="ct-orb-score">{avg.toFixed(1)}%</span>
-                    <small className="ct-orb-sub">CUMULATIVE</small>
-                  </div>
+                  View all {totalSearchMatches} matches in All Media →
+                </button>
+              </div>
+            ) : (
+              <div className="ct-no-results-suggestion-box">
+                <p>
+                  We couldn&rsquo;t find any titles matching that search. Try searching for popular titles like:
+                </p>
+                <div className="ct-search-chip-group">
+                  {[
+                    "The Flash",
+                    "Flashpoint",
+                    "Watchmen",
+                    "The Dark Knight",
+                    "Spider-Man",
+                    "Invincible",
+                    "Saga",
+                    "Alan Moore",
+                    "Christopher Nolan",
+                  ].map((keyword) => (
+                    <button
+                      key={keyword}
+                      type="button"
+                      className="ct-search-sample-chip"
+                      onClick={() => {
+                        ratingStore.setCategory("All");
+                        ratingStore.setSearchQuery(keyword);
+                      }}
+                    >
+                      {keyword}
+                    </button>
+                  ))}
                 </div>
+                <button
+                  type="button"
+                  className="ct-primary-cta-btn"
+                  style={{ marginTop: "16px" }}
+                  onClick={() => {
+                    ratingStore.setSearchQuery("");
+                    ratingStore.setCategory("All");
+                  }}
+                >
+                  Clear Search & View All Titles (44+)
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            <div
+              className={`ct-explorer-grid adx-view-${ratingStore.explorerViewMode}`}
+            >
+              {filtered.slice(0, visibleCount).map((item, idx) => {
+              const { cumulativeRating } = item;
+              const avg = cumulativeRating.finalCumulativeAverage;
+              const inCompare = ratingStore.comparisonIds.includes(
+                item.externalId
+              );
 
-                <div className="ct-media-card-body">
-                  <div className="ct-card-meta-top">
-                    <span>
-                      {item.releaseYear} • {item.publisherOrStudio}
-                    </span>
-                    <span className="ct-card-tier">
-                      {cumulativeRating.consensusTier}
-                    </span>
-                  </div>
-
-                  <h3
-                    className="ct-card-title"
+              return (
+                <article key={item.externalId} className="ct-media-card">
+                  <div
+                    className="ct-media-card-banner"
                     onClick={() => ratingStore.openDetailModal(item)}
                   >
-                    {item.title}
-                  </h3>
-
-                  {ratingStore.explorerViewMode !== "grid" && (
-                    <p className="adx-card-synopsis">{item.overview}</p>
-                  )}
-
-                  {/* Critic / Audience / Comic Tri-Split */}
-                  <div className="ct-card-trisplit">
-                    <div>
-                      <small>Critics</small>
-                      <strong>
-                        {cumulativeRating.criticConsensusScore.toFixed(0)}%
-                      </strong>
+                    <img
+                      src={
+                        ratingStore.explorerViewMode === "thumbnail"
+                          ? item.backdropUrl || item.posterUrl
+                          : item.posterUrl
+                      }
+                      alt={item.title}
+                      loading="lazy"
+                    />
+                    <div className="adx-card-rank-pill">#{idx + 1}</div>
+                    <div className="ct-card-type-chip">
+                      {item.mediaType === "ComicBook"
+                        ? "📚 Comic Book"
+                        : item.mediaType === "TvSeries"
+                        ? "📺 TV Series"
+                        : "🎬 Movie"}
                     </div>
-                    <div>
-                      <small>Audience</small>
-                      <strong>
-                        {cumulativeRating.audienceConsensusScore.toFixed(0)}%
-                      </strong>
-                    </div>
-                    <div>
-                      <small>Comic DB</small>
-                      <strong>
-                        {cumulativeRating.comicCommunityScore.toFixed(0)}%
-                      </strong>
-                    </div>
-                    <div>
-                      <small>APIs</small>
-                      <strong>{cumulativeRating.activeSourceCount}</strong>
+                    <div className="ct-card-cumulative-Orb">
+                      <span className="ct-orb-score">{avg.toFixed(1)}%</span>
+                      <small className="ct-orb-sub">CUMULATIVE</small>
                     </div>
                   </div>
 
-                  {/* Individual Rating API Chips */}
-                  <div className="ct-card-source-chips">
-                    {cumulativeRating.sources.slice(0, 4).map((src) => (
-                      <span
-                        key={src.sourceId}
-                        className="ct-mini-api-pill"
-                        style={{ borderLeft: `3px solid ${src.accentColor}` }}
-                      >
-                        <b>{src.sourceName.split(" ")[0]}:</b>{" "}
-                        {src.rawScoreDisplay}
+                  <div className="ct-media-card-body">
+                    <div className="ct-card-meta-top">
+                      <span>
+                        {item.releaseYear} • {item.publisherOrStudio}
                       </span>
-                    ))}
-                  </div>
+                      <span className="ct-card-tier">
+                        {cumulativeRating.consensusTier}
+                      </span>
+                    </div>
 
-                  <div className="ct-card-actions">
-                    <button
-                      type="button"
-                      className="ct-card-btn-primary"
+                    <h3
+                      className="ct-card-title"
                       onClick={() => ratingStore.openDetailModal(item)}
                     >
-                      All {cumulativeRating.activeSourceCount} APIs & Reviews
-                    </button>
-                    <button
-                      type="button"
-                      className={`ct-card-btn-compare ${
-                        inCompare ? "selected" : ""
-                      }`}
-                      onClick={() =>
-                        ratingStore.toggleComparisonItem(item.externalId)
-                      }
-                      title="Add to Head-to-Head Comparison"
-                    >
-                      {inCompare ? "✓ Comparing" : "⚔️ Compare"}
-                    </button>
+                      {item.title}
+                    </h3>
+
+                    {ratingStore.explorerViewMode !== "grid" && (
+                      <p className="adx-card-synopsis">{item.overview}</p>
+                    )}
+
+                    {/* Critic / Audience / Comic Tri-Split */}
+                    <div className="ct-card-trisplit">
+                      <div>
+                        <small>Critics</small>
+                        <strong>
+                          {cumulativeRating.criticConsensusScore.toFixed(0)}%
+                        </strong>
+                      </div>
+                      <div>
+                        <small>Audience</small>
+                        <strong>
+                          {cumulativeRating.audienceConsensusScore.toFixed(0)}%
+                        </strong>
+                      </div>
+                      <div>
+                        <small>Comic DB</small>
+                        <strong>
+                          {cumulativeRating.comicCommunityScore.toFixed(0)}%
+                        </strong>
+                      </div>
+                      <div>
+                        <small>APIs</small>
+                        <strong>{cumulativeRating.activeSourceCount}</strong>
+                      </div>
+                    </div>
+
+                    {/* Individual Rating API Chips */}
+                    <div className="ct-card-source-chips">
+                      {cumulativeRating.sources.slice(0, 4).map((src) => (
+                        <span
+                          key={src.sourceId}
+                          className="ct-mini-api-pill"
+                          style={{ borderLeft: `3px solid ${src.accentColor}` }}
+                        >
+                          <b>{src.sourceName.split(" ")[0]}:</b>{" "}
+                          {src.rawScoreDisplay}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="ct-card-actions">
+                      <button
+                        type="button"
+                        className="ct-card-btn-primary"
+                        onClick={() => ratingStore.openDetailModal(item)}
+                      >
+                        All {cumulativeRating.activeSourceCount} APIs & Reviews
+                      </button>
+                      <button
+                        type="button"
+                        className={`ct-card-btn-compare ${
+                          inCompare ? "selected" : ""
+                        }`}
+                        onClick={() =>
+                          ratingStore.toggleComparisonItem(item.externalId)
+                        }
+                        title="Add to Head-to-Head Comparison"
+                      >
+                        {inCompare ? "✓ Comparing" : "⚔️ Compare"}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                </article>
+              );
+            })}
+            </div>
+            {filtered.length > visibleCount && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                  marginTop: "24px",
+                }}
+              >
+                <button
+                  type="button"
+                  className="ct-secondary-cta-btn"
+                  onClick={() => setVisibleCount((prev) => prev + 48)}
+                >
+                  Show More Results (+
+                  {Math.min(48, filtered.length - visibleCount)})
+                </button>
+                <button
+                  type="button"
+                  className="ct-primary-cta-btn"
+                  onClick={() => setVisibleCount(filtered.length)}
+                >
+                  Show All {filtered.length} Matching Titles
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </section>
 
       {/* Dedicated Inline Compare Section with Maximum of 3 Search & Pick Inputs */}
@@ -497,34 +707,38 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Curated Category Rows */}
-      <Row
-        title="🌟 All-Time Top Rated Cinema & Blockbusters"
-        items={movieItems}
-        isLargeRow
-      />
-      <Row
-        title="📚 Acclaimed Comic Books & Graphic Novels"
-        items={comicItems}
-        isLargeRow
-      />
-      <Row
-        title="📺 Highest Rated TV Series & Streaming Originals"
-        items={tvItems}
-        isLargeRow
-      />
-      <Row
-        title="👑 Masterpiece Hall of Fame (Score 90%+)"
-        items={hallOfFameItems}
-      />
-      <Row
-        title="🔥 Trending Across Global APIs (Highest Vote Consensus)"
-        items={trendingItems}
-      />
-      <Row
-        title="⚡ Audience Favorites & Cult Acclaim"
-        items={audienceFavorites}
-      />
+      {/* Curated Category Rows (Hidden during active search so search results take center stage) */}
+      {!isSearching && (
+        <>
+          <Row
+            title="🌟 All-Time Top Rated Cinema & Blockbusters"
+            items={movieItems}
+            isLargeRow
+          />
+          <Row
+            title="📚 Acclaimed Comic Books & Graphic Novels"
+            items={comicItems}
+            isLargeRow
+          />
+          <Row
+            title="📺 Highest Rated TV Series & Streaming Originals"
+            items={tvItems}
+            isLargeRow
+          />
+          <Row
+            title="👑 Masterpiece Hall of Fame (Score 90%+)"
+            items={hallOfFameItems}
+          />
+          <Row
+            title="🔥 Trending Across Global APIs (Highest Vote Consensus)"
+            items={trendingItems}
+          />
+          <Row
+            title="⚡ Audience Favorites & Cult Acclaim"
+            items={audienceFavorites}
+          />
+        </>
+      )}
 
       {/* Comic Traffic Footer */}
       <footer className="adx-footer">

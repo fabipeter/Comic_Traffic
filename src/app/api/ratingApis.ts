@@ -6,6 +6,8 @@ import {
   EncryptionInspectionLog,
   hasRuntimeDerivedKeys,
   setRuntimeDerivedKeys,
+  clearRuntimeDerivedKeys,
+  isWebCryptoAvailable,
 } from "../security/payloadCrypto";
 
 export type MediaCategoryType = "Movie" | "TvSeries" | "ComicBook";
@@ -346,19 +348,63 @@ const PRIMARY_BACKEND_URL = isLocalCraDevServer
   ? "http://localhost:5120/api"
   : "/api";
 
+let logSeq = 0;
+
+function redactSensitivePreview(obj: unknown): string {
+  try {
+    const raw = JSON.stringify(obj, (key, value) => {
+      const k = key.toLowerCase();
+      if (
+        k === "password" ||
+        k === "newpassword" ||
+        k === "token" ||
+        k === "accesstoken" ||
+        k === "passwordresettoken"
+      ) {
+        return "[REDACTED]";
+      }
+      return value;
+    });
+    return (raw || "").slice(0, 120);
+  } catch {
+    return "[unserializable]";
+  }
+}
+
+function isPayloadKeyMismatchMessage(msg: unknown): boolean {
+  const lower = String(msg || "").toLowerCase();
+  return (
+    lower.includes("payload decryption error") ||
+    lower.includes("signature verification failed") ||
+    lower.includes("tampered payload") ||
+    lower.includes("unable to decrypt")
+  );
+}
+
 export const encryptedBackendClient = {
   logs: [] as EncryptionInspectionLog[],
   handshakeInFlight: null as Promise<void> | null,
-  handshakeAttempted: false,
+  handshakeLastAttemptAt: 0,
 
-  async ensureSessionKeys(): Promise<void> {
-    if (hasRuntimeDerivedKeys() || this.handshakeAttempted) return;
+  async ensureSessionKeys(forceRefresh: boolean = false): Promise<void> {
+    if (!isWebCryptoAvailable()) return;
+    if (forceRefresh) {
+      clearRuntimeDerivedKeys();
+      this.handshakeLastAttemptAt = 0;
+    }
+    if (hasRuntimeDerivedKeys()) return;
+
+    const now = Date.now();
+    if (!forceRefresh && now - this.handshakeLastAttemptAt < 5000) {
+      return;
+    }
+
     if (this.handshakeInFlight) {
       await this.handshakeInFlight;
       return;
     }
     this.handshakeInFlight = (async () => {
-      this.handshakeAttempted = true;
+      this.handshakeLastAttemptAt = Date.now();
       try {
         const res = await axios.get(
           `${PRIMARY_BACKEND_URL}/security/handshake`,
@@ -382,9 +428,10 @@ export const encryptedBackendClient = {
   },
 
   recordLog(entry: Omit<EncryptionInspectionLog, "id" | "timestamp">) {
+    logSeq += 1;
     const newLog: EncryptionInspectionLog = {
       ...entry,
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: `${Date.now()}-${logSeq}`,
       timestamp: new Date().toLocaleTimeString(),
     };
     this.logs = [newLog, ...this.logs.slice(0, 19)];
@@ -393,13 +440,16 @@ export const encryptedBackendClient = {
 
   async sendEncryptedGet<TRes>(
     endpoint: string,
-    token?: string | null
+    token?: string | null,
+    hasRetriedOnKeyMismatch: boolean = false
   ): Promise<{ fromBackend: boolean; data?: TRes }> {
+    const canEncrypt = isWebCryptoAvailable();
     await this.ensureSessionKeys();
     try {
-      const headers: Record<string, string> = {
-        "X-Response-Encrypted": "true",
-      };
+      const headers: Record<string, string> = {};
+      if (canEncrypt) {
+        headers["X-Response-Encrypted"] = "true";
+      }
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
@@ -408,13 +458,26 @@ export const encryptedBackendClient = {
         timeout: 2500,
       });
       if (res.data && res.data.encrypted && res.data.payload) {
-        const decrypted = await decryptPayload<any>(
-          res.data as EncryptedEnvelope
-        );
-        return {
-          fromBackend: true,
-          data: (decrypted.data ?? decrypted) as TRes,
-        };
+        if (!canEncrypt) {
+          return { fromBackend: false };
+        }
+        try {
+          const decrypted = await decryptPayload<any>(
+            res.data as EncryptedEnvelope
+          );
+          return {
+            fromBackend: true,
+            data: (decrypted.data ?? decrypted) as TRes,
+          };
+        } catch (decryptErr) {
+          if (!hasRetriedOnKeyMismatch) {
+            await this.ensureSessionKeys(true);
+            if (hasRuntimeDerivedKeys()) {
+              return this.sendEncryptedGet<TRes>(endpoint, token, true);
+            }
+          }
+          throw decryptErr;
+        }
       }
       return {
         fromBackend: true,
@@ -428,48 +491,90 @@ export const encryptedBackendClient = {
   async sendEncryptedPost<TReq, TRes>(
     endpoint: string,
     payload: TReq,
-    token?: string | null
+    token?: string | null,
+    hasRetriedOnKeyMismatch: boolean = false
   ): Promise<{ fromBackend: boolean; data?: TRes; envelope: EncryptedEnvelope }> {
+    const canEncrypt = isWebCryptoAvailable();
     await this.ensureSessionKeys();
-    const envelope = await encryptPayload(payload);
+
+    const envelope: EncryptedEnvelope = canEncrypt
+      ? await encryptPayload(payload)
+      : {
+          encrypted: false,
+          iv: "",
+          payload: "",
+          signature: "",
+          timestamp: Date.now(),
+        };
+    const outboundBody: any = canEncrypt ? envelope : payload;
+
     this.recordLog({
       direction: "REQUEST",
       endpoint,
-      algorithm: envelope.algorithm,
-      ivPreview: envelope.iv,
-      cipherPreview: envelope.payload.slice(0, 64) + "...",
-      signaturePreview: envelope.signature.slice(0, 32) + "...",
-      plainPreview: JSON.stringify(payload).slice(0, 120),
+      algorithm: canEncrypt ? "Encrypted" : "HTTPS/JSON Fallback",
+      ivPreview: envelope.iv || "none",
+      cipherPreview: envelope.payload
+        ? envelope.payload.slice(0, 64) + "..."
+        : "(transport-only in insecure context)",
+      signaturePreview: envelope.signature
+        ? envelope.signature.slice(0, 32) + "..."
+        : "none",
+      plainPreview: redactSensitivePreview(payload),
     });
 
     try {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        "X-Payload-Encrypted": "true",
-        "X-Response-Encrypted": "true",
       };
+      if (canEncrypt) {
+        headers["X-Payload-Encrypted"] = "true";
+        headers["X-Response-Encrypted"] = "true";
+      }
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const res = await axios.post(`${PRIMARY_BACKEND_URL}${endpoint}`, envelope, {
-        headers,
-        timeout: 2500,
-      });
+      const res = await axios.post(
+        `${PRIMARY_BACKEND_URL}${endpoint}`,
+        outboundBody,
+        {
+          headers,
+          timeout: 4000,
+        }
+      );
 
       if (res.data && res.data.encrypted && res.data.payload) {
-        const decrypted = await decryptPayload<any>(
-          res.data as EncryptedEnvelope
-        );
+        if (!canEncrypt) {
+          throw new Error(
+            "Unable to decrypt response because browser Web Crypto API requires HTTPS."
+          );
+        }
+        let decrypted: any;
+        try {
+          decrypted = await decryptPayload<any>(res.data as EncryptedEnvelope);
+        } catch (respDecryptErr) {
+          if (!hasRetriedOnKeyMismatch) {
+            await this.ensureSessionKeys(true);
+            if (hasRuntimeDerivedKeys()) {
+              return this.sendEncryptedPost<TReq, TRes>(
+                endpoint,
+                payload,
+                token,
+                true
+              );
+            }
+          }
+          throw respDecryptErr;
+        }
         this.recordLog({
           direction: "RESPONSE",
           endpoint,
-          algorithm: res.data.algorithm || "AES-256-GCM",
+          algorithm: "Encrypted",
           ivPreview: res.data.iv,
           cipherPreview: String(res.data.payload).slice(0, 64) + "...",
           signaturePreview:
             String(res.data.signature || "").slice(0, 32) + "...",
-          plainPreview: JSON.stringify(decrypted).slice(0, 120),
+          plainPreview: redactSensitivePreview(decrypted),
         });
         return {
           fromBackend: true,
@@ -483,7 +588,77 @@ export const encryptedBackendClient = {
         data: (res.data?.data ?? res.data) as TRes,
         envelope,
       };
-    } catch {
+    } catch (err: any) {
+      if (
+        canEncrypt &&
+        err?.response?.data &&
+        err.response.data.encrypted &&
+        err.response.data.payload
+      ) {
+        try {
+          const decrypted = await decryptPayload<any>(
+            err.response.data as EncryptedEnvelope
+          );
+          this.recordLog({
+            direction: "RESPONSE",
+            endpoint,
+            algorithm: "Encrypted",
+            ivPreview: err.response.data.iv,
+            cipherPreview: String(err.response.data.payload).slice(0, 64) + "...",
+            signaturePreview:
+              String(err.response.data.signature || "").slice(0, 32) + "...",
+            plainPreview: redactSensitivePreview(decrypted),
+          });
+          const message =
+            decrypted.responseMessage ||
+            decrypted.message ||
+            decrypted.title ||
+            "Request failed on the server.";
+          if (!hasRetriedOnKeyMismatch && isPayloadKeyMismatchMessage(message)) {
+            await this.ensureSessionKeys(true);
+            if (hasRuntimeDerivedKeys()) {
+              return this.sendEncryptedPost<TReq, TRes>(
+                endpoint,
+                payload,
+                token,
+                true
+              );
+            }
+          }
+          const backendErr: any = new Error(message);
+          backendErr.fromBackend = true;
+          backendErr.response = err.response;
+          backendErr.data = decrypted;
+          throw backendErr;
+        } catch (decryptErr: any) {
+          if (decryptErr?.fromBackend) {
+            throw decryptErr;
+          }
+        }
+      } else if (err?.response?.data) {
+        const raw = err.response.data;
+        const message =
+          raw.responseMessage ||
+          raw.message ||
+          raw.title ||
+          `Server returned status ${err.response.status}`;
+        if (!hasRetriedOnKeyMismatch && isPayloadKeyMismatchMessage(message)) {
+          await this.ensureSessionKeys(true);
+          if (hasRuntimeDerivedKeys()) {
+            return this.sendEncryptedPost<TReq, TRes>(
+              endpoint,
+              payload,
+              token,
+              true
+            );
+          }
+        }
+        const backendErr: any = new Error(message);
+        backendErr.fromBackend = true;
+        backendErr.response = err.response;
+        backendErr.data = raw;
+        throw backendErr;
+      }
       return { fromBackend: false, envelope };
     }
   },

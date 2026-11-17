@@ -1,8 +1,47 @@
 /**
  * Client-Side Input Sanitization & URL Validation Utilities
- * Prevents DOM XSS, javascript:/data: URI injection, and oversized input payloads.
+ * Prevents DOM XSS, javascript:/data: URI injection, and oversized input payloads
+ * while preserving active keystroke whitespace for search inputs.
  */
-export function sanitizeUserText(input: string, maxLength: number = 1000): string {
+function stripHtmlTagsLinear(input: string): string {
+  let result = "";
+  let inTag = false;
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    if (ch === "<") {
+      inTag = true;
+      continue;
+    }
+    if (ch === ">") {
+      inTag = false;
+      continue;
+    }
+    if (!inTag) {
+      result += ch;
+    }
+  }
+  return result.split("<").join("").split(">").join("");
+}
+
+function stripUnsafeSchemes(text: string): string {
+  let out = text;
+  for (const scheme of ["javascript:", "vbscript:"]) {
+    let lower = out.toLowerCase();
+    let idx = lower.indexOf(scheme);
+    while (idx !== -1) {
+      out = out.slice(0, idx) + out.slice(idx + scheme.length);
+      lower = out.toLowerCase();
+      idx = lower.indexOf(scheme);
+    }
+  }
+  return out;
+}
+
+export function sanitizeUserText(
+  input: string,
+  maxLength: number = 1000,
+  trimWhitespace: boolean = false
+): string {
   if (!input || typeof input !== "string") return "";
   let cleaned = "";
   for (let i = 0; i < input.length; i++) {
@@ -14,13 +53,10 @@ export function sanitizeUserText(input: string, maxLength: number = 1000): strin
       }
     }
   }
-  return cleaned
-    .replace(/<\s*\/?\s*(script|iframe|object|embed|svg|link|style|meta)[^>]*>/gi, "")
-    .replace(/javascript\s*:/gi, "")
-    .replace(/vbscript\s*:/gi, "")
-    .replace(/on\w+\s*=/gi, "")
-    .trim()
-    .slice(0, maxLength);
+  const withoutTags = stripHtmlTagsLinear(cleaned);
+  const sanitized = stripUnsafeSchemes(withoutTags).slice(0, maxLength);
+
+  return trimWhitespace ? sanitized.trim() : sanitized;
 }
 
 export function sanitizeImageUrl(url: string, fallback: string = "/comic-traffic-logo.svg"): string {
@@ -52,8 +88,11 @@ export function sanitizeReturnToPath(
     return fallback;
   }
   const lower = trimmed.toLowerCase();
+  const compact = lower.split(" ").join("").split("\t").join("");
   if (
-    /^(javascript|vbscript|data)\s*:/i.test(lower) ||
+    compact.startsWith("javascript:") ||
+    compact.startsWith("vbscript:") ||
+    compact.startsWith("data:") ||
     lower.includes("<script") ||
     lower.includes(":")
   ) {

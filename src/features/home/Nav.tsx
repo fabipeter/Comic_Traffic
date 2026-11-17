@@ -3,14 +3,16 @@ import "./Nav.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import { observer } from "mobx-react-lite";
 import { useStore } from "../../app/stores/store";
-import { MediaCategoryType } from "../../app/api/ratingApis";
+import { AggregatedMediaItem, MediaCategoryType } from "../../app/api/ratingApis";
 import { ANIMEDEX_SKINS, AnimeDexSkinId } from "../../app/stores/ratingStore";
+import { sanitizeImageUrl } from "../../app/security/inputSanitizer";
 import comicTrafficLogo from "../../assets/comicTrafficLogo.svg";
 
 const Nav = () => {
   const [show, setShow] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [skinMenuOpen, setSkinMenuOpen] = useState(false);
+  const [desktopSearchFocused, setDesktopSearchFocused] = useState(false);
   const rightClusterRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,13 +42,14 @@ const Nav = () => {
       ) {
         setDrawerOpen(false);
         setSkinMenuOpen(false);
+        setDesktopSearchFocused(false);
       }
     };
-    if (drawerOpen || skinMenuOpen) {
+    if (drawerOpen || skinMenuOpen || desktopSearchFocused) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [drawerOpen, skinMenuOpen]);
+  }, [drawerOpen, skinMenuOpen, desktopSearchFocused]);
 
   // Keyboard shortcut listener for `?` (Shortcuts Overlay) and `L` (Lite Mode)
   useEffect(() => {
@@ -61,6 +64,7 @@ const Nav = () => {
       } else if (e.key === "Escape") {
         setDrawerOpen(false);
         setSkinMenuOpen(false);
+        setDesktopSearchFocused(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -78,21 +82,35 @@ const Nav = () => {
   const handleGlobalSearchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setDrawerOpen(false);
+    setDesktopSearchFocused(false);
     if (location.pathname !== "/") {
       navigate("/");
     }
+    ratingStore.setCategory("All");
     if (ratingStore.searchQuery.trim().length >= 2) {
       await ratingStore.executeLiveMultiApiSearch(ratingStore.searchQuery);
     }
-    const el = document.getElementById("ct-catalog-explorer");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      const el = document.getElementById("ct-catalog-explorer");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 60);
+  };
+
+  const handleSelectSuggestion = (item: AggregatedMediaItem) => {
+    setDrawerOpen(false);
+    setDesktopSearchFocused(false);
+    if (location.pathname !== "/") {
+      navigate("/");
     }
+    ratingStore.setCategory("All");
+    ratingStore.openDetailModal(item);
   };
 
   const quickSuggestions =
     ratingStore.searchQuery.trim().length > 0
-      ? ratingStore.searchSuggestions(ratingStore.searchQuery, 5)
+      ? ratingStore.searchSuggestions(ratingStore.searchQuery, 10)
       : [];
 
   const currentSkinObj =
@@ -176,8 +194,112 @@ const Nav = () => {
           </div>
         </div>
 
-        {/* Right: Theme Skins Icon Button (replaces Light/Dark toggle) + Toggled Menu Button */}
+        {/* Right: Theme Skins Icon Button (replaces Light/Dark toggle) + Desktop Search + Toggled Menu Button */}
         <div className="nav__right" ref={rightClusterRef}>
+          {/* Desktop Search Bar directly on the menu bar */}
+          <div className="nav__desktop_search_wrap">
+            <form onSubmit={handleGlobalSearchSubmit} className="nav__desktop_search_form">
+              <span className="nav__desktop_search_icon">🔍</span>
+              <input
+                type="text"
+                className="nav__desktop_search_input"
+                placeholder="Search titles, creators, studios..."
+                aria-label="Search titles, creators, studios"
+                value={ratingStore.searchQuery}
+                onFocus={() => setDesktopSearchFocused(true)}
+                onChange={(e) => {
+                  ratingStore.setSearchQuery(e.target.value);
+                  setDesktopSearchFocused(true);
+                }}
+              />
+              {ratingStore.searchQuery && (
+                <button
+                  type="button"
+                  className="nav__search_clear"
+                  onClick={() => ratingStore.setSearchQuery("")}
+                  aria-label="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+              <button type="submit" className="nav__search_submit">
+                GO
+              </button>
+            </form>
+
+            {desktopSearchFocused && ratingStore.searchQuery.trim().length > 0 && (
+              <div
+                className="nav__desktop_suggestions"
+                role="listbox"
+                aria-label="Search suggestions"
+              >
+                <div className="nav__desktop_sugg_head">
+                  <span>TITLES MATCHING &ldquo;{ratingStore.searchQuery}&rdquo;</span>
+                  <button
+                    type="button"
+                    onClick={() => setDesktopSearchFocused(false)}
+                    aria-label="Close suggestions"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {quickSuggestions.length === 0 ? (
+                  <div className="nav__desktop_sugg_empty">
+                    <span>Searching catalog & live rating APIs...</span>
+                  </div>
+                ) : (
+                  <>
+                    {quickSuggestions.map((item) => (
+                      <div
+                        key={item.externalId}
+                        className="nav__desktop_sugg_item"
+                        onClick={() => handleSelectSuggestion(item)}
+                        role="option"
+                        aria-selected={false}
+                        tabIndex={0}
+                      >
+                        <img
+                          src={sanitizeImageUrl(item.posterUrl)}
+                          alt={item.title}
+                          className="nav__desktop_sugg_poster"
+                        />
+                        <div className="nav__desktop_sugg_info">
+                          <strong className="nav__desktop_sugg_title">{item.title}</strong>
+                          <div className="nav__desktop_sugg_meta">
+                            <span className="nav__desktop_sugg_cat">
+                              {item.mediaType === "ComicBook"
+                                ? "📚 Comic"
+                                : item.mediaType === "Movie"
+                                ? "🎬 Movie"
+                                : "📺 TV"}
+                            </span>
+                            <span className="nav__desktop_sugg_year">
+                              {item.releaseYear}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="nav__desktop_sugg_score">
+                          <strong>
+                            {item.cumulativeRating.finalCumulativeAverage.toFixed(1)}%
+                          </strong>
+                          <small>SCORE</small>
+                        </div>
+                      </div>
+                    ))}
+                    <div
+                      className="nav__desktop_sugg_foot"
+                      onClick={handleGlobalSearchSubmit}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <span>🔍 View all results in Catalog Explorer →</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Theme Skins Icon Trigger */}
           <div className="nav__skin_icon_wrap">
             <button
@@ -326,12 +448,9 @@ const Nav = () => {
                         key={item.externalId}
                         type="button"
                         className="nav__search_option"
-                        onClick={() => {
-                          setDrawerOpen(false);
-                          ratingStore.openDetailModal(item);
-                        }}
+                        onClick={() => handleSelectSuggestion(item)}
                       >
-                        <img src={item.posterUrl} alt={item.title} />
+                        <img src={sanitizeImageUrl(item.posterUrl)} alt={item.title} />
                         <div className="nav__search_opt_meta">
                           <strong>{item.title}</strong>
                           <small>

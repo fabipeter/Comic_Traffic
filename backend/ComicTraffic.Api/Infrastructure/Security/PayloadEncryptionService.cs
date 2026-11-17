@@ -1,13 +1,15 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ComicTraffic.Api.Infrastructure.Security;
 
 public class EncryptedEnvelopeDto
 {
     public bool Encrypted { get; set; } = true;
-    public string Algorithm { get; set; } = "AES-256-GCM";
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Algorithm { get; set; }
     public string Iv { get; set; } = string.Empty;
     public string Payload { get; set; } = string.Empty;
     public string Signature { get; set; } = string.Empty;
@@ -73,7 +75,6 @@ public class PayloadEncryptionService : IPayloadEncryptionService
         return new EncryptedEnvelopeDto
         {
             Encrypted = true,
-            Algorithm = "AES-256-GCM",
             Iv = ivBase64,
             Payload = payloadBase64,
             Signature = signature,

@@ -1,9 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.RateLimiting;
 using ComicTraffic.Api.Infrastructure.Persistence;
 using ComicTraffic.Api.Infrastructure.Security;
 using ComicTraffic.Api.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -56,7 +58,7 @@ builder.Services.AddCors(options =>
         policy.AllowAnyOrigin()
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .WithExposedHeaders("X-Payload-Encrypted", "X-Encryption-Algorithm");
+              .WithExposedHeaders("X-Payload-Encrypted");
     });
 });
 
@@ -99,11 +101,15 @@ builder.Services.AddDbContext<ComicTrafficDbContext>(options =>
     }
 });
 
-// Register CQRS (MediatR), Encryption, JWT, and Cumulative Rating Services
+// Register CQRS (MediatR), Encryption, JWT, Email, and Cumulative Rating Services
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddSingleton<IPayloadEncryptionService, PayloadEncryptionService>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<ICumulativeRatingCalculator, CumulativeRatingCalculator>();
+builder.Services.AddHttpClient<IEmailService, EmailService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 
 // Configure JWT Authentication
 byte[] keyBytes = SecurityDefaults.GetJwtKey(builder.Configuration);
@@ -124,6 +130,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+
+// Rate-limit sensitive authentication & recovery endpoints per client IP
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("auth-sensitive", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 8,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+});
 
 var app = builder.Build();
 
@@ -149,6 +171,22 @@ using (var scope = app.Services.CreateScope())
         }
 
         await db.Database.EnsureCreatedAsync();
+
+        if (workingPostgresConn != null)
+        {
+            try
+            {
+                await db.Database.ExecuteSqlAsync($"ALTER TABLE users ADD COLUMN IF NOT EXISTS \"PasswordResetToken\" VARCHAR(200);");
+                await db.Database.ExecuteSqlAsync($"ALTER TABLE users ADD COLUMN IF NOT EXISTS \"PasswordResetExpiresAt\" TIMESTAMP WITH TIME ZONE;");
+                await db.Database.ExecuteSqlAsync($"ALTER TABLE users ADD COLUMN IF NOT EXISTS \"PasswordResetFailedAttempts\" INTEGER NOT NULL DEFAULT 0;");
+                logger.LogInformation("PostgreSQL users table schema synchronized with PasswordReset columns.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Could not alter users table for PasswordReset columns.");
+            }
+        }
+
         await DatabaseSeeder.SeedAsync(db, calculator, jwtService);
     }
     catch (Exception ex)
@@ -184,6 +222,7 @@ app.Use(async (context, next) =>
 // Register Payload & Response Encryption Middleware
 app.UseMiddleware<PayloadEncryptionMiddleware>();
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

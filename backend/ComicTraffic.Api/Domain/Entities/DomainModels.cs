@@ -27,6 +27,10 @@ public class AppUser
     public string Role { get; set; } = "User";
     public string FavoriteGenresCsv { get; set; } = "Action,Sci-Fi,Superhero,Noir";
     public string PreferredWeightsJson { get; set; } = "{}";
+    [MaxLength(200)]
+    public string? PasswordResetToken { get; set; }
+    public DateTime? PasswordResetExpiresAt { get; set; }
+    public int PasswordResetFailedAttempts { get; set; } = 0;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 

@@ -1,11 +1,41 @@
 import { makeAutoObservable, reaction } from "mobx";
 
+function readStorageSafe(key: string): string | null {
+  try {
+    return typeof window !== "undefined" && window.localStorage
+      ? window.localStorage.getItem(key)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStorageSafe(key: string, value: string | null): void {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return;
+    if (value === null) {
+      window.localStorage.removeItem(key);
+    } else {
+      window.localStorage.setItem(key, value);
+    }
+  } catch {
+    // Ignore storage quota or Safari private-mode restrictions
+  }
+}
+
+function parseUserSafe(raw: string | null): any | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export default class CommonStore {
-  token: string | null = localStorage.getItem("jwt");
+  token: string | null = readStorageSafe("jwt");
   appLoaded = false;
-  loggedInUser: any | null = JSON.parse(
-    window.localStorage.getItem("user") || "null"
-  );
+  loggedInUser: any | null = parseUserSafe(readStorageSafe("user"));
 
   constructor() {
     makeAutoObservable(this);
@@ -13,22 +43,17 @@ export default class CommonStore {
     reaction(
       () => this.token,
       (token) => {
-        if (token) {
-          localStorage.setItem("jwt", token);
-        } else {
-          localStorage.removeItem("jwt");
-        }
+        writeStorageSafe("jwt", token);
       }
     );
 
     reaction(
       () => this.loggedInUser,
       (loggedInUser) => {
-        if (loggedInUser) {
-          window.localStorage.setItem("user", JSON.stringify(loggedInUser));
-        } else {
-          window.localStorage.removeItem("user");
-        }
+        writeStorageSafe(
+          "user",
+          loggedInUser ? JSON.stringify(loggedInUser) : null
+        );
       }
     );
   }
@@ -52,7 +77,7 @@ export default class CommonStore {
   clearLocalStorage() {
     this.loggedInUser = null;
     this.token = null;
-    window.localStorage.removeItem("jwt");
-    window.localStorage.removeItem("user");
+    writeStorageSafe("jwt", null);
+    writeStorageSafe("user", null);
   }
 }

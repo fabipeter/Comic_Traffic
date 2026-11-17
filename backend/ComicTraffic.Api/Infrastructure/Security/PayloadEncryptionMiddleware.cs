@@ -122,7 +122,6 @@ public class PayloadEncryptionMiddleware
                 byte[] encryptedBytes = Encoding.UTF8.GetBytes(encryptedJson);
 
                 context.Response.Headers["X-Payload-Encrypted"] = "true";
-                context.Response.Headers["X-Encryption-Algorithm"] = "AES-256-GCM";
                 context.Response.ContentType = "application/json; charset=utf-8";
                 context.Response.ContentLength = encryptedBytes.Length;
 

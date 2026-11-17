@@ -5,6 +5,7 @@ import IndexProfilePage from "../../features/dashboard/profile/IndexProfilePage"
 import NotFound from "../../features/errors/NotFound";
 import LoginPage from "../../features/authentication/login/LoginPage";
 import RegisterPage from "../../features/authentication/register/RegisterPage";
+import ForgotPasswordPage from "../../features/authentication/forgot-password/ForgotPasswordPage";
 import RequireAuth from "./RequireAuth";
 
 export const routes: RouteObject[] = [
@@ -22,6 +23,8 @@ export const routes: RouteObject[] = [
       },
       { path: "login", element: <LoginPage /> },
       { path: "register", element: <RegisterPage /> },
+      { path: "forgot-password", element: <ForgotPasswordPage /> },
+      { path: "reset-password", element: <ForgotPasswordPage /> },
       { path: "not-found", element: <NotFound /> },
       { path: "*", element: <Navigate replace to="/not-found" /> },
     ],

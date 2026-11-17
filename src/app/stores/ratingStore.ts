@@ -251,6 +251,125 @@ export const ANIMEDEX_SKINS: AnimeDexSkinOption[] = [
   },
 ];
 
+const SEARCH_STOP_WORDS = new Set([
+  "the",
+  "a",
+  "an",
+  "of",
+  "and",
+  "in",
+  "to",
+  "for",
+]);
+
+export function normalizeSearchString(val: string): string {
+  if (!val) return "";
+  return val
+    .toLowerCase()
+    .replace(/[-_:.!?',"()#–—’“”/&+=]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function scoreSearchMatch(
+  item: AggregatedMediaItem,
+  rawQuery: string
+): number {
+  if (!rawQuery) return 1;
+  const clean = rawQuery.trim();
+  if (!clean) return 1;
+
+  const normalizedQuery = normalizeSearchString(clean);
+  if (!normalizedQuery) return 1;
+
+  const queryTokens = normalizedQuery.split(" ").filter(Boolean);
+  if (queryTokens.length === 0) return 1;
+
+  // Filter out non-discriminative stop words when multiple tokens are entered
+  const nonStopTokens = queryTokens.filter((t) => !SEARCH_STOP_WORDS.has(t));
+  const tokensToCheck = nonStopTokens.length > 0 ? nonStopTokens : queryTokens;
+
+  const normalizedTitle = normalizeSearchString(item.title || "");
+  const normalizedMeta = normalizeSearchString(
+    [
+      item.publisherOrStudio,
+      item.creatorOrDirector,
+      item.mediaType,
+      item.mediaType === "ComicBook" ? "comic comic book graphic novel" : "",
+      item.mediaType === "TvSeries" ? "tv television series streaming show" : "",
+      item.mediaType === "Movie" ? "movie cinema film blockbuster" : "",
+      String(item.releaseYear),
+      item.cumulativeRating?.consensusTier || "",
+      ...(item.genres || []),
+    ].join(" ")
+  );
+  const normalizedOverview = normalizeSearchString(item.overview || "");
+
+  const rawPool = [
+    item.title,
+    item.publisherOrStudio,
+    item.creatorOrDirector,
+    item.overview,
+    item.mediaType,
+    String(item.releaseYear),
+    ...(item.genres || []),
+  ]
+    .join(" ")
+    .toLowerCase();
+  const normalizedPool = `${normalizedTitle} ${normalizedMeta} ${normalizedOverview}`;
+  const compactPool = rawPool.replace(/[\s\-_:.!?',"()#–—’“”/&+=]/g, "");
+
+  let matchedCount = 0;
+  let score = 0;
+
+  for (const token of tokensToCheck) {
+    const compactToken = token.replace(/[\s\-_:.!?',"()#–—’“”/&+=]/g, "");
+    const inTitle = normalizedTitle.includes(token);
+    const inMeta = normalizedMeta.includes(token);
+    const inOverview = normalizedOverview.includes(token);
+    const inFallback =
+      rawPool.includes(token) ||
+      (compactToken.length >= 3 && compactPool.includes(compactToken));
+
+    if (inTitle || inMeta || inOverview || inFallback) {
+      matchedCount++;
+      if (inTitle) score += 90;
+      if (inMeta) score += 45;
+      if (inOverview) score += 15;
+      if (!inTitle && !inMeta && !inOverview && inFallback) score += 20;
+    }
+  }
+
+  // Short queries (1-2 tokens) require all tokens; longer phrases allow >= 65% overlap
+  const minRequired =
+    tokensToCheck.length <= 2
+      ? tokensToCheck.length
+      : Math.max(2, Math.ceil(tokensToCheck.length * 0.65));
+
+  if (matchedCount < minRequired) {
+    return 0;
+  }
+
+  // Strong relevance boosts for exact, prefix, and multi-token title matches
+  if (normalizedTitle === normalizedQuery) score += 1000;
+  else if (normalizedTitle.startsWith(normalizedQuery)) score += 650;
+  else if (normalizedTitle.includes(normalizedQuery)) score += 420;
+  else if (normalizedPool.includes(normalizedQuery)) score += 180;
+
+  if (matchedCount === tokensToCheck.length) {
+    score += 240;
+  }
+
+  return score;
+}
+
+export function matchesSearchItem(
+  item: AggregatedMediaItem,
+  rawQuery: string
+): boolean {
+  return scoreSearchMatch(item, rawQuery) > 0;
+}
+
 export default class RatingStore {
   catalog: AggregatedMediaItem[] = [...INITIAL_CUMULATIVE_CATALOG];
   isLoadingCatalog: boolean = false;
@@ -431,18 +550,25 @@ export default class RatingStore {
   };
 
   private searchDebounceTimer: any = null;
+  private liveSearchedTerms = new Set<string>();
+  private liveSearchSeq = 0;
 
   setSearchQuery = (q: string) => {
-    const cleanQuery = sanitizeUserText(q, 160);
+    // Preserve space between words during active typing while stripping dangerous HTML/XSS
+    const cleanQuery = sanitizeUserText(q, 160, false);
+    const wasEmpty = !this.searchQuery.trim();
     this.searchQuery = cleanQuery;
     if (this.searchDebounceTimer) {
       clearTimeout(this.searchDebounceTimer);
     }
     const trimmed = cleanQuery.trim();
-    if (trimmed.length >= 3) {
+    if (trimmed.length > 0 && wasEmpty && this.selectedCategory !== "All") {
+      this.selectedCategory = "All";
+    }
+    if (trimmed.length >= 2) {
       this.searchDebounceTimer = setTimeout(() => {
         this.executeLiveMultiApiSearch(trimmed);
-      }, 350);
+      }, 220);
     }
   };
 
@@ -523,57 +649,77 @@ export default class RatingStore {
     });
   };
 
-  executeLiveMultiApiSearch = async (queryText?: string) => {
+  executeLiveMultiApiSearch = async (
+    queryText?: string,
+    syncToSearchQuery: boolean = true,
+    forceRefresh: boolean = false
+  ) => {
     const q = (queryText ?? this.searchQuery).trim();
-    if (queryText !== undefined && q !== this.searchQuery) {
+    if (syncToSearchQuery && queryText !== undefined && q !== this.searchQuery) {
       this.searchQuery = q;
     }
     if (q.length < 2) return;
 
+    const cacheKey = q.toLowerCase();
+    if (!forceRefresh && this.liveSearchedTerms.has(cacheKey)) {
+      return;
+    }
+
+    const requestSeq = ++this.liveSearchSeq;
     this.isSearchingLiveApis = true;
     try {
       const discovered = await searchLiveMultiApis(q);
       runInAction(() => {
+        if (discovered.length > 0) {
+          this.liveSearchedTerms.add(cacheKey);
+        }
+        const existingKeys = new Set<string>();
+        for (const c of this.catalog) {
+          existingKeys.add(c.externalId);
+          existingKeys.add(`${c.title.toLowerCase()}::${c.mediaType}`);
+        }
         const fresh: AggregatedMediaItem[] = [];
         for (const item of discovered) {
-          if (
-            !this.catalog.some(
-              (c) =>
-                c.externalId === item.externalId ||
-                (c.title.toLowerCase() === item.title.toLowerCase() &&
-                  c.mediaType === item.mediaType)
-            )
-          ) {
+          const titleKey = `${item.title.toLowerCase()}::${item.mediaType}`;
+          if (!existingKeys.has(item.externalId) && !existingKeys.has(titleKey)) {
+            existingKeys.add(item.externalId);
+            existingKeys.add(titleKey);
             fresh.push(item);
           }
         }
         if (fresh.length > 0) {
           this.catalog = [...fresh, ...this.catalog];
         }
-        this.isSearchingLiveApis = false;
+        if (requestSeq === this.liveSearchSeq) {
+          this.isSearchingLiveApis = false;
+        }
       });
     } catch {
       runInAction(() => {
-        this.isSearchingLiveApis = false;
+        if (requestSeq === this.liveSearchSeq) {
+          this.isSearchingLiveApis = false;
+        }
       });
     }
   };
 
-  searchSuggestions = (term: string, limit: number = 8): AggregatedMediaItem[] => {
-    const clean = term.trim().toLowerCase();
+  searchSuggestions = (term: string, limit: number = 12): AggregatedMediaItem[] => {
+    const clean = term.trim();
     if (!clean) {
       return this.catalog.slice(0, limit);
     }
-    return this.catalog
-      .filter(
-        (item) =>
-          item.title.toLowerCase().includes(clean) ||
-          item.publisherOrStudio.toLowerCase().includes(clean) ||
-          item.creatorOrDirector.toLowerCase().includes(clean) ||
-          item.mediaType.toLowerCase().includes(clean) ||
-          item.genres.some((g) => g.toLowerCase().includes(clean))
-      )
-      .slice(0, limit);
+    const scored = this.catalog
+      .map((item) => ({ item, score: scoreSearchMatch(item, clean) }))
+      .filter((entry) => entry.score > 0);
+
+    scored.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return (
+        b.item.cumulativeRating.finalCumulativeAverage -
+        a.item.cumulativeRating.finalCumulativeAverage
+      );
+    });
+    return scored.slice(0, limit).map((entry) => entry.item);
   };
 
   get availableGenres(): string[] {
@@ -607,16 +753,9 @@ export default class RatingStore {
       );
     }
 
-    if (this.searchQuery.trim().length > 0) {
-      const q = this.searchQuery.trim().toLowerCase();
-      list = list.filter(
-        (i) =>
-          i.title.toLowerCase().includes(q) ||
-          i.publisherOrStudio.toLowerCase().includes(q) ||
-          i.creatorOrDirector.toLowerCase().includes(q) ||
-          i.overview.toLowerCase().includes(q) ||
-          i.genres.some((g) => g.toLowerCase().includes(q))
-      );
+    const activeQuery = this.searchQuery.trim();
+    if (activeQuery.length > 0) {
+      list = list.filter((item) => scoreSearchMatch(item, activeQuery) > 0);
     }
 
     switch (this.sortBy) {
@@ -660,11 +799,23 @@ export default class RatingStore {
         break;
       case "cumulative_desc":
       default:
-        list.sort(
-          (a, b) =>
-            b.cumulativeRating.finalCumulativeAverage -
-            a.cumulativeRating.finalCumulativeAverage
-        );
+        if (activeQuery.length > 0) {
+          list.sort((a, b) => {
+            const relDiff =
+              scoreSearchMatch(b, activeQuery) - scoreSearchMatch(a, activeQuery);
+            if (relDiff !== 0) return relDiff;
+            return (
+              b.cumulativeRating.finalCumulativeAverage -
+              a.cumulativeRating.finalCumulativeAverage
+            );
+          });
+        } else {
+          list.sort(
+            (a, b) =>
+              b.cumulativeRating.finalCumulativeAverage -
+              a.cumulativeRating.finalCumulativeAverage
+          );
+        }
         break;
     }
 

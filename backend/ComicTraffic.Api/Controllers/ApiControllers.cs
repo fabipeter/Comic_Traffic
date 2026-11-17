@@ -7,6 +7,7 @@ using ComicTraffic.Api.Infrastructure.Security;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ComicTraffic.Api.Controllers;
 
@@ -29,13 +30,18 @@ public class AuthController : ControllerBase
             var result = await _mediator.Send(command, ct);
             return Ok(new { isSuccessful = true, data = result });
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return BadRequest(new { isSuccessful = false, responseMessage = ex.Message });
+        }
+        catch
+        {
+            return StatusCode(500, new { isSuccessful = false, responseMessage = "Unable to complete registration at this time." });
         }
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth-sensitive")]
     public async Task<IActionResult> Login([FromBody] LoginUserCommand command, CancellationToken ct)
     {
         try
@@ -47,9 +53,52 @@ public class AuthController : ControllerBase
         {
             return Unauthorized(new { isSuccessful = false, responseMessage = ex.Message });
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return BadRequest(new { isSuccessful = false, responseMessage = ex.Message });
+        }
+        catch
+        {
+            return StatusCode(500, new { isSuccessful = false, responseMessage = "Unable to authenticate at this time." });
+        }
+    }
+
+    [HttpPost("forgot-password")]
+    [EnableRateLimiting("auth-sensitive")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordCommand command, CancellationToken ct)
+    {
+        try
+        {
+            string? origin = Request.Headers.Origin.FirstOrDefault();
+            var result = await _mediator.Send(command with { RequestOrigin = origin }, ct);
+            return Ok(new { isSuccessful = true, data = result });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { isSuccessful = false, responseMessage = ex.Message });
+        }
+        catch
+        {
+            return StatusCode(500, new { isSuccessful = false, responseMessage = "Unable to process password recovery right now." });
+        }
+    }
+
+    [HttpPost("reset-password")]
+    [EnableRateLimiting("auth-sensitive")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordCommand command, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _mediator.Send(command, ct);
+            return Ok(new { isSuccessful = true, data = result });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { isSuccessful = false, responseMessage = ex.Message });
+        }
+        catch
+        {
+            return StatusCode(500, new { isSuccessful = false, responseMessage = "Unable to reset password right now." });
         }
     }
 
@@ -284,7 +333,7 @@ public class SecurityController : ControllerBase
     {
         return Ok(new
         {
-            algorithm = "AES-256-GCM + HMAC-SHA256",
+            encryptedTransport = true,
             cqrsPattern = "MediatR 12.2 CQRS Pipeline",
             databaseProvider = "PostgreSQL (Npgsql.EntityFrameworkCore.PostgreSQL)",
             headerTrigger = "X-Payload-Encrypted: true"
@@ -300,7 +349,6 @@ public class SecurityController : ControllerBase
         return Ok(new
         {
             isSuccessful = true,
-            algorithm = "AES-256-GCM",
             derivedAesKey = Convert.ToBase64String(aesKeyBytes),
             derivedHmacKey = Convert.ToBase64String(hmacKeyBytes),
             issuedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()

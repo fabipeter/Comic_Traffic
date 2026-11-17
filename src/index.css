@@ -191,7 +191,8 @@ body[data-adx-skin="daylight"] .ct-kpi-value,
 body[data-adx-skin="daylight"] .ct-card-trisplit strong,
 body[data-adx-skin="daylight"] .ct-metric-val,
 body[data-adx-skin="daylight"] .adx-footer-brand strong,
-body[data-adx-skin="daylight"] .adx-drawer-bar-left strong {
+body[data-adx-skin="daylight"] .adx-drawer-bar-left strong,
+body[data-adx-skin="daylight"] .ct-compare-quick-title {
   color: #0f172a;
 }
 
@@ -209,6 +210,7 @@ body[data-adx-skin="daylight"] .adx-drawer-select {
 }
 
 body[data-adx-skin="daylight"] .ct-compare-slot-box,
+body[data-adx-skin="daylight"] .ct-compare-quick-cell,
 body[data-adx-skin="daylight"] .ct-card-trisplit,
 body[data-adx-skin="daylight"] .ct-source-card,
 body[data-adx-skin="daylight"] .ct-review-item,

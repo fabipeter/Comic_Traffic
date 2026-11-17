@@ -260,7 +260,8 @@
   border: 1px solid var(--adx-border, rgba(225, 29, 72, 0.35));
   background: rgba(8, 6, 12, 0.88);
   color: #ffffff;
-  font-size: 0.92rem;
+  font-size: 1rem;
+  max-width: 100%;
 }
 
 .ct-hero-search-input:focus {

@@ -1,6 +1,5 @@
 export interface EncryptedEnvelope {
   encrypted: boolean;
-  algorithm: string;
   iv: string;
   payload: string;
   signature: string;
@@ -45,6 +44,23 @@ export function setRuntimeDerivedKeys(
 
 export function hasRuntimeDerivedKeys(): boolean {
   return Boolean(runtimeDerivedAesBytes && runtimeDerivedHmacBytes);
+}
+
+export function isWebCryptoAvailable(): boolean {
+  return Boolean(
+    typeof globalThis !== "undefined" &&
+      globalThis.crypto &&
+      globalThis.crypto.subtle &&
+      typeof globalThis.crypto.subtle.encrypt === "function" &&
+      typeof globalThis.crypto.subtle.decrypt === "function"
+  );
+}
+
+export function clearRuntimeDerivedKeys(): void {
+  runtimeDerivedAesBytes = null;
+  runtimeDerivedHmacBytes = null;
+  sessionAesKey = null;
+  sessionHmacKey = null;
 }
 
 const toBase64 = (bytes: Uint8Array): string => {
@@ -126,6 +142,9 @@ async function computeHmacSignature(
 }
 
 export async function encryptPayload<T>(data: T): Promise<EncryptedEnvelope> {
+  if (!isWebCryptoAvailable()) {
+    throw new Error("Web Crypto API is unavailable in this insecure context.");
+  }
   const plainJson = typeof data === "string" ? data : JSON.stringify(data);
   const timestamp = Date.now();
   const ivBytes = globalThis.crypto.getRandomValues(new Uint8Array(12));
@@ -147,7 +166,6 @@ export async function encryptPayload<T>(data: T): Promise<EncryptedEnvelope> {
 
   return {
     encrypted: true,
-    algorithm: "AES-256-GCM",
     iv: ivBase64,
     payload: payloadBase64,
     signature,
@@ -158,6 +176,9 @@ export async function encryptPayload<T>(data: T): Promise<EncryptedEnvelope> {
 export async function decryptPayload<T = any>(
   envelope: EncryptedEnvelope
 ): Promise<T> {
+  if (!isWebCryptoAvailable()) {
+    throw new Error("Web Crypto API is unavailable in this insecure context.");
+  }
   if (!envelope || !envelope.payload || !envelope.iv) {
     throw new Error("Invalid encrypted envelope");
   }

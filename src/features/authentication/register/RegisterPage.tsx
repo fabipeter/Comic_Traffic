@@ -38,12 +38,32 @@ const RegisterPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
+
+    const trimmedEmail = email.trim();
+    const atIdx = trimmedEmail.indexOf("@");
+    const dotIdx = atIdx > 0 ? trimmedEmail.indexOf(".", atIdx + 1) : -1;
+    if (
+      !trimmedEmail ||
+      trimmedEmail.includes(" ") ||
+      atIdx <= 0 ||
+      dotIdx <= atIdx + 1 ||
+      dotIdx >= trimmedEmail.length - 1
+    ) {
+      setErrorMessage("Please enter a valid email address (required for account recovery).");
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      setErrorMessage("Password must be at least 6 characters long.");
+      return;
+    }
+
     try {
       await userStore.registerWithComicTraffic({
-        username,
-        email,
+        username: username.trim(),
+        email: trimmedEmail,
         password,
-        displayName: displayName || username,
+        displayName: (displayName || username).trim(),
         favoriteGenres: selectedGenres,
       });
     } catch (err: any) {
@@ -96,25 +116,28 @@ const RegisterPage = () => {
             </div>
 
             <div className="ct-form-field">
-              <label htmlFor="ct-reg-email">Email Address</label>
+              <label htmlFor="ct-reg-email">Email Address *</label>
               <input
                 id="ct-reg-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="reader@comictraffic.io"
+                autoComplete="email"
                 required
               />
             </div>
 
             <div className="ct-form-field">
-              <label htmlFor="ct-reg-password">Password</label>
+              <label htmlFor="ct-reg-password">Password *</label>
               <input
                 id="ct-reg-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
+                placeholder="At least 6 characters"
+                minLength={6}
+                autoComplete="new-password"
                 required
               />
             </div>

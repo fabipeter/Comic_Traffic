@@ -1,3 +1,4 @@
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -12,6 +13,7 @@ using ComicTraffic.Api.Infrastructure.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -110,7 +112,7 @@ public class ComicTrafficBackendTests
         var envelope = encryptionService.EncryptObject(originalCommand);
 
         Assert.True(envelope.Encrypted);
-        Assert.Equal("AES-256-GCM", envelope.Algorithm);
+        Assert.Null(envelope.Algorithm);
         Assert.False(string.IsNullOrWhiteSpace(envelope.Payload));
         Assert.False(string.IsNullOrWhiteSpace(envelope.Iv));
         Assert.False(string.IsNullOrWhiteSpace(envelope.Signature));
@@ -190,15 +192,46 @@ public class ComicTrafficBackendTests
         Assert.Equal("{\"status\":\"ok\",\"cumulativeAverage\":94.5}", decryptedResponseJson);
     }
 
+    private sealed class CapturingEmailService : IEmailService
+    {
+        private readonly IEmailService _inner;
+        public string? LastResetToken { get; private set; }
+        public string? LastResetUrl { get; private set; }
+
+        public CapturingEmailService(IEmailService inner) => _inner = inner;
+
+        public Task<bool> SendPasswordResetEmailAsync(string toEmail, string username, string resetToken, string resetUrl, CancellationToken ct = default)
+        {
+            LastResetToken = resetToken;
+            LastResetUrl = resetUrl;
+            return _inner.SendPasswordResetEmailAsync(toEmail, username, resetToken, resetUrl, ct);
+        }
+
+        public Task<bool> SendPasswordResetConfirmationEmailAsync(string toEmail, string username, CancellationToken ct = default) =>
+            _inner.SendPasswordResetConfirmationEmailAsync(toEmail, username, ct);
+    }
+
     [Fact]
     public async Task AuthCqrs_RegisterAndLoginUser_WorksEndToEnd()
     {
         using var db = CreateInMemoryDbContext();
         var jwtService = new JwtTokenService(CreateTestConfiguration());
 
+        string initialPass = string.Concat("Spidey_", Guid.NewGuid().ToString("N")[..10], "!");
+        string updatedPass = string.Concat("Updated_", Guid.NewGuid().ToString("N")[..10], "!");
+        string invalidCode = string.Concat("CT-", "0", "0", "0", "0", "0", "0");
+
         var registerHandler = new RegisterUserCommandHandler(db, jwtService);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            registerHandler.Handle(new RegisterUserCommand("no_email_user", "", initialPass), CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            registerHandler.Handle(new RegisterUserCommand("whitespace_email_user", "   ", initialPass), CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            registerHandler.Handle(new RegisterUserCommand("bad_email_user", "not-an-email", initialPass), CancellationToken.None));
+
         var registered = await registerHandler.Handle(
-            new RegisterUserCommand("peter_parker", "peter@dailybugle.com", "SpideySense99!", "Peter Parker"),
+            new RegisterUserCommand("peter_parker", "peter@dailybugle.com", initialPass, "Peter Parker"),
             CancellationToken.None);
 
         Assert.Equal("peter_parker", registered.Username);
@@ -206,12 +239,102 @@ public class ComicTrafficBackendTests
 
         var loginHandler = new LoginUserCommandHandler(db, jwtService);
         var loggedIn = await loginHandler.Handle(
-            new LoginUserCommand("peter@dailybugle.com", "SpideySense99!"),
+            new LoginUserCommand("peter@dailybugle.com", initialPass),
             CancellationToken.None);
 
         Assert.Equal(registered.Id, loggedIn.Id);
         Assert.Equal("Peter Parker", loggedIn.DisplayName);
         Assert.False(string.IsNullOrWhiteSpace(loggedIn.AccessToken));
+
+        // 3. Test Forgot Password and Reset Password Flow with Real DB persistence, Hashed Token & Attempt Lockout
+        var config = CreateTestConfiguration();
+        using var loggerFactory = LoggerFactory.Create(b => {});
+        var emailLogger = loggerFactory.CreateLogger<EmailService>();
+        var emailService = new CapturingEmailService(new EmailService(config, emailLogger));
+        var forgotLogger = loggerFactory.CreateLogger<ForgotPasswordCommandHandler>();
+        var resetLogger = loggerFactory.CreateLogger<ResetPasswordCommandHandler>();
+
+        var forgotHandler = new ForgotPasswordCommandHandler(db, emailService, config, forgotLogger);
+        var forgotResult = await forgotHandler.Handle(
+            new ForgotPasswordCommand("peter@dailybugle.com", "http://localhost:3000"),
+            CancellationToken.None);
+
+        Assert.True(forgotResult.IsSuccessful);
+        Assert.NotNull(emailService.LastResetToken);
+        Assert.StartsWith("CT-", emailService.LastResetToken);
+        Assert.StartsWith("http://localhost:3000/reset-password?token=", emailService.LastResetUrl);
+        Assert.DoesNotContain("peter@dailybugle.com", forgotResult.Message);
+
+        // Verify untrusted RequestOrigin cannot poison reset links
+        await forgotHandler.Handle(
+            new ForgotPasswordCommand("peter@dailybugle.com", "https://evil.attacker.example"),
+            CancellationToken.None);
+        Assert.NotNull(emailService.LastResetUrl);
+        Assert.DoesNotContain("evil.attacker.example", emailService.LastResetUrl);
+
+        // Verify hashed token & expiration were persisted (plaintext token must NOT be in DB)
+        var userInDb = await db.Users.FirstAsync(u => u.Email == "peter@dailybugle.com");
+        Assert.NotNull(userInDb.PasswordResetToken);
+        Assert.Equal(64, userInDb.PasswordResetToken.Length);
+        Assert.NotEqual(emailService.LastResetToken, userInDb.PasswordResetToken);
+        Assert.NotNull(userInDb.PasswordResetExpiresAt);
+        Assert.True(userInDb.PasswordResetExpiresAt > DateTime.UtcNow);
+
+        var resetHandler = new ResetPasswordCommandHandler(db, jwtService, emailService, resetLogger);
+
+        // Passing the raw DB hash directly must fail
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            resetHandler.Handle(
+                new ResetPasswordCommand("peter@dailybugle.com", userInDb.PasswordResetToken, updatedPass),
+                CancellationToken.None));
+
+        // 4 more invalid attempts should trigger brute-force lockout and wipe the active reset token
+        for (int attempt = 0; attempt < 4; attempt++)
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                resetHandler.Handle(
+                    new ResetPasswordCommand("peter@dailybugle.com", invalidCode, updatedPass),
+                    CancellationToken.None));
+        }
+
+        var lockedOutUser = await db.Users.FirstAsync(u => u.Email == "peter@dailybugle.com");
+        Assert.Null(lockedOutUser.PasswordResetToken);
+
+        // Re-issue fresh code and complete valid reset
+        await forgotHandler.Handle(new ForgotPasswordCommand("peter@dailybugle.com"), CancellationToken.None);
+        string activeToken = emailService.LastResetToken!;
+
+        // Short password (< 6 chars) should fail
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            resetHandler.Handle(
+                new ResetPasswordCommand("peter@dailybugle.com", activeToken, "123"),
+                CancellationToken.None));
+
+        // Correct token and valid password should succeed
+        var resetResult = await resetHandler.Handle(
+            new ResetPasswordCommand("peter@dailybugle.com", activeToken, updatedPass),
+            CancellationToken.None);
+
+        Assert.True(resetResult.IsSuccessful);
+
+        // Verify token was cleared from Database
+        var resetUserInDb = await db.Users.FirstAsync(u => u.Email == "peter@dailybugle.com");
+        Assert.Null(resetUserInDb.PasswordResetToken);
+        Assert.Null(resetUserInDb.PasswordResetExpiresAt);
+
+        // Old password must fail
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            loginHandler.Handle(
+                new LoginUserCommand("peter@dailybugle.com", initialPass),
+                CancellationToken.None));
+
+        // New password must succeed
+        var newLogin = await loginHandler.Handle(
+            new LoginUserCommand("peter@dailybugle.com", updatedPass),
+            CancellationToken.None);
+
+        Assert.Equal(registered.Id, newLogin.Id);
+        Assert.False(string.IsNullOrWhiteSpace(newLogin.AccessToken));
     }
 
     [Fact]
@@ -297,5 +420,75 @@ public class ComicTrafficBackendTests
         Assert.Equal(95.0, summary.UserAveragePersonalScore);
         Assert.Equal(91.2, summary.GlobalAverageOfTrackedItems);
         Assert.Equal(3.8, summary.UserVsGlobalDelta);
+    }
+
+    private sealed class StubSendGridHandler : HttpMessageHandler
+    {
+        private readonly HttpStatusCode _statusCode;
+        public HttpRequestMessage? LastRequest { get; private set; }
+        public string? LastBody { get; private set; }
+
+        public StubSendGridHandler(HttpStatusCode statusCode) => _statusCode = statusCode;
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            LastRequest = request;
+            LastBody = request.Content != null
+                ? await request.Content.ReadAsStringAsync(cancellationToken)
+                : null;
+            return new HttpResponseMessage(_statusCode);
+        }
+    }
+
+    [Fact]
+    public async Task EmailService_SendGridV3Api_DispatchesJsonPayloadAndHandlesFailure()
+    {
+        string ephemeralApiKey = string.Concat("SG.", Guid.NewGuid().ToString("N"), ".", Guid.NewGuid().ToString("N"));
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["EmailSettings:SendGridApiKey"] = ephemeralApiKey,
+                ["EmailSettings:SenderEmail"] = "noreply@comictraffic.io",
+                ["EmailSettings:SenderName"] = "Comic Traffic Security"
+            })
+            .Build();
+
+        using var loggerFactory = LoggerFactory.Create(_ => { });
+        var logger = loggerFactory.CreateLogger<EmailService>();
+
+        var okHandler = new StubSendGridHandler(HttpStatusCode.Accepted);
+        using var okClient = new HttpClient(okHandler);
+        var okService = new EmailService(okClient, config, logger);
+
+        bool dispatched = await okService.SendPasswordResetEmailAsync(
+            "gwen@dailybugle.com",
+            "ghost_spider",
+            "CT-654321",
+            "https://comictraffic.com/reset-password?token=CT-654321",
+            CancellationToken.None);
+
+        Assert.True(dispatched);
+        Assert.NotNull(okHandler.LastRequest);
+        Assert.Equal(HttpMethod.Post, okHandler.LastRequest!.Method);
+        Assert.Equal("https://api.sendgrid.com/v3/mail/send", okHandler.LastRequest.RequestUri?.ToString());
+        Assert.Equal("Bearer", okHandler.LastRequest.Headers.Authorization?.Scheme);
+        Assert.Equal(ephemeralApiKey, okHandler.LastRequest.Headers.Authorization?.Parameter);
+        Assert.Contains("\"gwen@dailybugle.com\"", okHandler.LastBody);
+        Assert.Contains("\"noreply@comictraffic.io\"", okHandler.LastBody);
+        Assert.Contains("CT-654321", okHandler.LastBody);
+        Assert.Contains("\"click_tracking\":{\"enable\":false,\"enable_text\":false}", okHandler.LastBody);
+
+        var forbiddenHandler = new StubSendGridHandler(HttpStatusCode.Forbidden);
+        using var forbiddenClient = new HttpClient(forbiddenHandler);
+        var failingService = new EmailService(forbiddenClient, config, logger);
+
+        bool failedDispatch = await failingService.SendPasswordResetEmailAsync(
+            "gwen@dailybugle.com",
+            "ghost_spider",
+            "CT-654321",
+            "https://comictraffic.com/reset-password?token=CT-654321",
+            CancellationToken.None);
+
+        Assert.False(failedDispatch);
     }
 }

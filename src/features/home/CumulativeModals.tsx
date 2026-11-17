@@ -7,6 +7,7 @@ import {
   RATING_SOURCE_DEFINITIONS,
   WatchlistEntry,
 } from "../../app/api/ratingApis";
+import { sanitizeImageUrl } from "../../app/security/inputSanitizer";
 
 export const getScoreColor = (score: number): string => {
   if (score >= 88) return "#10b981";
@@ -38,7 +39,7 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
     setFocusedSlot(slotIdx);
 
     if (val.trim().length >= 2) {
-      await ratingStore.executeLiveMultiApiSearch(val);
+      await ratingStore.executeLiveMultiApiSearch(val, false);
     }
   };
 
@@ -64,7 +65,7 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
           const selectedItem = ratingStore.getComparisonSlotItem(slotIdx);
           const query = slotQueries[slotIdx];
           const suggestions = ratingStore
-            .searchSuggestions(query, 8)
+            .searchSuggestions(query, 12)
             .filter(
               (cand) =>
                 !ratingStore.comparisonSlots.includes(cand.externalId) ||
@@ -72,7 +73,12 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
             );
 
           return (
-            <div key={slotIdx} className="ct-compare-slot-box">
+            <div
+              key={slotIdx}
+              className={`ct-compare-slot-box ${
+                focusedSlot === slotIdx ? "is-focused" : ""
+              }`}
+            >
               <div className="ct-compare-slot-header">
                 <span className="ct-slot-number-badge">
                   COMPARE SLOT #{slotIdx + 1} (MAX 3)
@@ -133,7 +139,7 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
                           className="ct-slot-dropdown-option"
                           onClick={() => handlePickItemForSlot(slotIdx, sug)}
                         >
-                          <img src={sug.posterUrl} alt={sug.title} />
+                          <img src={sanitizeImageUrl(sug.posterUrl)} alt={sug.title} />
                           <div className="ct-slot-opt-info">
                             <strong>{sug.title}</strong>
                             <small>
@@ -169,7 +175,7 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
               {selectedItem ? (
                 <div className="ct-slot-picked-card">
                   <img
-                    src={selectedItem.posterUrl}
+                    src={sanitizeImageUrl(selectedItem.posterUrl)}
                     alt={selectedItem.title}
                     className="ct-slot-picked-thumb"
                   />
@@ -287,13 +293,13 @@ export const CumulativeDetailModal: React.FC = observer(() => {
         <div
           className="ct-detail-hero"
           style={{
-            backgroundImage: `linear-gradient(to bottom, rgba(10,12,20,0.45), rgba(10,12,20,0.98)), url('${
+            backgroundImage: `linear-gradient(to bottom, rgba(10,12,20,0.45), rgba(10,12,20,0.98)), url('${sanitizeImageUrl(
               item.backdropUrl || item.posterUrl
-            }')`,
+            )}')`,
           }}
         >
           <img
-            src={item.posterUrl}
+            src={sanitizeImageUrl(item.posterUrl)}
             alt={item.title}
             className="ct-detail-poster"
           />
@@ -636,12 +642,13 @@ export const CompareModal: React.FC = observer(() => {
       onClick={() => ratingStore.setCompareModalOpen(false)}
     >
       <div
-        className="ct-modal-container"
+        className="ct-modal-container ct-compare-modal"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           className="ct-modal-close"
           onClick={() => ratingStore.setCompareModalOpen(false)}
+          aria-label="Close compare arena"
         >
           ✕
         </button>
@@ -670,18 +677,51 @@ export const CompareModal: React.FC = observer(() => {
             </div>
           )}
 
+          {items.length >= 2 && (
+            <div className="ct-compare-quick-board" aria-label="Side-by-side quick scoreboard">
+              {items.map((item) => (
+                <div
+                  key={`quick-${item.externalId}`}
+                  className={`ct-compare-quick-cell ${
+                    bestCumulative?.externalId === item.externalId ? "is-leader" : ""
+                  }`}
+                >
+                  <span className="ct-compare-quick-title">{item.title}</span>
+                  <strong
+                    className="ct-compare-quick-score"
+                    style={{
+                      color: getScoreColor(
+                        item.cumulativeRating.finalCumulativeAverage
+                      ),
+                    }}
+                  >
+                    {item.cumulativeRating.finalCumulativeAverage.toFixed(1)}%
+                  </strong>
+                  <small>
+                    Critics {item.cumulativeRating.criticConsensusScore.toFixed(0)}% • Audience{" "}
+                    {item.cumulativeRating.audienceConsensusScore.toFixed(0)}%
+                  </small>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="ct-compare-grid">
             {items.map((item) => (
               <div key={item.externalId} className="ct-compare-column">
-                <img
-                  src={item.posterUrl}
-                  alt={item.title}
-                  className="ct-compare-poster"
-                />
-                <h3>{item.title}</h3>
-                <span className="ct-meta-pill">
-                  {item.mediaType} • {item.releaseYear}
-                </span>
+                <div className="ct-compare-card-top">
+                  <img
+                    src={sanitizeImageUrl(item.posterUrl)}
+                    alt={item.title}
+                    className="ct-compare-poster"
+                  />
+                  <div className="ct-compare-card-headmeta">
+                    <h3>{item.title}</h3>
+                    <span className="ct-meta-pill">
+                      {item.mediaType} • {item.releaseYear}
+                    </span>
+                  </div>
+                </div>
 
                 <div className="ct-compare-big-score">
                   <span>Final Cumulative Average</span>
@@ -948,7 +988,14 @@ export const CommunityBottomDrawer: React.FC = observer(() => {
       >
         <div className="adx-drawer-bar-left">
           <span className="adx-live-dot" />
-          <strong>COMIC TRAFFIC LIVE COMMUNITY PULSE & OST BAR</strong>
+          <strong className="adx-live-bar-title">
+            <span className="adx-title-full">
+              COMIC TRAFFIC LIVE COMMUNITY PULSE & OST BAR
+            </span>
+            <span className="adx-title-short">
+              COMIC TRAFFIC LIVE
+            </span>
+          </strong>
           <span className="adx-online-pill">
             🔥 {ratingStore.reviews.length + 124} Analysts Online
           </span>

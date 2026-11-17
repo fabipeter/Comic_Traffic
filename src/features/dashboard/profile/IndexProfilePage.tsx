@@ -14,6 +14,7 @@ import {
   RATING_SOURCE_DEFINITIONS,
   WatchlistEntry,
 } from "../../../app/api/ratingApis";
+import { sanitizeImageUrl } from "../../../app/security/inputSanitizer";
 
 const IndexProfilePage: React.FC = () => {
   const { ratingStore, userStore } = useStore();
@@ -74,7 +75,7 @@ const IndexProfilePage: React.FC = () => {
         <header className="ct-dash-profile-header">
           <div className="ct-dash-profile-left">
             <img
-              src={profile.avatarUrl}
+              src={sanitizeImageUrl(profile.avatarUrl)}
               alt={profile.displayName}
               className="ct-dash-avatar"
             />
@@ -91,7 +92,7 @@ const IndexProfilePage: React.FC = () => {
               </p>
               <p className="ct-dash-bio">{profile.bio}</p>
               <div className="ct-genre-tags">
-                {profile.favoriteGenres.map((g) => (
+                {(profile.favoriteGenres || []).map((g) => (
                   <span key={g} className="ct-genre-chip">
                     {g}
                   </span>
@@ -286,7 +287,7 @@ const IndexProfilePage: React.FC = () => {
                       onClick={() => ratingStore.openDetailModal(item)}
                     >
                       <span className="ct-top5-rank">#{idx + 1}</span>
-                      <img src={item.posterUrl} alt={item.title} />
+                      <img src={sanitizeImageUrl(item.posterUrl)} alt={item.title} />
                       <div className="ct-top5-info">
                         <strong>{item.title}</strong>
                         <small>
@@ -335,7 +336,7 @@ const IndexProfilePage: React.FC = () => {
                 return (
                   <div key={entry.id} className="ct-watchlist-row">
                     <img
-                      src={entry.posterUrl}
+                      src={sanitizeImageUrl(entry.posterUrl)}
                       alt={entry.title}
                       onClick={() =>
                         matchedMedia && ratingStore.openDetailModal(matchedMedia)

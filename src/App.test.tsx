@@ -1,23 +1,39 @@
 import React from "react";
+import axios from "axios";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import {
   AggregatedMediaItem,
   calculateCumulativeRating,
+  encryptedBackendClient,
   ExternalRatingSource,
 } from "./app/api/ratingApis";
-import { encryptPayload, decryptPayload } from "./app/security/payloadCrypto";
+import {
+  encryptPayload,
+  decryptPayload,
+  setRuntimeDerivedKeys,
+  clearRuntimeDerivedKeys,
+  isWebCryptoAvailable,
+} from "./app/security/payloadCrypto";
 import {
   sanitizeUserText,
   sanitizeImageUrl,
   sanitizeReturnToPath,
 } from "./app/security/inputSanitizer";
-import RatingStore from "./app/stores/ratingStore";
+import RatingStore, {
+  matchesSearchItem,
+  normalizeSearchString,
+  scoreSearchMatch,
+} from "./app/stores/ratingStore";
 import { store } from "./app/stores/store";
 import LandingPage from "./features/home/LandingPage";
 import IndexProfilePage from "./features/dashboard/profile/IndexProfilePage";
 import LoginPage from "./features/authentication/login/LoginPage";
+import ForgotPasswordPage from "./features/authentication/forgot-password/ForgotPasswordPage";
+import RegisterPage from "./features/authentication/register/RegisterPage";
+import { CompareModal } from "./features/home/CumulativeModals";
+import ScrollToTopButton from "./features/common/ScrollToTopButton";
 
 const MOCK_BACKEND_CATALOG: AggregatedMediaItem[] = [
   {
@@ -173,7 +189,7 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
     );
   });
 
-  test("3. AES-256-GCM payload encryption & decryption round-trip preserves CQRS command data", async () => {
+  test("3. Authenticated payload encryption & decryption round-trip preserves CQRS command data without exposing algorithm hint", async () => {
     const originalCommand = {
       externalMediaId: "comic-watchmen-1986",
       score: 98,
@@ -182,7 +198,7 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
 
     const envelope = await encryptPayload(originalCommand);
     expect(envelope.encrypted).toBe(true);
-    expect(envelope.algorithm).toBe("AES-256-GCM");
+    expect((envelope as any).algorithm).toBeUndefined();
     expect(envelope.iv.length).toBeGreaterThan(8);
     expect(envelope.payload.length).toBeGreaterThan(8);
 
@@ -323,5 +339,381 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
     expect(sanitizeReturnToPath("javascript:alert(document.cookie)")).toBe("/dashboard");
     expect(sanitizeReturnToPath("//evil.example.com")).toBe("/dashboard");
     expect(sanitizeReturnToPath("/dashboard")).toBe("/dashboard");
+
+    // Verify whitespace between words is preserved during typing for Quick Search
+    expect(sanitizeUserText("Spider-Man Across ")).toBe("Spider-Man Across ");
+    expect(sanitizeUserText("The Dark Knight ")).toBe("The Dark Knight ");
+    expect(sanitizeUserText("   Leading and trailing   ", 100, true)).toBe("Leading and trailing");
+
+    ratingStore.setSearchQuery("Spider-Man ");
+    expect(ratingStore.searchQuery).toBe("Spider-Man ");
+    ratingStore.setSearchQuery("The Dark Knight");
+    expect(ratingStore.searchQuery).toBe("The Dark Knight");
+  });
+
+  test("8. Forgot Password Flow: production email recovery without demo hints and direct reset link handling", async () => {
+    // 1. UserStore methods test (production flow: no client mock token exposure)
+    const requestResult = await store.userStore.requestPasswordReset("comicwarden");
+    expect(requestResult.isSuccessful).toBe(true);
+    expect(requestResult.message).toMatch(/dispatched|sent/i);
+
+    const generatedCode = ["CT", String(Date.now()).slice(-6)].join("-");
+    const generatedPass = ["Updated", Date.now().toString(36), "!"].join("_");
+    const shortInput = "123";
+
+    // Short password rejected
+    await expect(
+      store.userStore.resetPassword({
+        emailOrUsername: "comicwarden",
+        token: generatedCode,
+        newPassword: shortInput,
+      })
+    ).rejects.toThrow("Password must be at least 6 characters long.");
+
+    // Valid reset succeeds
+    const resetResult = await store.userStore.resetPassword({
+      emailOrUsername: "comicwarden",
+      token: generatedCode,
+      newPassword: generatedPass,
+    });
+    expect(resetResult.isSuccessful).toBe(true);
+
+    // 2. Component Render Test - Step 1
+    const { unmount } = render(
+      <MemoryRouter initialEntries={["/forgot-password"]}>
+        <ForgotPasswordPage />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/Reset Your Password/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email or Username/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Send Verification Code/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Back to Sign In/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Demo Code/i)).not.toBeInTheDocument();
+    unmount();
+
+    // 3. Direct Email Link handling (?token=...&email=...) scrubs URL params via history.replaceState
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+    const linkCode = ["CT", String(Date.now() + 1).slice(-6)].join("-");
+    render(
+      <MemoryRouter initialEntries={[`/reset-password?token=${linkCode}&email=bruce@wayne.com`]}>
+        <ForgotPasswordPage />
+      </MemoryRouter>
+    );
+    expect(screen.getByDisplayValue("bruce@wayne.com")).toBeInTheDocument();
+    expect(screen.getByDisplayValue(linkCode)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Update Password & Continue/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Demo Code/i)).not.toBeInTheDocument();
+    expect(replaceStateSpy).toHaveBeenCalled();
+    replaceStateSpy.mockRestore();
+  });
+
+  test("9. ScrollToTopButton renders when scrolled and triggers smooth scroll on click", () => {
+    const scrollToMock = vi.fn();
+    window.scrollTo = scrollToMock;
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <ScrollToTopButton />
+      </MemoryRouter>
+    );
+
+    // Initially window.scrollY is 0, button is not rendered
+    expect(screen.queryByLabelText(/Scroll to top of page/i)).not.toBeInTheDocument();
+
+    // Simulate scroll down past threshold
+    window.scrollY = 450;
+    fireEvent.scroll(window);
+
+    rerender(
+      <MemoryRouter>
+        <ScrollToTopButton />
+      </MemoryRouter>
+    );
+
+    const btn = screen.getByLabelText(/Scroll to top of page/i);
+    expect(btn).toBeInTheDocument();
+
+    // Click button -> triggers window.scrollTo({ top: 0, behavior: "smooth" })
+    fireEvent.click(btn);
+    expect(scrollToMock).toHaveBeenCalledWith({
+      top: 0,
+      behavior: "smooth",
+    });
+  });
+
+  test("10. Search Engine: matches titles, creators, studios, overviews, punctuation-free queries, and renders search results header and empty state", () => {
+    const testCatalog = [...MOCK_BACKEND_CATALOG];
+    const watchmen = testCatalog[0];
+    const darkKnight = testCatalog[1];
+
+    // Punctuation and normalization tests
+    expect(normalizeSearchString("Spider-Man: Across the Spider-Verse!")).toBe(
+      "spider man across the spider verse"
+    );
+
+    // Matches title by tokens
+    expect(matchesSearchItem(watchmen, "watchmen")).toBe(true);
+    expect(matchesSearchItem(watchmen, "watchmen 1986")).toBe(true);
+
+    // Matches by creator
+    expect(matchesSearchItem(watchmen, "alan moore")).toBe(true);
+    expect(matchesSearchItem(darkKnight, "nolan")).toBe(true);
+
+    // Matches by studio / publisher
+    expect(matchesSearchItem(watchmen, "dc comics")).toBe(true);
+    expect(matchesSearchItem(darkKnight, "warner bros")).toBe(true);
+
+    // Matches by overview keyword
+    expect(matchesSearchItem(darkKnight, "joker")).toBe(true);
+
+    // Does not match unrelated query
+    expect(matchesSearchItem(watchmen, "batman")).toBe(false);
+
+    // RatingStore search integration
+    const ratingStore = new RatingStore();
+    ratingStore.catalog = testCatalog;
+
+    ratingStore.setSearchQuery("nolan");
+    expect(ratingStore.filteredCatalog.length).toBe(1);
+    expect(ratingStore.filteredCatalog[0].title).toBe("The Dark Knight");
+
+    ratingStore.setSearchQuery("dc comics");
+    expect(ratingStore.filteredCatalog.length).toBe(1);
+    expect(ratingStore.filteredCatalog[0].title).toContain("Watchmen");
+
+    // Clear search restores catalog
+    ratingStore.setSearchQuery("");
+    expect(ratingStore.filteredCatalog.length).toBe(2);
+
+    // Comprehensive Flash Search across Comics, Movies, and TV Series
+    const freshRatingStore = new RatingStore();
+    freshRatingStore.setSearchQuery("flash");
+    const flashResults = freshRatingStore.filteredCatalog;
+    expect(flashResults.length).toBeGreaterThanOrEqual(4);
+    expect(flashResults.some((i) => i.mediaType === "ComicBook")).toBe(true);
+    expect(flashResults.some((i) => i.mediaType === "Movie")).toBe(true);
+    expect(flashResults.some((i) => i.mediaType === "TvSeries")).toBe(true);
+
+    freshRatingStore.setSearchQuery("flashpoint");
+    expect(freshRatingStore.filteredCatalog.length).toBeGreaterThanOrEqual(2);
+
+    freshRatingStore.setSearchQuery("the flash");
+    expect(freshRatingStore.filteredCatalog.length).toBeGreaterThanOrEqual(4);
+
+    const flashSuggestions = freshRatingStore.searchSuggestions("flash", 6);
+    expect(flashSuggestions.length).toBeGreaterThanOrEqual(4);
+    expect(flashSuggestions[0].title.toLowerCase()).toContain("flash");
+  });
+
+  test("11. Registration Flow: email is compulsory and validated in both UI and UserStore", async () => {
+    const dynamicPass = ["RegPass", Date.now().toString(36), "!"].join("_");
+
+    // 1. UserStore enforcement (empty, whitespace, missing @, missing domain TLD)
+    for (const badEmail of ["", "   ", "invalid-email", "user@localhost"]) {
+      await expect(
+        store.userStore.registerWithComicTraffic({
+          username: "nightwing_reader",
+          email: badEmail,
+          password: dynamicPass,
+          displayName: "Dick Grayson",
+        })
+      ).rejects.toThrow("A valid email address is required for registration.");
+    }
+
+    // 2. RegisterPage form attribute & submit validation enforcement
+    const { container } = render(
+      <MemoryRouter>
+        <RegisterPage />
+      </MemoryRouter>
+    );
+
+    const emailInput = screen.getByLabelText(/Email Address/i) as HTMLInputElement;
+    expect(emailInput).toBeTruthy();
+    expect(emailInput.type).toBe("email");
+    expect(emailInput.required).toBe(true);
+    expect(emailInput.checkValidity()).toBe(false);
+
+    const usernameInput = screen.getByLabelText(/Username/i) as HTMLInputElement;
+    const displayInput = screen.getByLabelText(/Display Name/i) as HTMLInputElement;
+    const passwordInput = screen.getByLabelText(/Password/i) as HTMLInputElement;
+    const form = container.querySelector("form.ct-auth-form") as HTMLFormElement;
+    expect(form).toBeTruthy();
+
+    fireEvent.change(usernameInput, { target: { value: "nightwing_reader" } });
+    fireEvent.change(displayInput, { target: { value: "Dick Grayson" } });
+    fireEvent.change(passwordInput, { target: { value: dynamicPass } });
+
+    fireEvent.change(emailInput, { target: { value: "   " } });
+    fireEvent.submit(form);
+    expect(
+      screen.getByText(/Please enter a valid email address \(required for account recovery\)\./i)
+    ).toBeTruthy();
+
+    fireEvent.change(emailInput, { target: { value: "bad-email" } });
+    fireEvent.submit(form);
+    expect(
+      screen.getByText(/Please enter a valid email address \(required for account recovery\)\./i)
+    ).toBeTruthy();
+  });
+
+  test("12. Search Efficiency & Volume: relevance sorting prioritizes exact/title matches and expands suggestion limits", () => {
+    const bulkStore = new RatingStore();
+    const overviewOnlyHigherRated: AggregatedMediaItem = {
+      ...MOCK_BACKEND_CATALOG[0],
+      externalId: "overview-only-high",
+      title: "Gotham Anthology",
+      overview: "Includes a brief cameo about batman.",
+      cumulativeRating: {
+        ...MOCK_BACKEND_CATALOG[0].cumulativeRating,
+        finalCumulativeAverage: 99.5,
+      },
+    };
+    const exactTitleLowerRated: AggregatedMediaItem = {
+      ...MOCK_BACKEND_CATALOG[1],
+      externalId: "exact-batman-title",
+      title: "Batman",
+      overview: "Classic detective comic.",
+      cumulativeRating: {
+        ...MOCK_BACKEND_CATALOG[1].cumulativeRating,
+        finalCumulativeAverage: 82.0,
+      },
+    };
+
+    const manyMatches: AggregatedMediaItem[] = Array.from({ length: 14 }, (_, idx) => ({
+      ...MOCK_BACKEND_CATALOG[0],
+      externalId: `batman-vol-${idx + 1}`,
+      title: `Batman Chronicles Vol. ${idx + 1}`,
+      overview: "Dark Knight series.",
+    }));
+
+    bulkStore.catalog = [overviewOnlyHigherRated, exactTitleLowerRated, ...manyMatches];
+    bulkStore.setSearchQuery("batman");
+
+    expect(scoreSearchMatch(exactTitleLowerRated, "batman")).toBeGreaterThan(
+      scoreSearchMatch(overviewOnlyHigherRated, "batman")
+    );
+    expect(bulkStore.filteredCatalog[0].externalId).toBe("exact-batman-title");
+    expect(bulkStore.filteredCatalog.length).toBe(16);
+    expect(bulkStore.searchSuggestions("batman").length).toBe(12);
+  });
+
+  test("13. Compare Arena & Mobile UX: CompareModal renders quick scoreboard, 3 responsive slots, and closes cleanly", () => {
+    store.ratingStore.setComparisonSlot(0, store.ratingStore.catalog[0].externalId);
+    store.ratingStore.setComparisonSlot(1, store.ratingStore.catalog[1].externalId);
+    store.ratingStore.setCompareModalOpen(true);
+
+    render(
+      <MemoryRouter>
+        <CompareModal />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByLabelText(/Side-by-side quick scoreboard/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Search and pick item for Compare Slot 1/i)
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Close compare arena/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(/Close compare arena/i));
+    expect(store.ratingStore.compareModalOpen).toBe(false);
+  });
+
+  test("14. Session Key Recovery: auto-refreshes handshake and retries once on Payload decryption signature mismatch", async () => {
+    const staleAes = Buffer.alloc(32, 1).toString("base64");
+    const staleHmac = Buffer.alloc(32, 2).toString("base64");
+    const freshAes = Buffer.alloc(32, 7).toString("base64");
+    const freshHmac = Buffer.alloc(32, 8).toString("base64");
+
+    setRuntimeDerivedKeys(staleAes, staleHmac);
+
+    const getSpy = vi.spyOn(axios, "get").mockResolvedValueOnce({
+      data: {
+        isSuccessful: true,
+        derivedAesKey: freshAes,
+        derivedHmacKey: freshHmac,
+      },
+    } as any);
+
+    const postSpy = vi
+      .spyOn(axios, "post")
+      .mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            isSuccessful: false,
+            message:
+              "Payload decryption error: Encrypted payload signature verification failed (tampered payload).",
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          isSuccessful: true,
+          data: {
+            username: "comicwarden",
+            email: "warden@comictraffic.com",
+          },
+        },
+      } as any);
+
+    try {
+      const res = await encryptedBackendClient.sendEncryptedPost<
+        { emailOrUsername: string; password: string },
+        { username: string; email: string }
+      >("/auth/login", {
+        emailOrUsername: "warden@comictraffic.com",
+        password: ["Test", Date.now().toString(36), "!"].join("_"),
+      });
+
+      expect(res.fromBackend).toBe(true);
+      expect(res.data?.username).toBe("comicwarden");
+      expect(getSpy).toHaveBeenCalledTimes(1);
+      expect(postSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      getSpy.mockRestore();
+      postSpy.mockRestore();
+      clearRuntimeDerivedKeys();
+    }
+  });
+
+  test("15. Mobile HTTP Fallback: handles missing crypto.subtle cleanly without throwing 'undefined is not an object'", async () => {
+    const cryptoDesc = Object.getOwnPropertyDescriptor(globalThis, "crypto");
+    const postSpy = vi.spyOn(axios, "post").mockResolvedValueOnce({
+      data: {
+        isSuccessful: true,
+        data: {
+          username: "mobile_user",
+          email: "mobile@comictraffic.com",
+        },
+      },
+    } as any);
+
+    Object.defineProperty(globalThis, "crypto", {
+      value: { getRandomValues: cryptoDesc?.value?.getRandomValues?.bind(cryptoDesc.value) },
+      configurable: true,
+    });
+
+    try {
+      expect(isWebCryptoAvailable()).toBe(false);
+      const res = await encryptedBackendClient.sendEncryptedPost<
+        { emailOrUsername: string; password: string },
+        { username: string; email: string }
+      >("/auth/login", {
+        emailOrUsername: "mobile@comictraffic.com",
+        password: ["Mob", Date.now().toString(36), "!"].join("_"),
+      });
+
+      expect(res.fromBackend).toBe(true);
+      expect(res.data?.username).toBe("mobile_user");
+      expect(postSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      if (cryptoDesc) {
+        Object.defineProperty(globalThis, "crypto", cryptoDesc);
+      }
+      postSpy.mockRestore();
+    }
   });
 });

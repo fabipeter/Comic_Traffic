@@ -1,4 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
+import { INITIAL_CUMULATIVE_CATALOG } from "../api/catalogData";
 import {
   AggregatedMediaItem,
   calculateCumulativeRating,
@@ -251,7 +252,7 @@ export const ANIMEDEX_SKINS: AnimeDexSkinOption[] = [
 ];
 
 export default class RatingStore {
-  catalog: AggregatedMediaItem[] = [];
+  catalog: AggregatedMediaItem[] = [...INITIAL_CUMULATIVE_CATALOG];
   isLoadingCatalog: boolean = false;
   selectedCategory: "All" | MediaCategoryType = "All";
   selectedGenre: string = "All";
@@ -307,7 +308,19 @@ export default class RatingStore {
       const res = await encryptedBackendClient.sendEncryptedGet<AggregatedMediaItem[]>("/media");
       if (res.fromBackend && Array.isArray(res.data) && res.data.length > 0) {
         runInAction(() => {
-          this.catalog = res.data!;
+          // Merge incoming backend items with rich client catalog so no curated media is lost
+          const backendMap = new Map(res.data!.map((item) => [item.externalId, item]));
+          const merged = this.catalog.map((clientItem) => {
+            const serverItem = backendMap.get(clientItem.externalId);
+            return serverItem ? { ...clientItem, ...serverItem } : clientItem;
+          });
+          // Also include any items present on the server that weren't in the initial set
+          for (const serverItem of res.data!) {
+            if (!merged.some((m) => m.externalId === serverItem.externalId)) {
+              merged.push(serverItem);
+            }
+          }
+          this.catalog = merged;
           this.isLoadingCatalog = false;
         });
         return;

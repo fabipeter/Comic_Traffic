@@ -23,11 +23,49 @@ const LandingPage = () => {
   const { ratingStore } = useStore();
   const filtered = ratingStore.filteredCatalog;
 
-  const comicItems = ratingStore.catalog.filter(
-    (c) => c.mediaType === "ComicBook"
+  const movieItems = [...ratingStore.catalog]
+    .filter((c) => c.mediaType === "Movie")
+    .sort(
+      (a, b) =>
+        b.cumulativeRating.finalCumulativeAverage -
+        a.cumulativeRating.finalCumulativeAverage
+    );
+
+  const comicItems = [...ratingStore.catalog]
+    .filter((c) => c.mediaType === "ComicBook")
+    .sort(
+      (a, b) =>
+        b.cumulativeRating.finalCumulativeAverage -
+        a.cumulativeRating.finalCumulativeAverage
+    );
+
+  const tvItems = [...ratingStore.catalog]
+    .filter((c) => c.mediaType === "TvSeries")
+    .sort(
+      (a, b) =>
+        b.cumulativeRating.finalCumulativeAverage -
+        a.cumulativeRating.finalCumulativeAverage
+    );
+
+  const hallOfFameItems = [...ratingStore.catalog]
+    .filter((c) => c.cumulativeRating.finalCumulativeAverage >= 90)
+    .sort(
+      (a, b) =>
+        b.cumulativeRating.finalCumulativeAverage -
+        a.cumulativeRating.finalCumulativeAverage
+    );
+
+  const trendingItems = [...ratingStore.catalog].sort(
+    (a, b) =>
+      b.cumulativeRating.totalSourcesVoteCount -
+      a.cumulativeRating.totalSourcesVoteCount
   );
-  const movieItems = ratingStore.catalog.filter((c) => c.mediaType === "Movie");
-  const tvItems = ratingStore.catalog.filter((c) => c.mediaType === "TvSeries");
+
+  const audienceFavorites = [...ratingStore.catalog].sort(
+    (a, b) =>
+      b.cumulativeRating.audienceConsensusScore -
+      a.cumulativeRating.audienceConsensusScore
+  );
 
   const handleExplorerSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -461,31 +499,31 @@ const LandingPage = () => {
 
       {/* Curated Category Rows */}
       <Row
-        title="📚 Acclaimed Comic Books & Graphic Novels (ComicVine, LOCG, Goodreads, CBR)"
-        items={comicItems}
-        isLargeRow
-      />
-      <Row
-        title="🎬 Top Cumulative Rated Comic & Sci-Fi Movies"
+        title="🌟 All-Time Top Rated Cinema & Blockbusters"
         items={movieItems}
         isLargeRow
       />
       <Row
-        title="📺 Highest Rated Comic & Sci-Fi TV Series (IMDb, RT, TVMaze, Trakt)"
+        title="📚 Acclaimed Comic Books & Graphic Novels"
+        items={comicItems}
+        isLargeRow
+      />
+      <Row
+        title="📺 Highest Rated TV Series & Streaming Originals"
         items={tvItems}
         isLargeRow
       />
       <Row
-        title="🔥 Trending Across Global APIs Now"
-        isLargeRow
+        title="👑 Masterpiece Hall of Fame (Score 90%+)"
+        items={hallOfFameItems}
       />
       <Row
-        title="🌟 All-Time Top Rated Cinema"
-        categoryFilter="Movie"
+        title="🔥 Trending Across Global APIs (Highest Vote Consensus)"
+        items={trendingItems}
       />
       <Row
-        title="📺 Streaming Originals & Series"
-        categoryFilter="TvSeries"
+        title="⚡ Audience Favorites & Cult Acclaim"
+        items={audienceFavorites}
       />
 
       {/* Comic Traffic Footer */}

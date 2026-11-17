@@ -29,11 +29,12 @@ public class AuthUserResponseDto
 }
 
 public record RegisterUserCommand(
-    [property: Required] string Username,
-    [property: Required, EmailAddress] string Email,
-    [property: Required] string Password,
+    [Required] string Username,
+    [Required, EmailAddress] string Email,
+    [Required] string Password,
     string? DisplayName = null,
-    string? FavoriteGenresCsv = null
+    string? FavoriteGenresCsv = null,
+    string? RequestOrigin = null
 ) : IRequest<AuthUserResponseDto>;
 
 public record LoginUserCommand(
@@ -76,11 +77,22 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, A
 {
     private readonly ComicTrafficDbContext _db;
     private readonly IJwtTokenService _jwtService;
+    private readonly IEmailService? _emailService;
+    private readonly IConfiguration? _config;
+    private readonly ILogger<RegisterUserCommandHandler>? _logger;
 
-    public RegisterUserCommandHandler(ComicTrafficDbContext db, IJwtTokenService jwtService)
+    public RegisterUserCommandHandler(
+        ComicTrafficDbContext db,
+        IJwtTokenService jwtService,
+        IEmailService? emailService = null,
+        IConfiguration? config = null,
+        ILogger<RegisterUserCommandHandler>? logger = null)
     {
         _db = db;
         _jwtService = jwtService;
+        _emailService = emailService;
+        _config = config;
+        _logger = logger;
     }
 
     public async Task<AuthUserResponseDto> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
@@ -122,6 +134,28 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, A
         _db.Users.Add(newUser);
         await _db.SaveChangesAsync(cancellationToken);
 
+        if (_emailService != null)
+        {
+            string appUrl = AuthUrlSecurityHelper.ResolveSafeAppBaseUrl(request.RequestOrigin, _config);
+            try
+            {
+                bool sent = await _emailService.SendWelcomeEmailAsync(
+                    newUser.Email,
+                    newUser.DisplayName,
+                    newUser.Username,
+                    appUrl,
+                    cancellationToken);
+                if (!sent)
+                {
+                    _logger?.LogWarning("Welcome email dispatch returned failure for user ID {UserId}. Check SendGrid configuration.", newUser.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to dispatch welcome email for user ID {UserId}", newUser.Id);
+            }
+        }
+
         return AuthMapper.ToDto(newUser, _jwtService.GenerateToken(newUser));
     }
 }
@@ -149,6 +183,42 @@ public class LoginUserCommandHandler : IRequestHandler<LoginUserCommand, AuthUse
 
         string token = _jwtService.GenerateToken(user);
         return AuthMapper.ToDto(user, token);
+    }
+}
+
+internal static class AuthUrlSecurityHelper
+{
+    private static readonly HashSet<string> TrustedOrigins = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "https://comictraffic.com",
+        "https://www.comictraffic.com"
+    };
+
+    public static string ResolveSafeAppBaseUrl(string? requestOrigin, IConfiguration? config)
+    {
+        if (!string.IsNullOrWhiteSpace(requestOrigin))
+        {
+            string trimmedOrigin = requestOrigin.Trim().TrimEnd('/');
+            if (TrustedOrigins.Contains(trimmedOrigin))
+            {
+                return trimmedOrigin;
+            }
+        }
+
+        string candidate = Environment.GetEnvironmentVariable("APP_BASE_URL")
+            ?? config?["EmailSettings:AppBaseUrl"]
+            ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(candidate) &&
+            Uri.TryCreate(candidate.Trim(), UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttps || (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)))
+        {
+            return uri.GetLeftPart(UriPartial.Authority);
+        }
+        return "https://comictraffic.com";
     }
 }
 
@@ -213,10 +283,7 @@ public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordComman
         user.PasswordResetFailedAttempts = 0;
         await _db.SaveChangesAsync(cancellationToken);
 
-        string configuredBase = Environment.GetEnvironmentVariable("APP_BASE_URL")
-            ?? _config["EmailSettings:AppBaseUrl"]
-            ?? string.Empty;
-        string appBaseUrl = ResolveSafeAppBaseUrl(request.RequestOrigin, configuredBase);
+        string appBaseUrl = AuthUrlSecurityHelper.ResolveSafeAppBaseUrl(request.RequestOrigin, _config);
         string resetUrl = $"{appBaseUrl.TrimEnd('/')}/reset-password?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(user.Email)}";
 
         try
@@ -237,35 +304,6 @@ public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordComman
         }
 
         return new ForgotPasswordResponseDto(true, UniformRecoveryMessage);
-    }
-
-    private static readonly HashSet<string> TrustedResetOrigins = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5173",
-        "https://comictraffic.com",
-        "https://www.comictraffic.com"
-    };
-
-    private static string ResolveSafeAppBaseUrl(string? requestOrigin, string? candidate)
-    {
-        if (!string.IsNullOrWhiteSpace(requestOrigin))
-        {
-            string trimmedOrigin = requestOrigin.Trim().TrimEnd('/');
-            if (TrustedResetOrigins.Contains(trimmedOrigin))
-            {
-                return trimmedOrigin;
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(candidate) &&
-            Uri.TryCreate(candidate.Trim(), UriKind.Absolute, out var uri) &&
-            (uri.Scheme == Uri.UriSchemeHttps || (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)))
-        {
-            return uri.GetLeftPart(UriPartial.Authority);
-        }
-        return "https://comictraffic.com";
     }
 }
 

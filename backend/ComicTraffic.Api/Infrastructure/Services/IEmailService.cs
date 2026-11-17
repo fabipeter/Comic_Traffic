@@ -13,4 +13,11 @@ public interface IEmailService
         string toEmail,
         string username,
         CancellationToken ct = default);
+
+    Task<bool> SendWelcomeEmailAsync(
+        string toEmail,
+        string displayName,
+        string username,
+        string appUrl,
+        CancellationToken ct = default);
 }

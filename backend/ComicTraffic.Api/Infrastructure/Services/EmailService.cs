@@ -78,6 +78,29 @@ public class EmailService : IEmailService
         return await DispatchEmailAsync(toEmail, safeSubject, htmlBody, plainText, ct);
     }
 
+    public async Task<bool> SendWelcomeEmailAsync(
+        string toEmail,
+        string displayName,
+        string username,
+        string appUrl,
+        CancellationToken ct = default)
+    {
+        string safeSubject = "Welcome to Comic Traffic — Your Cumulative Rating Hub Is Ready";
+        string safeDisplay = SanitizeHeaderValue(displayName);
+        string safeUser = SanitizeHeaderValue(username);
+        string safeUrl = SanitizeHeaderValue(appUrl);
+        string htmlBody = BuildWelcomeHtml(safeDisplay, safeUser, safeUrl);
+        string plainText = $"Welcome to Comic Traffic, {safeDisplay} (@{safeUser})!\n\n" +
+            $"Your account is live. Explore Movies, TV Series, and Comic Books ranked by weighted Multi-API consensus:\n" +
+            $"- Compare up to 3 titles side-by-side in the Compare Arena\n" +
+            $"- Customize critic, audience, and comic community source weights\n" +
+            $"- Build trackable watchlists, reading lists, and community reviews\n\n" +
+            $"Open Comic Traffic: {safeUrl}\n\n" +
+            $"Best regards,\nComic Traffic Team";
+
+        return await DispatchEmailAsync(toEmail, safeSubject, htmlBody, plainText, ct);
+    }
+
     public async Task<bool> SendPasswordResetConfirmationEmailAsync(
         string toEmail,
         string username,
@@ -585,6 +608,134 @@ public class EmailService : IEmailService
       <p>You can now sign in with your new password on any device.</p>
       <p style=""color: #f87171;"">
         &#9888; <strong>Did not perform this action?</strong> If you did not make this change, please contact Comic Traffic Support immediately to lock your account.
+      </p>
+    </div>
+    <div class=""footer"">
+      &copy; {DateTime.UtcNow.Year} Comic Traffic Telemetry Consensus Engine. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>";
+    }
+
+    private static string BuildWelcomeHtml(string displayName, string username, string appUrl)
+    {
+        string resolvedUrl = string.IsNullOrWhiteSpace(appUrl) ? "https://comictraffic.com" : appUrl.TrimEnd('/');
+        return $@"<!DOCTYPE html>
+<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"" />
+  <title>Welcome to Comic Traffic</title>
+  <style>
+    body {{
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #060911;
+      color: #e2e8f0;
+    }}
+    .container {{
+      max-width: 600px;
+      margin: 32px auto;
+      background: #0b1222;
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    }}
+    .header {{
+      background: linear-gradient(135deg, #0f172a, #1e3a8a);
+      padding: 32px 24px;
+      text-align: center;
+      border-bottom: 1px solid rgba(59, 130, 246, 0.4);
+    }}
+    .brand-title {{
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: #ffffff;
+      margin: 0;
+    }}
+    .brand-title span {{
+      color: #3b82f6;
+    }}
+    .brand-sub {{
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: #94a3b8;
+      margin-top: 4px;
+      display: block;
+    }}
+    .content {{
+      padding: 32px 28px;
+    }}
+    h1 {{
+      font-size: 20px;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-top: 0;
+    }}
+    p {{
+      font-size: 14px;
+      line-height: 1.6;
+      color: #cbd5e1;
+      margin: 14px 0;
+    }}
+    .feature-box {{
+      margin: 22px 0;
+      padding: 18px 20px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      border-radius: 12px;
+      font-size: 13px;
+      color: #e2e8f0;
+      line-height: 1.7;
+    }}
+    .cta-button {{
+      display: block;
+      margin: 26px 0;
+      padding: 14px 28px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #ffffff !important;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 15px;
+      text-align: center;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+    }}
+    .footer {{
+      padding: 20px 24px;
+      background: #070b14;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      text-align: center;
+      font-size: 11px;
+      color: #64748b;
+    }}
+  </style>
+</head>
+<body>
+  <div class=""container"">
+    <div class=""header"">
+      <div class=""brand-title"">COMIC<span>TRAFFIC</span></div>
+      <span class=""brand-sub"">CUMULATIVE RATING HUB &bull; WELCOME ABOARD</span>
+    </div>
+    <div class=""content"">
+      <h1>Welcome to Comic Traffic!</h1>
+      <p>Hello <strong>{WebUtility.HtmlEncode(displayName)}</strong> (<code>@{WebUtility.HtmlEncode(username)}</code>),</p>
+      <p>Your Comic Traffic account is active and ready. You now have access to real-time multi-source ratings across Comic Books, Movies, and TV Series:</p>
+
+      <div class=""feature-box"">
+        &#9889; <strong>Compare Arena:</strong> Compare up to 3 titles side-by-side<br />
+        &#9878; <strong>Custom Weights:</strong> Tune Critic, Audience, and Comic DB sources<br />
+        &#128218; <strong>Watchlist &amp; Lists:</strong> Track reading and viewing progress anywhere
+      </div>
+
+      <a href=""{WebUtility.HtmlEncode(resolvedUrl)}/dashboard"" class=""cta-button"">Open Your Comic Traffic Hub</a>
+
+      <p style=""font-size: 12px; color: #94a3b8;"">
+        Your email address is verified for account recovery and security alerts.
       </p>
     </div>
     <div class=""footer"">

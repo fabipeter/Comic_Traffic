@@ -197,6 +197,8 @@ public class ComicTrafficBackendTests
         private readonly IEmailService _inner;
         public string? LastResetToken { get; private set; }
         public string? LastResetUrl { get; private set; }
+        public string? LastWelcomeEmail { get; private set; }
+        public string? LastWelcomeUrl { get; private set; }
 
         public CapturingEmailService(IEmailService inner) => _inner = inner;
 
@@ -209,6 +211,13 @@ public class ComicTrafficBackendTests
 
         public Task<bool> SendPasswordResetConfirmationEmailAsync(string toEmail, string username, CancellationToken ct = default) =>
             _inner.SendPasswordResetConfirmationEmailAsync(toEmail, username, ct);
+
+        public Task<bool> SendWelcomeEmailAsync(string toEmail, string displayName, string username, string appUrl, CancellationToken ct = default)
+        {
+            LastWelcomeEmail = toEmail;
+            LastWelcomeUrl = appUrl;
+            return _inner.SendWelcomeEmailAsync(toEmail, displayName, username, appUrl, ct);
+        }
     }
 
     [Fact]
@@ -216,12 +225,16 @@ public class ComicTrafficBackendTests
     {
         using var db = CreateInMemoryDbContext();
         var jwtService = new JwtTokenService(CreateTestConfiguration());
+        var config = CreateTestConfiguration();
+        using var loggerFactory = LoggerFactory.Create(b => {});
+        var emailLogger = loggerFactory.CreateLogger<EmailService>();
+        var emailService = new CapturingEmailService(new EmailService(config, emailLogger));
 
         string initialPass = string.Concat("Spidey_", Guid.NewGuid().ToString("N")[..10], "!");
         string updatedPass = string.Concat("Updated_", Guid.NewGuid().ToString("N")[..10], "!");
         string invalidCode = string.Concat("CT-", "0", "0", "0", "0", "0", "0");
 
-        var registerHandler = new RegisterUserCommandHandler(db, jwtService);
+        var registerHandler = new RegisterUserCommandHandler(db, jwtService, emailService, config);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             registerHandler.Handle(new RegisterUserCommand("no_email_user", "", initialPass), CancellationToken.None));
@@ -231,11 +244,19 @@ public class ComicTrafficBackendTests
             registerHandler.Handle(new RegisterUserCommand("bad_email_user", "not-an-email", initialPass), CancellationToken.None));
 
         var registered = await registerHandler.Handle(
-            new RegisterUserCommand("peter_parker", "peter@dailybugle.com", initialPass, "Peter Parker"),
+            new RegisterUserCommand("peter_parker", "peter@dailybugle.com", initialPass, "Peter Parker", null, "http://localhost:3000"),
             CancellationToken.None);
 
         Assert.Equal("peter_parker", registered.Username);
         Assert.False(string.IsNullOrWhiteSpace(registered.AccessToken));
+        Assert.Equal("peter@dailybugle.com", emailService.LastWelcomeEmail);
+        Assert.Equal("http://localhost:3000", emailService.LastWelcomeUrl);
+
+        // Verify ASP.NET Core record validation metadata binds to primary constructor parameters (not properties)
+        var emailProp = typeof(RegisterUserCommand).GetProperty(nameof(RegisterUserCommand.Email))!;
+        Assert.Empty(emailProp.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.ValidationAttribute), true));
+        var ctorEmailParam = typeof(RegisterUserCommand).GetConstructors()[0].GetParameters().First(p => p.Name == "Email");
+        Assert.NotEmpty(ctorEmailParam.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.RequiredAttribute), true));
 
         var loginHandler = new LoginUserCommandHandler(db, jwtService);
         var loggedIn = await loginHandler.Handle(
@@ -247,10 +268,6 @@ public class ComicTrafficBackendTests
         Assert.False(string.IsNullOrWhiteSpace(loggedIn.AccessToken));
 
         // 3. Test Forgot Password and Reset Password Flow with Real DB persistence, Hashed Token & Attempt Lockout
-        var config = CreateTestConfiguration();
-        using var loggerFactory = LoggerFactory.Create(b => {});
-        var emailLogger = loggerFactory.CreateLogger<EmailService>();
-        var emailService = new CapturingEmailService(new EmailService(config, emailLogger));
         var forgotLogger = loggerFactory.CreateLogger<ForgotPasswordCommandHandler>();
         var resetLogger = loggerFactory.CreateLogger<ResetPasswordCommandHandler>();
 
@@ -477,6 +494,16 @@ public class ComicTrafficBackendTests
         Assert.Contains("\"noreply@comictraffic.io\"", okHandler.LastBody);
         Assert.Contains("CT-654321", okHandler.LastBody);
         Assert.Contains("\"click_tracking\":{\"enable\":false,\"enable_text\":false}", okHandler.LastBody);
+
+        bool welcomeSent = await okService.SendWelcomeEmailAsync(
+            "gwen@dailybugle.com",
+            "Gwen Stacy",
+            "ghost_spider",
+            "https://comictraffic.com",
+            CancellationToken.None);
+        Assert.True(welcomeSent);
+        Assert.Contains("Welcome to Comic Traffic!", okHandler.LastBody);
+        Assert.Contains("https://comictraffic.com/dashboard", okHandler.LastBody);
 
         var forbiddenHandler = new StubSendGridHandler(HttpStatusCode.Forbidden);
         using var forbiddenClient = new HttpClient(forbiddenHandler);

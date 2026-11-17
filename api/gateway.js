@@ -216,6 +216,119 @@ async function sendEmailViaSendGrid({ toEmail, subject, plainText, htmlBody }) {
   }
 }
 
+function wrapBrandedEmailHtml({
+  title,
+  subtitle,
+  headerBg = "linear-gradient(135deg, #0f172a, #1e3a8a)",
+  borderColor = "rgba(59, 130, 246, 0.35)",
+  accentSpanColor = "#3b82f6",
+  bodyHtml,
+  includeNoReplyFooter = false,
+}) {
+  const year = new Date().getUTCFullYear();
+  const extraFooter = includeNoReplyFooter
+    ? "<br />This is an automated security transmission. Please do not reply directly to this address."
+    : "";
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escapeHtml(title)}</title>
+  <style>
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #060911; color: #e2e8f0; }
+    .container { max-width: 600px; margin: 32px auto; background: #0b1222; border: 1px solid ${borderColor}; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6); }
+    .header { background: ${headerBg}; padding: 32px 24px; text-align: center; border-bottom: 1px solid ${borderColor}; }
+    .brand-title { font-size: 24px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin: 0; }
+    .brand-title span { color: ${accentSpanColor}; }
+    .brand-sub { font-size: 11px; letter-spacing: 3px; color: #94a3b8; margin-top: 4px; display: block; }
+    .content { padding: 32px 28px; }
+    h1 { font-size: 20px; font-weight: 800; color: #f8fafc; margin-top: 0; }
+    p { font-size: 14px; line-height: 1.6; color: #cbd5e1; margin: 14px 0; }
+    .code-box { margin: 24px 0; padding: 18px 24px; background: rgba(15, 23, 42, 0.95); border: 2px dashed #3b82f6; border-radius: 12px; text-align: center; }
+    .code-label { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #94a3b8; margin-bottom: 6px; }
+    .code-value { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #60a5fa; }
+    .feature-box { margin: 22px 0; padding: 18px 20px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 12px; font-size: 13px; color: #e2e8f0; line-height: 1.7; }
+    .cta-button { display: block; margin: 26px 0; padding: 14px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4); }
+    .notice { padding: 12px 16px; background: rgba(245, 158, 11, 0.1); border-left: 3px solid #f59e0b; border-radius: 6px; font-size: 12px; color: #fcd34d; margin-top: 24px; }
+    .alert-box { padding: 16px; background: rgba(16, 185, 129, 0.12); border: 1px solid #10b981; border-radius: 10px; color: #a7f3d0; font-size: 13px; margin: 20px 0; }
+    .footer { padding: 20px 24px; background: #070b14; border-top: 1px solid rgba(255, 255, 255, 0.06); text-align: center; font-size: 11px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="brand-title">COMIC<span>TRAFFIC</span></div>
+      <span class="brand-sub">${escapeHtml(subtitle)}</span>
+    </div>
+    <div class="content">${bodyHtml}</div>
+    <div class="footer">&copy; ${year} Comic Traffic Telemetry Consensus Engine. All rights reserved.${extraFooter}</div>
+  </div>
+</body>
+</html>`;
+}
+
+function buildPasswordResetEmailHtml({ recipientLabel, recoveryCode, resetUrl }) {
+  return wrapBrandedEmailHtml({
+    title: "Reset Your Comic Traffic Password",
+    subtitle: "CUMULATIVE RATING HUB \u2022 ACCOUNT SECURITY",
+    includeNoReplyFooter: true,
+    bodyHtml: `
+      <h1>Password Recovery Request</h1>
+      <p>Hello <strong>${escapeHtml(recipientLabel)}</strong>,</p>
+      <p>We received a request to reset the password for your Comic Traffic account. Use the verification code below to authorize this change:</p>
+      <div class="code-box">
+        <div class="code-label">Your 15-Minute Verification Code</div>
+        <div class="code-value">${escapeHtml(recoveryCode)}</div>
+      </div>
+      <p style="text-align: center;">Or click the button below to open the password recovery page directly:</p>
+      <a href="${escapeHtml(resetUrl)}" class="cta-button">Reset Password Now</a>
+      <div class="notice">
+        &#9888; <strong>Security Advisory:</strong> This code and link will expire in <strong>15 minutes</strong>. If you did not request a password reset, please disregard this email. Your Comic Traffic account remains fully secure.
+      </div>`,
+  });
+}
+
+function buildWelcomeEmailHtml({ displayName, username, appUrl }) {
+  const safeBase = String(appUrl || "https://comictraffic.com").replace(/\/+$/, "");
+  return wrapBrandedEmailHtml({
+    title: "Welcome to Comic Traffic",
+    subtitle: "CUMULATIVE RATING HUB \u2022 WELCOME ABOARD",
+    bodyHtml: `
+      <h1>Welcome to Comic Traffic!</h1>
+      <p>Hello <strong>${escapeHtml(displayName)}</strong> (<code>@${escapeHtml(username)}</code>),</p>
+      <p>Your Comic Traffic account is active and ready. You now have access to real-time multi-source ratings across Comic Books, Movies, and TV Series:</p>
+      <div class="feature-box">
+        &#9889; <strong>Compare Arena:</strong> Compare up to 3 titles side-by-side<br />
+        &#9878; <strong>Custom Weights:</strong> Tune Critic, Audience, and Comic DB sources<br />
+        &#128218; <strong>Watchlist &amp; Lists:</strong> Track reading and viewing progress anywhere
+      </div>
+      <a href="${escapeHtml(safeBase)}/dashboard" class="cta-button">Open Your Comic Traffic Hub</a>
+      <p style="font-size: 12px; color: #94a3b8;">Your email address is verified for account recovery and security alerts.</p>`,
+  });
+}
+
+function buildPasswordChangedEmailHtml({ recipientLabel }) {
+  const timestamp = new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC";
+  return wrapBrandedEmailHtml({
+    title: "Comic Traffic Password Changed",
+    subtitle: "CUMULATIVE RATING HUB \u2022 ACCOUNT SECURITY",
+    headerBg: "linear-gradient(135deg, #064e3b, #047857)",
+    borderColor: "rgba(16, 185, 129, 0.35)",
+    accentSpanColor: "#34d399",
+    bodyHtml: `
+      <h1>&#10003; Password Updated Successfully</h1>
+      <p>Hello <strong>${escapeHtml(recipientLabel)}</strong>,</p>
+      <div class="alert-box">
+        The password for your Comic Traffic account was updated on <strong>${escapeHtml(timestamp)}</strong>.
+      </div>
+      <p>You can now sign in with your new password on any device.</p>
+      <p style="color: #f87171;">
+        &#9888; <strong>Did not perform this action?</strong> If you did not make this change, please contact Comic Traffic Support immediately to lock your account.
+      </p>`,
+  });
+}
+
 function calculateCumulativeSummary(sources) {
   const active = Array.isArray(sources) ? sources : [];
   if (active.length === 0) {
@@ -1891,19 +2004,20 @@ module.exports = async function handler(req, res) {
         const baseUrl = resolveSafeAppBaseUrl(process.env.APP_BASE_URL, originHeader);
         const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(recoveryCode)}&email=${encodeURIComponent(validEmail)}`;
 
+        const recipientLabel = validEmail.split("@")[0] || "Reader";
         const sendResult = await sendEmailViaSendGrid({
           toEmail: validEmail,
           subject: "[Comic Traffic] Password Reset Verification Code",
           plainText:
-            `Hello,\n\nWe received a request to reset your Comic Traffic password.\n` +
-            `Verification code: ${recoveryCode}\nReset link: ${resetUrl}\n\n` +
-            `This code expires in 15 minutes.`,
-          htmlBody:
-            `<div style="font-family:sans-serif;padding:24px;background:#0b1222;color:#e2e8f0;">` +
-            `<h2>Comic Traffic Password Reset</h2>` +
-            `<p>Your 15-minute verification code: <strong style="font-size:20px;color:#60a5fa;">${escapeHtml(recoveryCode)}</strong></p>` +
-            `<p><a href="${escapeHtml(resetUrl)}" style="color:#60a5fa;">Reset Password Now</a></p>` +
-            `</div>`,
+            `Hello ${recipientLabel},\n\nWe received a request to reset your Comic Traffic account password.\n\n` +
+            `Your verification code is: ${recoveryCode}\nDirect reset link: ${resetUrl}\n\n` +
+            `This code expires in 15 minutes. If you did not make this request, you can safely ignore this email.\n\n` +
+            `Best regards,\nComic Traffic Security Team`,
+          htmlBody: buildPasswordResetEmailHtml({
+            recipientLabel,
+            recoveryCode,
+            resetUrl,
+          }),
         });
 
         if (!sendResult.sent) {
@@ -1961,12 +2075,33 @@ module.exports = async function handler(req, res) {
           ? sanitizeHeaderText(decryptedRequest.displayName)
           : cleanUsername;
 
+      const favoriteGenres =
+        typeof decryptedRequest?.favoriteGenresCsv === "string" &&
+        decryptedRequest.favoriteGenresCsv.trim().length > 0
+          ? decryptedRequest.favoriteGenresCsv
+              .split(",")
+              .map((g) => sanitizeHeaderText(g))
+              .filter(Boolean)
+          : ["Action", "Superhero", "Sci-Fi", "Graphic Novel"];
+
+      const regOriginHeader = Array.isArray(req.headers?.origin) ? req.headers.origin[0] : req.headers?.origin;
+      const appUrl = resolveSafeAppBaseUrl(process.env.APP_BASE_URL, regOriginHeader);
+
       if (typeof process.env.SENDGRID_API_KEY === "string" && process.env.SENDGRID_API_KEY.trim()) {
         const welcomeResult = await sendEmailViaSendGrid({
           toEmail: cleanEmail,
-          subject: "Welcome to Comic Traffic!",
-          plainText: `Welcome ${cleanDisplayName}, your Comic Traffic account (${cleanUsername}) is ready.`,
-          htmlBody: `<div style="font-family:sans-serif;padding:24px;background:#0b1222;color:#e2e8f0;"><h2>Welcome to Comic Traffic, ${escapeHtml(cleanDisplayName)}!</h2><p>Your account is ready with registered email <strong>${escapeHtml(cleanEmail)}</strong>.</p></div>`,
+          subject: "Welcome to Comic Traffic — Your Cumulative Rating Hub Is Ready",
+          plainText:
+            `Welcome to Comic Traffic, ${cleanDisplayName} (@${cleanUsername})!\n\n` +
+            `Your account is live. Explore Comic Books, Movies, and TV Series ranked by weighted Multi-API consensus:\n` +
+            `- Compare Arena: compare up to 3 titles side-by-side\n` +
+            `- Custom Weights: tune Critic, Audience, and Comic DB sources\n\n` +
+            `Open Comic Traffic: ${appUrl}/dashboard\n`,
+          htmlBody: buildWelcomeEmailHtml({
+            displayName: cleanDisplayName,
+            username: cleanUsername,
+            appUrl,
+          }),
         });
         if (!welcomeResult.sent) {
           console.warn("[ComicTraffic SendGrid] Welcome email skipped/failed:", welcomeResult.status || welcomeResult.reason);
@@ -1981,6 +2116,7 @@ module.exports = async function handler(req, res) {
           username: cleanUsername,
           email: cleanEmail,
           displayName: cleanDisplayName,
+          favoriteGenres,
         },
         processedAt: new Date().toISOString(),
       });
@@ -1997,6 +2133,18 @@ module.exports = async function handler(req, res) {
           message: "New password must be a valid string of at least 6 characters.",
         });
       }
+
+      const resetTargetEmail = normalizeAndValidateEmail(decryptedRequest?.emailOrUsername);
+      if (resetTargetEmail && typeof process.env.SENDGRID_API_KEY === "string" && process.env.SENDGRID_API_KEY.trim()) {
+        const label = resetTargetEmail.split("@")[0] || "Reader";
+        await sendEmailViaSendGrid({
+          toEmail: resetTargetEmail,
+          subject: "[Comic Traffic] Security Alert: Your Password Was Successfully Changed",
+          plainText: `Hello ${label},\n\nThe password for your Comic Traffic account has been successfully updated.`,
+          htmlBody: buildPasswordChangedEmailHtml({ recipientLabel: label }),
+        });
+      }
+
       const encryptedResponse = encryptEnvelope({
         isSuccessful: true,
         message: "Your password has been successfully reset. You may now sign in.",

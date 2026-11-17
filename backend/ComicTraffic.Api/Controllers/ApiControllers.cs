@@ -27,7 +27,8 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var result = await _mediator.Send(command, ct);
+            string? origin = Request.Headers.Origin.FirstOrDefault();
+            var result = await _mediator.Send(command with { RequestOrigin = origin }, ct);
             return Ok(new { isSuccessful = true, data = result });
         }
         catch (InvalidOperationException ex)

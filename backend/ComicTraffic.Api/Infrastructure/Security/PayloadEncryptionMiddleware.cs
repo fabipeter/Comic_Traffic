@@ -110,30 +110,35 @@ public class PayloadEncryptionMiddleware
             using var memoryStream = new MemoryStream();
             context.Response.Body = memoryStream;
 
-            await _next(context);
-
-            memoryStream.Position = 0;
-            string plainResponse = await new StreamReader(memoryStream, Encoding.UTF8).ReadToEndAsync();
-
-            if (!string.IsNullOrWhiteSpace(plainResponse) && context.Response.StatusCode < 500)
+            try
             {
-                var encryptedEnvelope = encryptionService.EncryptPayload(plainResponse);
-                string encryptedJson = JsonSerializer.Serialize(encryptedEnvelope, JsonOptions);
-                byte[] encryptedBytes = Encoding.UTF8.GetBytes(encryptedJson);
+                await _next(context);
 
-                context.Response.Headers["X-Payload-Encrypted"] = "true";
-                context.Response.ContentType = "application/json; charset=utf-8";
-                context.Response.ContentLength = encryptedBytes.Length;
-
-                await originalBodyStream.WriteAsync(encryptedBytes);
-            }
-            else
-            {
                 memoryStream.Position = 0;
-                await memoryStream.CopyToAsync(originalBodyStream);
-            }
+                string plainResponse = await new StreamReader(memoryStream, Encoding.UTF8).ReadToEndAsync();
 
-            context.Response.Body = originalBodyStream;
+                if (!string.IsNullOrWhiteSpace(plainResponse) && context.Response.StatusCode < 500)
+                {
+                    var encryptedEnvelope = encryptionService.EncryptPayload(plainResponse);
+                    string encryptedJson = JsonSerializer.Serialize(encryptedEnvelope, JsonOptions);
+                    byte[] encryptedBytes = Encoding.UTF8.GetBytes(encryptedJson);
+
+                    context.Response.Headers["X-Payload-Encrypted"] = "true";
+                    context.Response.ContentType = "application/json; charset=utf-8";
+                    context.Response.ContentLength = encryptedBytes.Length;
+
+                    await originalBodyStream.WriteAsync(encryptedBytes);
+                }
+                else
+                {
+                    memoryStream.Position = 0;
+                    await memoryStream.CopyToAsync(originalBodyStream);
+                }
+            }
+            finally
+            {
+                context.Response.Body = originalBodyStream;
+            }
         }
         else
         {

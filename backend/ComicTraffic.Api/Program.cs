@@ -5,6 +5,7 @@ using ComicTraffic.Api.Infrastructure.Persistence;
 using ComicTraffic.Api.Infrastructure.Security;
 using ComicTraffic.Api.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -13,52 +14,112 @@ using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+bool isProduction = builder.Environment.IsProduction();
+
+// Cloud platforms (Railway, Render, Fly, Heroku-style hosts) inject the listening port via PORT.
+string? platformPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(platformPort) &&
+    string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 {
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "ComicTraffic Cumulative Rating CQRS API",
-        Version = "v1",
-        Description = "Cumulative rating API for Comic Books, Movies, and TV Series using CQRS (MediatR), AES-256-CBC Payload/Response Encryption, and PostgreSQL."
-    });
+    builder.WebHost.UseUrls($"http://0.0.0.0:{platformPort}");
+}
 
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT"
-    });
+string? gatewaySharedSecret = Environment.GetEnvironmentVariable("GATEWAY_SHARED_SECRET");
 
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+// Fail fast in production: never boot with ephemeral/default secrets or an open API.
+if (isProduction)
+{
+    var missing = new List<string>();
+    if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("DATABASE_URL")) &&
+        string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("DefaultConnection")))
+        missing.Add("DATABASE_URL");
+
+    string? jwtKey = Environment.GetEnvironmentVariable("JWT_SIGNING_KEY") ?? builder.Configuration["Jwt:Key"];
+    if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32)
+        missing.Add("JWT_SIGNING_KEY (min 32 characters)");
+
+    if (string.IsNullOrWhiteSpace(gatewaySharedSecret) || gatewaySharedSecret.Length < 24)
+        missing.Add("GATEWAY_SHARED_SECRET (min 24 characters)");
+
+    if (missing.Count > 0)
     {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
-    });
+        throw new InvalidOperationException(
+            "Production configuration is incomplete. Set: " + string.Join(", ", missing));
+    }
+}
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // The API is only reachable through the platform proxy + the authenticated gateway
+    // (GATEWAY_SHARED_SECRET), so the left-most X-Forwarded-For entry is the real client.
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+    options.ForwardLimit = null;
 });
 
-// Configure CORS for React Frontend
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+if (!isProduction)
+{
+    builder.Services.AddSwaggerGen(c =>
+    {
+        c.SwaggerDoc("v1", new OpenApiInfo
+        {
+            Title = "ComicTraffic Cumulative Rating CQRS API",
+            Version = "v1",
+            Description = "Cumulative rating API for Comic Books, Movies, and TV Series using CQRS (MediatR) and PostgreSQL."
+        });
+
+        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
+            Name = "Authorization",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT"
+        });
+
+        c.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                Array.Empty<string>()
+            }
+        });
+    });
+}
+
+// Configure CORS: open for local development, strict allow-list in production
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ComicTrafficCors", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .WithExposedHeaders("X-Payload-Encrypted");
+        if (isProduction)
+        {
+            string[] allowedOrigins = (Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS")
+                    ?? "https://comictraffic.com,https://www.comictraffic.com")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            policy.WithOrigins(allowedOrigins)
+                  .WithHeaders("Content-Type", "Authorization", "X-Payload-Encrypted", "X-Response-Encrypted", "X-Gateway-Secret")
+                  .WithMethods("GET", "POST", "PUT", "DELETE")
+                  .WithExposedHeaders("X-Payload-Encrypted");
+        }
+        else
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .WithExposedHeaders("X-Payload-Encrypted");
+        }
     });
 });
 
@@ -74,12 +135,16 @@ string configuredConn = !string.IsNullOrWhiteSpace(envDbUrl)
 if (configuredConn.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
     configuredConn.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
 {
-    configuredConn = ConvertPostgresUriToNpgsqlConnectionString(configuredConn);
+    configuredConn = ConvertPostgresUriToNpgsqlConnectionString(configuredConn, requireTls: isProduction);
 }
 
-bool useInMemoryFallback = builder.Configuration.GetValue<bool>("Database:UseInMemoryWhenPostgresOffline", true);
+bool useInMemoryFallback = !isProduction &&
+    builder.Configuration.GetValue<bool>("Database:UseInMemoryWhenPostgresOffline", true);
 
-string? workingPostgresConn = ResolveWorkingPostgresConnectionString(configuredConn);
+// Local development probes common credentials; production uses exactly the configured database.
+string? workingPostgresConn = isProduction
+    ? configuredConn
+    : ResolveWorkingPostgresConnectionString(configuredConn);
 
 builder.Services.AddDbContext<ComicTrafficDbContext>(options =>
 {
@@ -195,17 +260,63 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Enable Swagger UI in all environments and redirect root '/' to '/swagger'
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+if (!isProduction)
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "ComicTraffic CQRS API v1");
-    c.RoutePrefix = "swagger";
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "ComicTraffic CQRS API v1");
+        c.RoutePrefix = "swagger";
+    });
+    app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
+}
+else
+{
+    app.MapGet("/", () => Results.Ok(new
+    {
+        service = "ComicTraffic.Api",
+        status = "online",
+        timestamp = DateTimeOffset.UtcNow
+    })).ExcludeFromDescription();
+}
 
-app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "healthy",
+    service = "ComicTraffic.Api",
+    timestamp = DateTimeOffset.UtcNow
+})).ExcludeFromDescription();
 
 app.UseCors("ComicTrafficCors");
+
+// Require valid X-Gateway-Secret in production to block direct unauthenticated access
+if (isProduction && !string.IsNullOrWhiteSpace(gatewaySharedSecret))
+{
+    app.Use(async (context, next) =>
+    {
+        var path = context.Request.Path.Value ?? string.Empty;
+        if (HttpMethods.IsOptions(context.Request.Method) ||
+            path == "/" ||
+            path.StartsWith("/health", StringComparison.OrdinalIgnoreCase))
+        {
+            await next();
+            return;
+        }
+
+        if (context.Request.Headers.TryGetValue("X-Gateway-Secret", out var providedSecret) &&
+            CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(providedSecret.ToString()),
+                Encoding.UTF8.GetBytes(gatewaySharedSecret)))
+        {
+            await next();
+            return;
+        }
+
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync("{\"isSuccessful\":false,\"message\":\"Access forbidden: missing or invalid gateway credentials.\"}");
+    });
+}
 
 // Industry-Standard API Security Headers Middleware
 app.Use(async (context, next) =>
@@ -254,7 +365,7 @@ static string? ResolveWorkingPostgresConnectionString(string configuredConnectio
     return null;
 }
 
-static string ConvertPostgresUriToNpgsqlConnectionString(string uriString)
+static string ConvertPostgresUriToNpgsqlConnectionString(string uriString, bool requireTls = false)
 {
     try
     {
@@ -267,7 +378,9 @@ static string ConvertPostgresUriToNpgsqlConnectionString(string uriString)
             Database = uri.AbsolutePath.TrimStart('/'),
             Username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : string.Empty,
             Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : string.Empty,
-            SslMode = SslMode.Prefer,
+            // Managed Postgres (Supabase, Neon, Railway) presents provider-signed certificates:
+            // enforce TLS encryption in production without requiring a local CA bundle.
+            SslMode = requireTls ? SslMode.Require : SslMode.Prefer,
             Pooling = true,
             MinPoolSize = 1,
             MaxPoolSize = 20

@@ -1938,6 +1938,89 @@ module.exports = async function handler(req, res) {
     const rawEndpoint = req.query.endpoint ?? decryptedRequest?.endpoint;
     const endpoint = typeof rawEndpoint === "string" ? rawEndpoint : "";
 
+    // Backend Proxy: forward data & auth operations to the .NET Web API if BACKEND_API_URL is configured
+    const backendBase = (process.env.BACKEND_API_URL || "").trim().replace(/\/+$/, "");
+    const hasConfiguredBackend =
+      /^https:\/\//i.test(backendBase) ||
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(backendBase);
+
+    const BACKEND_PROXY_PREFIXES = [
+      "/auth/",
+      "/reviews",
+      "/dashboard",
+      "/media/calculate-custom",
+      "/media/compare",
+    ];
+    const isProxyTarget =
+      BACKEND_PROXY_PREFIXES.some((p) => endpoint.startsWith(p)) ||
+      endpoint === "/media";
+
+    if (hasConfiguredBackend && isProxyTarget) {
+      const { endpoint: _ignored, ...forwardBody } = decryptedRequest || {};
+      const originHeader = Array.isArray(req.headers?.origin) ? req.headers.origin[0] : req.headers?.origin;
+      const authHeader = Array.isArray(req.headers?.authorization) ? req.headers.authorization[0] : req.headers?.authorization;
+      const gatewaySecret = process.env.GATEWAY_SHARED_SECRET;
+
+      const forwardMethod = (req.method || "POST").toUpperCase();
+      const hasPayload = forwardMethod === "POST" || forwardMethod === "PUT" || forwardMethod === "PATCH";
+
+      const forwardHeaders = {
+        "Content-Type": "application/json",
+        ...(originHeader ? { Origin: originHeader } : {}),
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        ...(gatewaySecret ? { "X-Gateway-Secret": gatewaySecret } : {}),
+      };
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      let upstream;
+      try {
+        upstream = await fetch(`${backendBase}/api${endpoint}`, {
+          method: forwardMethod,
+          headers: forwardHeaders,
+          ...(hasPayload ? { body: JSON.stringify(forwardBody) } : {}),
+          signal: controller.signal,
+        });
+      } catch {
+        return res.status(502).json({
+          isSuccessful: false,
+          message: "Unable to reach the backend service. Please verify BACKEND_API_URL and container health.",
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+
+      let upstreamJson = null;
+      try {
+        upstreamJson = await upstream.json();
+      } catch {
+        upstreamJson = null;
+      }
+
+      if (!upstream.ok || !upstreamJson) {
+        const status = upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502;
+        return res.status(status).json({
+          isSuccessful: false,
+          message:
+            upstreamJson?.responseMessage ||
+            upstreamJson?.message ||
+            upstreamJson?.title ||
+            "Backend request failed.",
+        });
+      }
+
+      res.setHeader("X-Payload-Encrypted", "true");
+      return res.status(200).json(encryptEnvelope(upstreamJson));
+    }
+
+    if (!hasConfiguredBackend && endpoint === "/auth/login") {
+      return res.status(503).json({
+        isSuccessful: false,
+        message:
+          "Authentication service is not configured. Set BACKEND_API_URL in your Vercel project to your deployed Comic Traffic API.",
+      });
+    }
+
     // Backend Multi-API Search
     if (endpoint === "/media/search-live") {
       const searchQuery = typeof decryptedRequest?.query === "string" ? decryptedRequest.query : "";

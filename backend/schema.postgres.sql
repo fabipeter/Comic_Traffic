@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS users (
     "Role" VARCHAR(32) NOT NULL DEFAULT 'User',
     "FavoriteGenresCsv" VARCHAR(500) NOT NULL DEFAULT '',
     "PreferredWeightsJson" JSONB NOT NULL DEFAULT '{}'::jsonb,
+    "PasswordResetToken" VARCHAR(200),
+    "PasswordResetExpiresAt" TIMESTAMPTZ,
+    "PasswordResetFailedAttempts" INTEGER NOT NULL DEFAULT 0,
     "CreatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

@@ -25,6 +25,7 @@ public class ComicTrafficDbContext : DbContext
             entity.ToTable("users");
             entity.HasIndex(u => u.Email).IsUnique();
             entity.HasIndex(u => u.Username).IsUnique();
+            entity.Property(u => u.PreferredWeightsJson).HasColumnType("jsonb");
         });
 
         modelBuilder.Entity<MediaItem>(entity =>
@@ -33,6 +34,7 @@ public class ComicTrafficDbContext : DbContext
             entity.HasIndex(m => m.ExternalId).IsUnique();
             entity.HasIndex(m => m.MediaType);
             entity.HasIndex(m => m.FinalCumulativeAverage);
+            entity.Property(m => m.ExternalRatingsJson).HasColumnType("jsonb");
         });
 
         modelBuilder.Entity<UserReview>(entity =>

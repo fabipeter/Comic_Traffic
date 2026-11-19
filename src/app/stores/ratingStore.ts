@@ -734,6 +734,12 @@ export default class RatingStore {
     try {
       const result = await searchLiveMultiApisDetailed(q);
       if (result.aborted) {
+        if (requestSeq === this.liveSearchSeq) {
+          runInAction(() => {
+            this.isSearchingLiveApis = false;
+            this.isSearchPending = false;
+          });
+        }
         return;
       }
       runInAction(() => {

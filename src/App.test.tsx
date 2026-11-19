@@ -1,6 +1,6 @@
 import React from "react";
 import axios from "axios";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import {
@@ -619,6 +619,63 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
 
     fireEvent.click(screen.getByLabelText(/Close compare arena/i));
     expect(store.ratingStore.compareModalOpen).toBe(false);
+  });
+
+  test("13b. Compare Module: slot inputs search, debounce, trigger on Enter/button, show dropdown suggestions, and pick item", async () => {
+    store.ratingStore.catalog = [...MOCK_BACKEND_CATALOG];
+    store.ratingStore.setCompareModalOpen(true);
+    const origSearch = store.ratingStore.executeLiveMultiApiSearch;
+    const searchSpy = vi.fn().mockResolvedValue(undefined as any);
+    store.ratingStore.executeLiveMultiApiSearch = searchSpy as any;
+
+    try {
+      render(
+        <MemoryRouter>
+          <CompareModal />
+        </MemoryRouter>
+      );
+
+      const slot1Input = screen.getByLabelText(
+        /Search and pick item for Compare Slot 1/i
+      );
+
+      // Focus slot 1: dropdown opens with suggested titles
+      act(() => {
+        fireEvent.focus(slot1Input);
+      });
+      expect(screen.getByText(/Suggested Titles to Pick/i)).toBeInTheDocument();
+
+      // Type query: "Dark Knight"
+      act(() => {
+        fireEvent.change(slot1Input, { target: { value: "Dark Knight" } });
+      });
+      expect(slot1Input).toHaveValue("Dark Knight");
+
+      // The clear query button (✕) should be visible
+      const clearQueryBtn = screen.getByLabelText(/Clear query in Slot 1/i);
+      expect(clearQueryBtn).toBeInTheDocument();
+
+      // Press Enter to trigger search immediately
+      act(() => {
+        fireEvent.keyDown(slot1Input, { key: "Enter" });
+      });
+      expect(searchSpy).toHaveBeenCalledWith("Dark Knight", false, true);
+
+      // Click 🔍 Search button
+      const searchBtn = screen.getByLabelText(/Search live APIs for Slot 1/i);
+      act(() => {
+        fireEvent.click(searchBtn);
+      });
+      expect(searchSpy).toHaveBeenCalledTimes(2);
+
+      // Clear query button clears the text
+      act(() => {
+        fireEvent.click(clearQueryBtn);
+      });
+      expect(slot1Input).toHaveValue("");
+    } finally {
+      store.ratingStore.executeLiveMultiApiSearch = origSearch;
+    }
   });
 
   test("14. Session Key Recovery: auto-refreshes handshake and retries once on Payload decryption signature mismatch", async () => {

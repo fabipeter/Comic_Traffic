@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { observer } from "mobx-react-lite";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../../app/stores/store";
@@ -8,7 +8,7 @@ import {
   WatchlistEntry,
   formatCumulativeScore,
 } from "../../app/api/ratingApis";
-import { sanitizeImageUrl } from "../../app/security/inputSanitizer";
+import { sanitizeImageUrl, sanitizeUserText } from "../../app/security/inputSanitizer";
 
 export const getScoreColor = (score: number): string => {
   if (score >= 88) return "#10b981";
@@ -28,27 +28,109 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
     "",
   ]);
   const [focusedSlot, setFocusedSlot] = useState<number | null>(null);
+  const [slotSearching, setSlotSearching] = useState<[boolean, boolean, boolean]>([
+    false,
+    false,
+    false,
+  ]);
 
-  const handleSlotQueryChange = async (slotIdx: number, val: string) => {
+  const debounceTimers = useRef<Array<ReturnType<typeof setTimeout> | null>>([
+    null,
+    null,
+    null,
+  ]);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setFocusedSlot(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      debounceTimers.current.forEach((t) => {
+        if (t) clearTimeout(t);
+      });
+    };
+  }, []);
+
+  const handleSlotQueryChange = (slotIdx: number, val: string) => {
+    const clean = sanitizeUserText(val, 160, false);
     const next: [string, string, string] = [...slotQueries] as [
       string,
       string,
       string
     ];
-    next[slotIdx] = val;
+    next[slotIdx] = clean;
     setSlotQueries(next);
     setFocusedSlot(slotIdx);
 
-    if (val.trim().length >= 2) {
-      await ratingStore.executeLiveMultiApiSearch(val, false);
+    if (debounceTimers.current[slotIdx]) {
+      clearTimeout(debounceTimers.current[slotIdx]!);
+      debounceTimers.current[slotIdx] = null;
+    }
+
+    const trimmed = clean.trim();
+    if (trimmed.length >= 2) {
+      setSlotSearching((prev) => {
+        const copy = [...prev] as [boolean, boolean, boolean];
+        copy[slotIdx] = true;
+        return copy;
+      });
+      debounceTimers.current[slotIdx] = setTimeout(async () => {
+        try {
+          await ratingStore.executeLiveMultiApiSearch(trimmed, false);
+        } finally {
+          setSlotSearching((prev) => {
+            const copy = [...prev] as [boolean, boolean, boolean];
+            copy[slotIdx] = false;
+            return copy;
+          });
+        }
+      }, 350);
+    } else {
+      setSlotSearching((prev) => {
+        const copy = [...prev] as [boolean, boolean, boolean];
+        copy[slotIdx] = false;
+        return copy;
+      });
     }
   };
 
-  const handlePickItemForSlot = (
-    slotIdx: number,
-    item: AggregatedMediaItem
-  ) => {
-    ratingStore.setComparisonSlot(slotIdx, item.externalId);
+  const handleTriggerSlotSearch = async (slotIdx: number, force: boolean = false) => {
+    if (debounceTimers.current[slotIdx]) {
+      clearTimeout(debounceTimers.current[slotIdx]!);
+      debounceTimers.current[slotIdx] = null;
+    }
+    const q = slotQueries[slotIdx].trim();
+    if (q.length >= 2) {
+      setSlotSearching((prev) => {
+        const copy = [...prev] as [boolean, boolean, boolean];
+        copy[slotIdx] = true;
+        return copy;
+      });
+      try {
+        await ratingStore.executeLiveMultiApiSearch(q, false, force);
+      } finally {
+        setSlotSearching((prev) => {
+          const copy = [...prev] as [boolean, boolean, boolean];
+          copy[slotIdx] = false;
+          return copy;
+        });
+      }
+    }
+  };
+
+  const handleClearSlotQuery = (slotIdx: number) => {
+    if (debounceTimers.current[slotIdx]) {
+      clearTimeout(debounceTimers.current[slotIdx]!);
+      debounceTimers.current[slotIdx] = null;
+    }
     const next: [string, string, string] = [...slotQueries] as [
       string,
       string,
@@ -56,15 +138,32 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
     ];
     next[slotIdx] = "";
     setSlotQueries(next);
+    setSlotSearching((prev) => {
+      const copy = [...prev] as [boolean, boolean, boolean];
+      copy[slotIdx] = false;
+      return copy;
+    });
+  };
+
+  const handlePickItemForSlot = (
+    slotIdx: number,
+    item: AggregatedMediaItem
+  ) => {
+    ratingStore.setComparisonSlot(slotIdx, item.externalId);
+    handleClearSlotQuery(slotIdx);
     setFocusedSlot(null);
   };
 
   return (
-    <div className="ct-compare-3slots-wrapper">
+    <div className="ct-compare-3slots-wrapper" ref={containerRef}>
       <div className="ct-compare-3slots-grid">
         {[0, 1, 2].map((slotIdx) => {
           const selectedItem = ratingStore.getComparisonSlotItem(slotIdx);
           const query = slotQueries[slotIdx];
+          const isSearching =
+            slotSearching[slotIdx] ||
+            (focusedSlot === slotIdx && ratingStore.isSearchInProgress);
+
           const suggestions = ratingStore
             .searchSuggestions(query, 12)
             .filter(
@@ -110,8 +209,39 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
                   onChange={(e) =>
                     handleSlotQueryChange(slotIdx, e.target.value)
                   }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleTriggerSlotSearch(slotIdx, true);
+                    } else if (e.key === "Escape") {
+                      setFocusedSlot(null);
+                    }
+                  }}
                   className="ct-slot-search-input"
                 />
+                <div className="ct-slot-search-actions">
+                  {query.length > 0 && (
+                    <button
+                      type="button"
+                      className="ct-slot-input-clear-btn"
+                      onClick={() => handleClearSlotQuery(slotIdx)}
+                      aria-label={`Clear query in Slot ${slotIdx + 1}`}
+                      title="Clear search text"
+                    >
+                      ✕
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="ct-slot-input-search-btn"
+                    onClick={() => handleTriggerSlotSearch(slotIdx, true)}
+                    aria-label={`Search live APIs for Slot ${slotIdx + 1}`}
+                    title="Search live APIs"
+                  >
+                    🔍
+                  </button>
+                </div>
+
                 {focusedSlot === slotIdx && (
                   <div className="ct-slot-dropdown">
                     <div className="ct-slot-dropdown-head">
@@ -128,9 +258,24 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
                         Close
                       </button>
                     </div>
-                    {suggestions.length === 0 ? (
+
+                    {isSearching ? (
+                      <div className="ct-slot-dropdown-loading">
+                        <span className="ct-loading-spinner" />
+                        <span>
+                          Searching live APIs for &ldquo;{query.trim()}&rdquo;&hellip;
+                        </span>
+                      </div>
+                    ) : suggestions.length === 0 ? (
                       <div className="ct-slot-dropdown-empty">
-                        No matches found. Try searching another title.
+                        <p>No matches found for &ldquo;{query}&rdquo;.</p>
+                        <button
+                          type="button"
+                          className="ct-slot-retry-search-btn"
+                          onClick={() => handleTriggerSlotSearch(slotIdx, true)}
+                        >
+                          🔍 Search live providers now
+                        </button>
                       </div>
                     ) : (
                       suggestions.map((sug) => (

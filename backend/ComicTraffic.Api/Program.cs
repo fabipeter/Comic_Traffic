@@ -24,18 +24,31 @@ if (!string.IsNullOrWhiteSpace(platformPort) &&
     builder.WebHost.UseUrls($"http://0.0.0.0:{platformPort}");
 }
 
-string? gatewaySharedSecret = Environment.GetEnvironmentVariable("GATEWAY_SHARED_SECRET");
+static string? CleanConfigValue(string? val) =>
+    string.IsNullOrWhiteSpace(val) ? null : val.Trim().Trim('"', '\'').Trim();
+
+string? gatewaySharedSecret = CleanConfigValue(
+    builder.Configuration["GATEWAY_SHARED_SECRET"] ??
+    Environment.GetEnvironmentVariable("GATEWAY_SHARED_SECRET"));
+
+string? configuredDbUrl = CleanConfigValue(
+    builder.Configuration["DATABASE_URL"] ??
+    Environment.GetEnvironmentVariable("DATABASE_URL") ??
+    builder.Configuration.GetConnectionString("DefaultConnection"));
+
+string? configuredJwtKey = CleanConfigValue(
+    builder.Configuration["JWT_SIGNING_KEY"] ??
+    Environment.GetEnvironmentVariable("JWT_SIGNING_KEY") ??
+    builder.Configuration["Jwt:Key"]);
 
 // Fail fast in production: never boot with ephemeral/default secrets or an open API.
 if (isProduction)
 {
     var missing = new List<string>();
-    if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("DATABASE_URL")) &&
-        string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("DefaultConnection")))
+    if (string.IsNullOrWhiteSpace(configuredDbUrl))
         missing.Add("DATABASE_URL");
 
-    string? jwtKey = Environment.GetEnvironmentVariable("JWT_SIGNING_KEY") ?? builder.Configuration["Jwt:Key"];
-    if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32)
+    if (string.IsNullOrWhiteSpace(configuredJwtKey) || configuredJwtKey.Length < 32)
         missing.Add("JWT_SIGNING_KEY (min 32 characters)");
 
     if (string.IsNullOrWhiteSpace(gatewaySharedSecret) || gatewaySharedSecret.Length < 24)
@@ -124,13 +137,9 @@ builder.Services.AddCors(options =>
 });
 
 // Configure PostgreSQL EF Core with environment variable priority (DATABASE_URL / ConnectionStrings__DefaultConnection)
-string? envDbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-string? configDbUrl = builder.Configuration.GetConnectionString("DefaultConnection");
-string configuredConn = !string.IsNullOrWhiteSpace(envDbUrl)
-    ? envDbUrl
-    : (!string.IsNullOrWhiteSpace(configDbUrl)
-        ? configDbUrl
-        : "Host=localhost;Port=5432;Database=comictraffic_db;Username=postgres;Password=postgres");
+string configuredConn = !string.IsNullOrWhiteSpace(configuredDbUrl)
+    ? configuredDbUrl
+    : "Host=localhost;Port=5432;Database=comictraffic_db;Username=postgres;Password=postgres";
 
 if (configuredConn.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
     configuredConn.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))

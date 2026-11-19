@@ -154,28 +154,30 @@ if (!isProduction)
     });
 }
 
-// Configure CORS: open for local development, strict allow-list in production
+// Configure CORS: strict allow-list with explicit domains, never open wildcard '*'
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ComicTrafficCors", policy =>
     {
-        if (isProduction)
+        string[] defaultOrigins = new[]
         {
-            string[] allowedOrigins = (Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS")
-                    ?? "https://comictraffic.com,https://www.comictraffic.com")
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            policy.WithOrigins(allowedOrigins)
-                  .WithHeaders("Content-Type", "Authorization", "X-Payload-Encrypted", "X-Response-Encrypted", "X-Gateway-Secret")
-                  .WithMethods("GET", "POST", "PUT", "DELETE")
-                  .WithExposedHeaders("X-Payload-Encrypted");
-        }
-        else
-        {
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .WithExposedHeaders("X-Payload-Encrypted");
-        }
+            "https://comictraffic.com",
+            "https://www.comictraffic.com",
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173"
+        };
+        string[] allowedOrigins = (Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS") != null)
+            ? Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS")!
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : defaultOrigins;
+
+        policy.WithOrigins(allowedOrigins)
+              .WithHeaders("Content-Type", "Authorization", "X-Payload-Encrypted", "X-Response-Encrypted", "X-Gateway-Secret")
+              .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+              .WithExposedHeaders("X-Payload-Encrypted")
+              .SetPreflightMaxAge(TimeSpan.FromHours(1));
     });
 });
 

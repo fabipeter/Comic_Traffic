@@ -219,7 +219,7 @@ async function sendEmailViaSendGrid({ toEmail, subject, plainText, htmlBody }) {
 function wrapBrandedEmailHtml({
   title,
   subtitle,
-  headerBg = "linear-gradient(135deg, #0f172a, #1e3a8a)",
+  headerBg = "linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)",
   borderColor = "rgba(59, 130, 246, 0.35)",
   accentSpanColor = "#3b82f6",
   bodyHtml,
@@ -230,40 +230,94 @@ function wrapBrandedEmailHtml({
     ? "<br />This is an automated security transmission. Please do not reply directly to this address."
     : "";
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="supported-color-schemes" content="light dark" />
   <title>${escapeHtml(title)}</title>
   <style>
-    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #060911; color: #e2e8f0; }
-    .container { max-width: 600px; margin: 32px auto; background: #0b1222; border: 1px solid ${borderColor}; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6); }
-    .header { background: ${headerBg}; padding: 32px 24px; text-align: center; border-bottom: 1px solid ${borderColor}; }
-    .brand-title { font-size: 24px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin: 0; }
-    .brand-title span { color: ${accentSpanColor}; }
-    .brand-sub { font-size: 11px; letter-spacing: 3px; color: #94a3b8; margin-top: 4px; display: block; }
-    .content { padding: 32px 28px; }
-    h1 { font-size: 20px; font-weight: 800; color: #f8fafc; margin-top: 0; }
-    p { font-size: 14px; line-height: 1.6; color: #cbd5e1; margin: 14px 0; }
-    .code-box { margin: 24px 0; padding: 18px 24px; background: rgba(15, 23, 42, 0.95); border: 2px dashed #3b82f6; border-radius: 12px; text-align: center; }
-    .code-label { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #94a3b8; margin-bottom: 6px; }
-    .code-value { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #60a5fa; }
-    .feature-box { margin: 22px 0; padding: 18px 20px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 12px; font-size: 13px; color: #e2e8f0; line-height: 1.7; }
-    .cta-button { display: block; margin: 26px 0; padding: 14px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4); }
-    .notice { padding: 12px 16px; background: rgba(245, 158, 11, 0.1); border-left: 3px solid #f59e0b; border-radius: 6px; font-size: 12px; color: #fcd34d; margin-top: 24px; }
-    .alert-box { padding: 16px; background: rgba(16, 185, 129, 0.12); border: 1px solid #10b981; border-radius: 10px; color: #a7f3d0; font-size: 13px; margin: 20px 0; }
-    .footer { padding: 20px 24px; background: #070b14; border-top: 1px solid rgba(255, 255, 255, 0.06); text-align: center; font-size: 11px; color: #64748b; }
+    :root {
+      color-scheme: light dark;
+      supported-color-schemes: light dark;
+    }
+    body, table, td, a {
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+    body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      background-color: #060911;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #e2e8f0;
+    }
+    .email-body { background-color: #060911; }
+    .email-card { background-color: #0b1222; }
+    .email-content { background-color: #0b1222; color: #cbd5e1; }
+    .code-box { background-color: #0f172a; }
+    .code-value { color: #60a5fa; }
+    .cta-button { background-color: #2563eb; color: #ffffff !important; }
+    .notice { background-color: #1e1b18; color: #fde68a; }
+    .alert-box { background-color: #062e24; color: #a7f3d0; }
+    .feature-box { background-color: #0f172a; color: #e2e8f0; }
+
+    @media (prefers-color-scheme: dark) {
+      body, .email-body { background-color: #050811 !important; color: #e2e8f0 !important; }
+      .email-card { background-color: #0b1222 !important; border-color: rgba(59, 130, 246, 0.45) !important; }
+      .email-content { background-color: #0b1222 !important; color: #cbd5e1 !important; }
+      .code-box { background-color: #0f172a !important; border-color: #3b82f6 !important; }
+      .code-value { color: #60a5fa !important; }
+      .feature-box { background-color: #0f172a !important; border-color: rgba(59, 130, 246, 0.4) !important; color: #e2e8f0 !important; }
+      .notice { background-color: #1e1b18 !important; border-color: #f59e0b !important; color: #fde68a !important; }
+      .alert-box { background-color: #062e24 !important; border-color: #10b981 !important; color: #a7f3d0 !important; }
+      h1 { color: #f8fafc !important; }
+      p { color: #cbd5e1 !important; }
+      .footer { background-color: #070b14 !important; color: #64748b !important; }
+    }
+
+    [data-ogsc] body, [data-ogsc] .email-body { background-color: #050811 !important; }
+    [data-ogsc] .email-card { background-color: #0b1222 !important; }
+    [data-ogsc] .email-content { background-color: #0b1222 !important; }
+    [data-ogsc] .code-box { background-color: #0f172a !important; }
+    [data-ogsc] .code-value { color: #60a5fa !important; }
+    [data-ogsc] .feature-box { background-color: #0f172a !important; }
+    [data-ogsc] .notice { background-color: #1e1b18 !important; color: #fde68a !important; }
+    [data-ogsc] .alert-box { background-color: #062e24 !important; color: #a7f3d0 !important; }
+    [data-ogsc] h1 { color: #f8fafc !important; }
+    [data-ogsc] p { color: #cbd5e1 !important; }
+    [data-ogsc] .footer { background-color: #070b14 !important; color: #64748b !important; }
   </style>
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <div class="brand-title">COMIC<span>TRAFFIC</span></div>
-      <span class="brand-sub">${escapeHtml(subtitle)}</span>
-    </div>
-    <div class="content">${bodyHtml}</div>
-    <div class="footer">&copy; ${year} Comic Traffic Telemetry Consensus Engine. All rights reserved.${extraFooter}</div>
-  </div>
+<body bgcolor="#060911" class="email-body" style="margin: 0; padding: 0; background-color: #060911; color: #e2e8f0;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#060911" class="email-body" style="background-color: #060911; width: 100%; margin: 0; padding: 36px 12px;">
+    <tr>
+      <td align="center" style="padding: 0;">
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#0b1222" class="email-card container" style="background-color: #0b1222; max-width: 600px; width: 100%; border: 1px solid ${borderColor}; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);">
+          <tr>
+            <td align="center" bgcolor="#0f172a" class="header" style="background: ${headerBg}; background-color: #0f172a; padding: 32px 24px; text-align: center; border-bottom: 1px solid ${borderColor};">
+              <div class="brand-title" style="font-size: 24px; font-weight: 900; letter-spacing: 2px; color: #ffffff; text-transform: uppercase; margin: 0;">COMIC<span style="color: ${accentSpanColor};">TRAFFIC</span></div>
+              <div class="brand-sub" style="font-size: 11px; letter-spacing: 3px; color: #94a3b8; margin-top: 6px; text-transform: uppercase; font-weight: 600;">${escapeHtml(subtitle)}</div>
+            </td>
+          </tr>
+          <tr>
+            <td class="email-content content" bgcolor="#0b1222" style="background-color: #0b1222; padding: 36px 32px; color: #cbd5e1; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.7; text-align: left;">
+              ${bodyHtml}
+            </td>
+          </tr>
+          <tr>
+            <td align="center" bgcolor="#070b14" class="footer" style="background-color: #070b14; border-top: 1px solid rgba(255, 255, 255, 0.08); padding: 22px 24px; text-align: center; font-size: 11px; color: #64748b; line-height: 1.7;">
+              &copy; ${year} Comic Traffic Telemetry Consensus Engine. All rights reserved.${extraFooter}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 }
@@ -274,17 +328,23 @@ function buildPasswordResetEmailHtml({ recipientLabel, recoveryCode, resetUrl })
     subtitle: "CUMULATIVE RATING HUB \u2022 ACCOUNT SECURITY",
     includeNoReplyFooter: true,
     bodyHtml: `
-      <h1>Password Recovery Request</h1>
-      <p>Hello <strong>${escapeHtml(recipientLabel)}</strong>,</p>
-      <p>We received a request to reset the password for your Comic Traffic account. Use the verification code below to authorize this change:</p>
-      <div class="code-box">
-        <div class="code-label">Your 15-Minute Verification Code</div>
-        <div class="code-value">${escapeHtml(recoveryCode)}</div>
+      <h1 style="font-size: 20px; font-weight: 800; color: #f8fafc; margin-top: 0; margin-bottom: 16px; letter-spacing: -0.3px;">Password Recovery Request</h1>
+      <p style="font-size: 14px; line-height: 1.7; color: #cbd5e1; margin: 14px 0;">Hello <strong style="color: #f8fafc;">${escapeHtml(recipientLabel)}</strong>,</p>
+      <p style="font-size: 14px; line-height: 1.7; color: #cbd5e1; margin: 14px 0;">We received a request to reset the password for your Comic Traffic account. Use the verification code below to authorize this change:</p>
+      <div class="code-box" style="margin: 26px 0; padding: 22px 24px; background-color: #0f172a; border: 2px dashed #3b82f6; border-radius: 12px; text-align: center;">
+        <div class="code-label" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #94a3b8; margin-bottom: 8px;">Your 15-Minute Verification Code</div>
+        <div class="code-value" style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #60a5fa; text-shadow: 0 0 12px rgba(96, 165, 250, 0.35);">${escapeHtml(recoveryCode)}</div>
       </div>
-      <p style="text-align: center;">Or click the button below to open the password recovery page directly:</p>
-      <a href="${escapeHtml(resetUrl)}" class="cta-button">Reset Password Now</a>
-      <div class="notice">
-        &#9888; <strong>Security Advisory:</strong> This code and link will expire in <strong>15 minutes</strong>. If you did not request a password reset, please disregard this email. Your Comic Traffic account remains fully secure.
+      <p style="text-align: center; font-size: 14px; line-height: 1.7; color: #cbd5e1; margin: 16px 0;">Or click the button below to open the password recovery page directly:</p>
+      <table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%" style="margin: 26px 0;">
+        <tr>
+          <td align="center">
+            <a href="${escapeHtml(resetUrl)}" target="_blank" class="cta-button" style="display: block; width: 100%; box-sizing: border-box; padding: 15px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); background-color: #2563eb; color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45); letter-spacing: 0.5px;">Reset Password Now</a>
+          </td>
+        </tr>
+      </table>
+      <div class="notice" style="padding: 14px 18px; background-color: #1e1b18; border-left: 4px solid #f59e0b; border-radius: 6px; font-size: 12px; color: #fde68a; margin-top: 26px; line-height: 1.6;">
+        &#9888; <strong style="color: #fbbf24;">Security Advisory:</strong> This code and link will expire in <strong>15 minutes</strong>. If you did not request a password reset, please disregard this email. Your Comic Traffic account remains fully secure.
       </div>`,
   });
 }
@@ -295,16 +355,22 @@ function buildWelcomeEmailHtml({ displayName, username, appUrl }) {
     title: "Welcome to Comic Traffic",
     subtitle: "CUMULATIVE RATING HUB \u2022 WELCOME ABOARD",
     bodyHtml: `
-      <h1>Welcome to Comic Traffic!</h1>
-      <p>Hello <strong>${escapeHtml(displayName)}</strong> (<code>@${escapeHtml(username)}</code>),</p>
-      <p>Your Comic Traffic account is active and ready. You now have access to real-time multi-source ratings across Comic Books, Movies, and TV Series:</p>
-      <div class="feature-box">
-        &#9889; <strong>Compare Arena:</strong> Compare up to 3 titles side-by-side<br />
-        &#9878; <strong>Custom Weights:</strong> Tune Critic, Audience, and Comic DB sources<br />
-        &#128218; <strong>Watchlist &amp; Lists:</strong> Track reading and viewing progress anywhere
+      <h1 style="font-size: 20px; font-weight: 800; color: #f8fafc; margin-top: 0; margin-bottom: 16px; letter-spacing: -0.3px;">Welcome to Comic Traffic!</h1>
+      <p style="font-size: 14px; line-height: 1.7; color: #cbd5e1; margin: 14px 0;">Hello <strong style="color: #f8fafc;">${escapeHtml(displayName)}</strong> (<code style="background: rgba(59, 130, 246, 0.15); color: #93c5fd; padding: 2px 6px; border-radius: 4px; font-family: monospace;">@${escapeHtml(username)}</code>),</p>
+      <p style="font-size: 14px; line-height: 1.7; color: #cbd5e1; margin: 14px 0;">Your Comic Traffic account is active and ready. You now have access to real-time multi-source ratings across Comic Books, Literature, Movies, and TV Series:</p>
+      <div class="feature-box" style="margin: 24px 0; padding: 20px 22px; background-color: #0f172a; border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 12px; font-size: 13px; color: #e2e8f0; line-height: 1.8;">
+        &#9889; <strong style="color: #60a5fa;">Compare Arena:</strong> Compare up to 3 titles side-by-side<br />
+        &#9878; <strong style="color: #60a5fa;">Custom Weights:</strong> Tune Critic, Audience, and Comic DB sources<br />
+        &#128218; <strong style="color: #60a5fa;">Watchlist &amp; Lists:</strong> Track reading and viewing progress anywhere
       </div>
-      <a href="${escapeHtml(safeBase)}/dashboard" class="cta-button">Open Your Comic Traffic Hub</a>
-      <p style="font-size: 12px; color: #94a3b8;">Your email address is verified for account recovery and security alerts.</p>`,
+      <table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%" style="margin: 26px 0;">
+        <tr>
+          <td align="center">
+            <a href="${escapeHtml(safeBase)}/dashboard" target="_blank" class="cta-button" style="display: block; width: 100%; box-sizing: border-box; padding: 15px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); background-color: #2563eb; color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45); letter-spacing: 0.5px;">Open Your Comic Traffic Hub</a>
+          </td>
+        </tr>
+      </table>
+      <p style="font-size: 12px; color: #94a3b8; line-height: 1.6; margin-top: 18px;">Your email address is verified for account recovery and security alerts.</p>`,
   });
 }
 
@@ -313,17 +379,17 @@ function buildPasswordChangedEmailHtml({ recipientLabel }) {
   return wrapBrandedEmailHtml({
     title: "Comic Traffic Password Changed",
     subtitle: "CUMULATIVE RATING HUB \u2022 ACCOUNT SECURITY",
-    headerBg: "linear-gradient(135deg, #064e3b, #047857)",
+    headerBg: "linear-gradient(135deg, #064e3b 0%, #047857 100%)",
     borderColor: "rgba(16, 185, 129, 0.35)",
     accentSpanColor: "#34d399",
     bodyHtml: `
-      <h1>&#10003; Password Updated Successfully</h1>
-      <p>Hello <strong>${escapeHtml(recipientLabel)}</strong>,</p>
-      <div class="alert-box">
-        The password for your Comic Traffic account was updated on <strong>${escapeHtml(timestamp)}</strong>.
+      <h1 style="font-size: 20px; font-weight: 800; color: #f8fafc; margin-top: 0; margin-bottom: 16px; letter-spacing: -0.3px;">&#10003; Password Updated Successfully</h1>
+      <p style="font-size: 14px; line-height: 1.7; color: #cbd5e1; margin: 14px 0;">Hello <strong style="color: #f8fafc;">${escapeHtml(recipientLabel)}</strong>,</p>
+      <div class="alert-box" style="padding: 16px 20px; background-color: #062e24; border: 1px solid #10b981; border-radius: 10px; color: #a7f3d0; font-size: 13px; margin: 20px 0; line-height: 1.6;">
+        The password for your Comic Traffic account was updated on <strong style="color: #ffffff;">${escapeHtml(timestamp)}</strong>.
       </div>
-      <p>You can now sign in with your new password on any device.</p>
-      <p style="color: #f87171;">
+      <p style="font-size: 14px; line-height: 1.7; color: #cbd5e1; margin: 14px 0;">You can now sign in with your new password on any device.</p>
+      <p style="font-size: 13px; color: #f87171; line-height: 1.6; margin-top: 20px;">
         &#9888; <strong>Did not perform this action?</strong> If you did not make this change, please contact Comic Traffic Support immediately to lock your account.
       </p>`,
   });
@@ -1872,10 +1938,28 @@ async function executeBackendLiveSearch(query) {
 }
 
 module.exports = async function handler(req, res) {
+  const rawOrigin = Array.isArray(req.headers?.origin) ? req.headers.origin[0] : req.headers?.origin;
+  const cleanOrigin = typeof rawOrigin === "string" ? rawOrigin.trim().toLowerCase() : "";
+  const isAllowedOrigin = cleanOrigin && (
+    cleanOrigin === "https://comictraffic.com" ||
+    cleanOrigin === "https://www.comictraffic.com" ||
+    cleanOrigin.startsWith("http://localhost:") ||
+    cleanOrigin.startsWith("http://127.0.0.1:")
+  );
+  const corsOrigin = isAllowedOrigin ? rawOrigin.trim() : "https://comictraffic.com";
+
+  res.setHeader("Access-Control-Allow-Origin", corsOrigin);
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Payload-Encrypted, X-Response-Encrypted, X-Gateway-Secret");
+  res.setHeader("Vary", "Origin");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Cache-Control", "no-store, max-age=0");
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
 
   // 1. GET endpoints: Handshake OR Encrypted Catalog (/api/media)
   if (req.method === "GET") {

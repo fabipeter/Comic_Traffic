@@ -53,6 +53,22 @@
         {
           "key": "X-XSS-Protection",
           "value": "1; mode=block"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://comictraffic.com"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization, X-Payload-Encrypted, X-Response-Encrypted"
+        },
+        {
+          "key": "Vary",
+          "value": "Origin"
         }
       ]
     }

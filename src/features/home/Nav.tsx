@@ -55,20 +55,31 @@ const Nav = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [drawerOpen, skinMenuOpen, desktopSearchFocused]);
 
-  // Keyboard shortcut listener for `?` (Shortcuts Overlay) and `L` (Lite Mode)
+  // Keyboard shortcut listener for `?` (Shortcuts), `L` (Lite Mode), `C` (Compare), `W` (Weights), `Escape`
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setDrawerOpen(false);
+        setSkinMenuOpen(false);
+        setDesktopSearchFocused(false);
+        ratingStore.setCompareModalOpen(false);
+        ratingStore.setWeightsModalOpen(false);
+        ratingStore.setShortcutsModalOpen(false);
+        ratingStore.closeDetailModal();
+        return;
+      }
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "?") {
         e.preventDefault();
         ratingStore.setShortcutsModalOpen(!ratingStore.shortcutsModalOpen);
       } else if (e.key === "l" || e.key === "L") {
         ratingStore.toggleLiteMode();
-      } else if (e.key === "Escape") {
-        setDrawerOpen(false);
-        setSkinMenuOpen(false);
-        setDesktopSearchFocused(false);
+      } else if (e.key === "c" || e.key === "C") {
+        ratingStore.setCompareModalOpen(!ratingStore.compareModalOpen);
+      } else if (e.key === "w" || e.key === "W") {
+        ratingStore.setWeightsModalOpen(!ratingStore.weightsModalOpen);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -78,8 +89,20 @@ const Nav = () => {
   const handleCategorySelect = (cat: "All" | MediaCategoryType) => {
     ratingStore.setCategory(cat);
     setDrawerOpen(false);
+    setSkinMenuOpen(false);
+    setDesktopSearchFocused(false);
     if (location.pathname !== "/") {
       navigate("/");
+    }
+    if (cat !== "All") {
+      setTimeout(() => {
+        const el = document.getElementById("ct-catalog-explorer");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 80);
+    } else if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -129,6 +152,12 @@ const Nav = () => {
           <div
             className="nav__brand"
             onClick={() => handleCategorySelect("All")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleCategorySelect("All");
+              }
+            }}
             role="button"
             tabIndex={0}
           >
@@ -171,7 +200,10 @@ const Nav = () => {
             <button
               type="button"
               className={`nav__link__btn ${
-                ratingStore.selectedCategory === "ComicBook" ? "active" : ""
+                ratingStore.selectedCategory === "ComicBook" &&
+                location.pathname === "/"
+                  ? "active"
+                  : ""
               }`}
               onClick={() => handleCategorySelect("ComicBook")}
             >
@@ -180,7 +212,10 @@ const Nav = () => {
             <button
               type="button"
               className={`nav__link__btn ${
-                ratingStore.selectedCategory === "Movie" ? "active" : ""
+                ratingStore.selectedCategory === "Movie" &&
+                location.pathname === "/"
+                  ? "active"
+                  : ""
               }`}
               onClick={() => handleCategorySelect("Movie")}
             >
@@ -189,7 +224,10 @@ const Nav = () => {
             <button
               type="button"
               className={`nav__link__btn ${
-                ratingStore.selectedCategory === "TvSeries" ? "active" : ""
+                ratingStore.selectedCategory === "TvSeries" &&
+                location.pathname === "/"
+                  ? "active"
+                  : ""
               }`}
               onClick={() => handleCategorySelect("TvSeries")}
             >
@@ -402,7 +440,10 @@ const Nav = () => {
                         key={cat}
                         type="button"
                         className={`nav__panel_cat_btn ${
-                          ratingStore.selectedCategory === cat ? "active" : ""
+                          ratingStore.selectedCategory === cat &&
+                          location.pathname === "/"
+                            ? "active"
+                            : ""
                         }`}
                         onClick={() => handleCategorySelect(cat)}
                       >
@@ -570,16 +611,54 @@ const Nav = () => {
                     </button>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    className="nav__signin__button nav__signin_full"
-                    onClick={() => {
-                      setDrawerOpen(false);
-                      navigate("/login");
-                    }}
-                  >
-                    Sign In / Register to Access Dashboard
-                  </button>
+                  <>
+                    {location.pathname === "/login" ? (
+                      <button
+                        type="button"
+                        className="nav__dashboard__button"
+                        onClick={() => {
+                          setDrawerOpen(false);
+                          navigate("/");
+                        }}
+                      >
+                        🏠 Back to Hub
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="nav__dashboard__button"
+                        onClick={() => {
+                          setDrawerOpen(false);
+                          navigate("/login");
+                        }}
+                      >
+                        Sign In
+                      </button>
+                    )}
+                    {location.pathname === "/register" ? (
+                      <button
+                        type="button"
+                        className="nav__signin__button"
+                        onClick={() => {
+                          setDrawerOpen(false);
+                          navigate("/");
+                        }}
+                      >
+                        🏠 Back to Hub
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="nav__signin__button"
+                        onClick={() => {
+                          setDrawerOpen(false);
+                          navigate("/register");
+                        }}
+                      >
+                        Create Account
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

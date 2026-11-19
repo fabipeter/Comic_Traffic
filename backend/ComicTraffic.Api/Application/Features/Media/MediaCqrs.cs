@@ -171,46 +171,18 @@ public class FetchTmdbCuratedRowCommandHandler : IRequestHandler<FetchTmdbCurate
 
     public async Task<List<MediaItemDto>> Handle(FetchTmdbCuratedRowCommand request, CancellationToken cancellationToken)
     {
-        string tmdbKey = Environment.GetEnvironmentVariable("TMDB_API_KEY")
-            ?? _config["ExternalApis:TmdbApiKey"]
-            ?? string.Empty;
-        string tmdbBase = Environment.GetEnvironmentVariable("TMDB_API_URL")
-            ?? _config["ExternalApis:TmdbApiUrl"]
-            ?? "https://api.themoviedb.org/3";
-
-        string path = (request.Category ?? "trending").ToLowerInvariant() switch
+        try
         {
-            "top_rated" => "/movie/top_rated?language=en-US",
-            "netflix_originals" => "/discover/tv?with_networks=213",
-            _ => "/trending/all/week?language=en-US"
-        };
-
-        if (!string.IsNullOrWhiteSpace(tmdbKey))
+            var list = await _liveSearch.FetchTmdbCuratedAsync(
+                request.Category ?? "trending",
+                request.MediaType,
+                cancellationToken);
+            if (list.Count > 0)
+                return list;
+        }
+        catch
         {
-            try
-            {
-                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(4) };
-                string sep = path.Contains('?') ? "&" : "?";
-                string url = $"{tmdbBase.TrimEnd('/')}{path}{sep}api_key={Uri.EscapeDataString(tmdbKey)}";
-                var json = await http.GetStringAsync(url, cancellationToken);
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("results", out var results) && results.ValueKind == JsonValueKind.Array)
-                {
-                    var list = new List<MediaItemDto>();
-                    foreach (var raw in results.EnumerateArray().Take(12))
-                    {
-                        var dto = ExternalMediaAggregator.ConvertTmdbElement(raw, request.MediaType, _liveSearch);
-                        if (dto != null)
-                            list.Add(dto);
-                    }
-                    if (list.Count > 0)
-                        return list;
-                }
-            }
-            catch
-            {
-                // Fall back to database catalog
-            }
+            // Fall back to database catalog
         }
 
         var dbQuery = _db.MediaItems.AsNoTracking().AsQueryable();

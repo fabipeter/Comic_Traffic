@@ -12,14 +12,18 @@ let ephemeralGatewayHmac = null;
 
 function getDerivedKeys() {
   if (!ephemeralGatewaySecret) {
+    const sharedFallback =
+      (process.env.GATEWAY_SHARED_SECRET || process.env.GATEWAY_SECRET || "").trim();
     ephemeralGatewaySecret =
-      process.env.PAYLOAD_ENCRYPTION_KEY ||
-      crypto.randomBytes(32).toString("hex");
+      (process.env.PAYLOAD_ENCRYPTION_KEY || "").trim() ||
+      (sharedFallback ? `ct-aes:${sharedFallback}` : crypto.randomBytes(32).toString("hex"));
   }
   if (!ephemeralGatewayHmac) {
+    const sharedFallback =
+      (process.env.GATEWAY_SHARED_SECRET || process.env.GATEWAY_SECRET || "").trim();
     ephemeralGatewayHmac =
-      process.env.PAYLOAD_HMAC_KEY ||
-      crypto.randomBytes(32).toString("hex");
+      (process.env.PAYLOAD_HMAC_KEY || "").trim() ||
+      (sharedFallback ? `ct-hmac:${sharedFallback}` : crypto.randomBytes(32).toString("hex"));
   }
   return {
     aesKey: crypto.createHash("sha256").update(ephemeralGatewaySecret, "utf8").digest(),
@@ -178,6 +182,8 @@ async function sendEmailViaSendGrid({ toEmail, subject, plainText, htmlBody }) {
       process.env.SENDGRID_SENDER_NAME || process.env.SENDER_NAME
     ) || "Comic Traffic Security";
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
   try {
     const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
       method: "POST",
@@ -200,6 +206,7 @@ async function sendEmailViaSendGrid({ toEmail, subject, plainText, htmlBody }) {
           },
         },
       }),
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -213,6 +220,8 @@ async function sendEmailViaSendGrid({ toEmail, subject, plainText, htmlBody }) {
     return { sent: true, status: response.status };
   } catch {
     return { sent: false, reason: "network_error" };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -339,7 +348,7 @@ function buildPasswordResetEmailHtml({ recipientLabel, recoveryCode, resetUrl })
       <table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%" style="margin: 26px 0;">
         <tr>
           <td align="center">
-            <a href="${escapeHtml(resetUrl)}" target="_blank" class="cta-button" style="display: block; width: 100%; box-sizing: border-box; padding: 15px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); background-color: #2563eb; color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45); letter-spacing: 0.5px;">Reset Password Now</a>
+            <a href="${escapeHtml(resetUrl)}" target="_blank" rel="noopener noreferrer" class="cta-button" style="display: block; width: 100%; box-sizing: border-box; padding: 15px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); background-color: #2563eb; color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45); letter-spacing: 0.5px;">Reset Password Now</a>
           </td>
         </tr>
       </table>
@@ -366,7 +375,7 @@ function buildWelcomeEmailHtml({ displayName, username, appUrl }) {
       <table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%" style="margin: 26px 0;">
         <tr>
           <td align="center">
-            <a href="${escapeHtml(safeBase)}/dashboard" target="_blank" class="cta-button" style="display: block; width: 100%; box-sizing: border-box; padding: 15px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); background-color: #2563eb; color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45); letter-spacing: 0.5px;">Open Your Comic Traffic Hub</a>
+            <a href="${escapeHtml(safeBase)}/dashboard" target="_blank" rel="noopener noreferrer" class="cta-button" style="display: block; width: 100%; box-sizing: border-box; padding: 15px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); background-color: #2563eb; color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45); letter-spacing: 0.5px;">Open Your Comic Traffic Hub</a>
           </td>
         </tr>
       </table>
@@ -1734,16 +1743,72 @@ async function executeBackendLiveSearch(query) {
   });
 }
 
+const ALLOWED_CORS_ORIGINS = new Map([
+  ["https://comictraffic.com", "https://comictraffic.com"],
+  ["https://www.comictraffic.com", "https://www.comictraffic.com"],
+  ["http://localhost:3000", "http://localhost:3000"],
+  ["http://127.0.0.1:3000", "http://127.0.0.1:3000"],
+  ["http://localhost:5173", "http://localhost:5173"],
+  ["http://127.0.0.1:5173", "http://127.0.0.1:5173"],
+]);
+
+function resolveAllowedProxyPath(endpoint) {
+  switch (endpoint) {
+    case "/auth/register":
+      return "/api/auth/register";
+    case "/auth/login":
+      return "/api/auth/login";
+    case "/auth/forgot-password":
+      return "/api/auth/forgot-password";
+    case "/auth/reset-password":
+      return "/api/auth/reset-password";
+    case "/auth/me":
+      return "/api/auth/me";
+    case "/auth/preferences":
+      return "/api/auth/preferences";
+    case "/reviews":
+      return "/api/reviews";
+    case "/dashboard":
+      return "/api/dashboard";
+    case "/dashboard/watchlist":
+      return "/api/dashboard/watchlist";
+    case "/dashboard/lists":
+      return "/api/dashboard/lists";
+    case "/media":
+      return "/api/media";
+    case "/media/calculate-custom":
+      return "/api/media/calculate-custom";
+    case "/media/compare":
+      return "/api/media/compare";
+    default:
+      return null;
+  }
+}
+
+function parseConfiguredBackendUrl(rawUrl) {
+  const cleaned = String(rawUrl || "")
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/api\/?$/i, "");
+  if (!cleaned) return null;
+  try {
+    const parsed = new URL(cleaned);
+    const isHttps = parsed.protocol === "https:";
+    const isLocalHttp =
+      parsed.protocol === "http:" &&
+      (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1");
+    if (!isHttps && !isLocalHttp) return null;
+    if (parsed.username || parsed.password) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 module.exports = async function handler(req, res) {
   const rawOrigin = Array.isArray(req.headers?.origin) ? req.headers.origin[0] : req.headers?.origin;
   const cleanOrigin = typeof rawOrigin === "string" ? rawOrigin.trim().toLowerCase() : "";
-  const isAllowedOrigin = cleanOrigin && (
-    cleanOrigin === "https://comictraffic.com" ||
-    cleanOrigin === "https://www.comictraffic.com" ||
-    cleanOrigin.startsWith("http://localhost:") ||
-    cleanOrigin.startsWith("http://127.0.0.1:")
-  );
-  const corsOrigin = isAllowedOrigin ? rawOrigin.trim() : "https://comictraffic.com";
+  const corsOrigin = ALLOWED_CORS_ORIGINS.get(cleanOrigin) || "https://comictraffic.com";
 
   res.setHeader("Access-Control-Allow-Origin", corsOrigin);
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -1805,6 +1870,17 @@ module.exports = async function handler(req, res) {
 
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    const wantsEncryptedResponse =
+      String(req.headers["x-response-encrypted"] || "").toLowerCase() === "true" ||
+      String(req.headers["x-payload-encrypted"] || "").toLowerCase() === "true" ||
+      Boolean(body && body.encrypted);
+    const sendOkPayload = (payloadObj) => {
+      if (wantsEncryptedResponse) {
+        res.setHeader("X-Payload-Encrypted", "true");
+        return res.status(200).json(encryptEnvelope(payloadObj));
+      }
+      return res.status(200).json(payloadObj);
+    };
     const decryptedRequest =
       body && body.encrypted ? decryptEnvelope(body) : body;
 
@@ -1812,56 +1888,39 @@ module.exports = async function handler(req, res) {
     const endpoint = typeof rawEndpoint === "string" ? rawEndpoint : "";
 
     // Backend Proxy: forward data & auth operations to the .NET Web API if BACKEND_API_URL is configured
-    const backendBase = (process.env.BACKEND_API_URL || "")
-      .trim()
-      .replace(/\/+$/, "")
-      .replace(/\/api\/?$/i, "");
-    const hasConfiguredBackend =
-      /^https:\/\//i.test(backendBase) ||
-      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(backendBase);
+    const backendUrl = parseConfiguredBackendUrl(process.env.BACKEND_API_URL);
+    const hasConfiguredBackend = Boolean(backendUrl);
+    const safeProxyPath = resolveAllowedProxyPath(endpoint);
 
-    const BACKEND_PROXY_PREFIXES = [
-      "/auth/",
-      "/reviews",
-      "/dashboard",
-      "/media/calculate-custom",
-      "/media/compare",
-    ];
-    const isProxyTarget =
-      BACKEND_PROXY_PREFIXES.some((p) => endpoint.startsWith(p)) ||
-      endpoint === "/media";
+    if (hasConfiguredBackend && safeProxyPath) {
+      const targetUrl = `${backendUrl.origin}${safeProxyPath}`;
 
-    if (hasConfiguredBackend && isProxyTarget) {
       const { endpoint: _ignored, ...forwardBody } = decryptedRequest || {};
-      const originHeader = Array.isArray(req.headers?.origin) ? req.headers.origin[0] : req.headers?.origin;
       const authHeader = Array.isArray(req.headers?.authorization) ? req.headers.authorization[0] : req.headers?.authorization;
       const gatewaySecret = process.env.GATEWAY_SHARED_SECRET;
 
-      const forwardMethod = (req.method || "POST").toUpperCase();
-      const hasPayload = forwardMethod === "POST" || forwardMethod === "PUT" || forwardMethod === "PATCH";
-
       const forwardHeaders = {
         "Content-Type": "application/json",
-        ...(originHeader ? { Origin: originHeader } : {}),
-        ...(authHeader ? { Authorization: authHeader } : {}),
-        ...(gatewaySecret ? { "X-Gateway-Secret": gatewaySecret } : {}),
+        Origin: corsOrigin,
+        ...(authHeader ? { Authorization: sanitizeHeaderText(authHeader) } : {}),
+        ...(gatewaySecret ? { "X-Gateway-Secret": sanitizeHeaderText(gatewaySecret) } : {}),
       };
 
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 15000);
+      const timer = setTimeout(() => controller.abort(), 16000);
       let upstream;
       try {
-        upstream = await fetch(`${backendBase}/api${endpoint}`, {
-          method: forwardMethod,
+        upstream = await fetch(targetUrl, {
+          method: "POST",
           headers: forwardHeaders,
-          ...(hasPayload ? { body: JSON.stringify(forwardBody) } : {}),
+          body: JSON.stringify(forwardBody),
           signal: controller.signal,
         });
       } catch (proxyErr) {
-        console.error("[Gateway Proxy Error]", proxyErr?.message || proxyErr, "Target:", `${backendBase}/api${endpoint}`);
+        console.error("[Gateway Proxy Error] Upstream request failed for path:", safeProxyPath);
         return res.status(502).json({
           isSuccessful: false,
-          message: `Unable to reach backend service (${proxyErr?.message || "connection failed"}). Target: ${backendBase}/api${endpoint}`,
+          message: "Unable to reach backend service. Please try again shortly.",
         });
       } finally {
         clearTimeout(timer);
@@ -1876,18 +1935,25 @@ module.exports = async function handler(req, res) {
 
       if (!upstream.ok || !upstreamJson) {
         const status = upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502;
+        const validationMessages =
+          upstreamJson?.errors && typeof upstreamJson.errors === "object"
+            ? Object.values(upstreamJson.errors)
+                .flatMap((v) => (Array.isArray(v) ? v : [v]))
+                .filter((v) => typeof v === "string" && v.trim().length > 0)
+                .join(" ")
+            : "";
         return res.status(status).json({
           isSuccessful: false,
           message:
             upstreamJson?.responseMessage ||
             upstreamJson?.message ||
+            validationMessages ||
             upstreamJson?.title ||
             "Backend request failed.",
         });
       }
 
-      res.setHeader("X-Payload-Encrypted", "true");
-      return res.status(200).json(encryptEnvelope(upstreamJson));
+      return sendOkPayload(upstreamJson);
     }
 
     if (!hasConfiguredBackend && endpoint === "/auth/login") {
@@ -1927,17 +1993,23 @@ module.exports = async function handler(req, res) {
             ? "/discover/tv?with_networks=213"
             : "/trending/all/week?language=en-US";
         const sep = path.includes("?") ? "&" : "?";
-        const url = `${tmdbBase}${path}${sep}api_key=${encodeURIComponent(tmdbKey)}`;
-        const upstream = await fetch(url);
-        const data = await upstream.json();
-        if (Array.isArray(data?.results)) {
-          for (const raw of data.results.slice(0, 12)) {
-            const converted = convertRawTmdbItem(
-              raw,
-              decryptedRequest?.mediaType
-            );
-            if (converted) items.push(converted);
+        const tmdbUrl = new URL(`${tmdbBase}${path}${sep}api_key=${encodeURIComponent(tmdbKey)}`);
+        const tmdbController = new AbortController();
+        const tmdbTimer = setTimeout(() => tmdbController.abort(), 6000);
+        try {
+          const upstream = await fetch(tmdbUrl.toString(), { signal: tmdbController.signal });
+          const data = await upstream.json();
+          if (Array.isArray(data?.results)) {
+            for (const raw of data.results.slice(0, 12)) {
+              const converted = convertRawTmdbItem(
+                raw,
+                decryptedRequest?.mediaType
+              );
+              if (converted) items.push(converted);
+            }
           }
+        } finally {
+          clearTimeout(tmdbTimer);
         }
       }
       const encryptedResponse = encryptEnvelope({
@@ -2070,20 +2142,23 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      const encryptedResponse = encryptEnvelope({
+      return sendOkPayload({
         isSuccessful: true,
         username: cleanUsername,
         email: cleanEmail,
         data: {
+          id: crypto.randomUUID(),
           username: cleanUsername,
           email: cleanEmail,
           displayName: cleanDisplayName,
+          bio: "Comic book, cinema & series enthusiast.",
+          avatarUrl: "/comic-traffic-logo.svg",
+          role: "User",
           favoriteGenres,
+          accessToken: `ct_gw_${crypto.randomBytes(24).toString("hex")}`,
         },
         processedAt: new Date().toISOString(),
       });
-      res.setHeader("X-Payload-Encrypted", "true");
-      return res.status(200).json(encryptedResponse);
     }
 
     // Backend Auth: Reset Password
@@ -2124,9 +2199,15 @@ module.exports = async function handler(req, res) {
     res.setHeader("X-Payload-Encrypted", "true");
     return res.status(200).json(encryptedResponse);
   } catch (err) {
+    const rawMsg = String(err?.message || "").toLowerCase();
+    const safeMsg = rawMsg.includes("signature")
+      ? "HMAC signature verification failed"
+      : rawMsg.includes("authenticate") || rawMsg.includes("envelope")
+      ? "Payload decryption error"
+      : "Encrypted gateway error";
     return res.status(400).json({
       isSuccessful: false,
-      message: err?.message || "Encrypted gateway error",
+      message: safeMsg,
     });
   }
 };

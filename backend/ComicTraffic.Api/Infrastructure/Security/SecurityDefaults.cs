@@ -18,7 +18,7 @@ public static class SecurityDefaults
 
         string? cfg = config?["Security:PayloadEncryptionKey"];
         if (!string.IsNullOrWhiteSpace(cfg))
-            return SHA256.HashData(Encoding.UTF8.GetBytes(cfg));
+            return SHA256.HashData(Encoding.UTF8.GetBytes(cfg.Trim().Trim('"', '\'').Trim()));
 
         return EphemeralAesEntropy;
     }

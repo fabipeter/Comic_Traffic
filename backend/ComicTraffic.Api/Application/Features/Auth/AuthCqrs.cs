@@ -113,6 +113,17 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, A
             ? normalizedEmail.Split('@')[0]
             : request.Username.Trim();
 
+        if (normalizedUsername.Length > 100)
+            throw new InvalidOperationException("Username must be 100 characters or fewer.");
+        if (normalizedEmail.Length > 150)
+            throw new InvalidOperationException("Email address must be 150 characters or fewer.");
+
+        string resolvedDisplayName = string.IsNullOrWhiteSpace(request.DisplayName)
+            ? normalizedUsername
+            : request.DisplayName.Trim();
+        if (resolvedDisplayName.Length > 120)
+            resolvedDisplayName = resolvedDisplayName[..120];
+
         bool exists = await _db.Users.AnyAsync(
             u => u.Email.ToLower() == normalizedEmail || u.Username.ToLower() == normalizedUsername.ToLower(),
             cancellationToken);
@@ -124,7 +135,7 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, A
         {
             Username = normalizedUsername,
             Email = normalizedEmail,
-            DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? normalizedUsername : request.DisplayName.Trim(),
+            DisplayName = resolvedDisplayName,
             PasswordHash = _jwtService.HashPassword(request.Password),
             FavoriteGenresCsv = string.IsNullOrWhiteSpace(request.FavoriteGenresCsv)
                 ? "Action,Superhero,Sci-Fi,Graphic Novel"
@@ -137,26 +148,49 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, A
         if (_emailService != null)
         {
             string appUrl = AuthUrlSecurityHelper.ResolveSafeAppBaseUrl(request.RequestOrigin, _config);
-            try
-            {
-                bool sent = await _emailService.SendWelcomeEmailAsync(
-                    newUser.Email,
-                    newUser.DisplayName,
-                    newUser.Username,
-                    appUrl,
-                    cancellationToken);
-                if (!sent)
-                {
-                    _logger?.LogWarning("Welcome email dispatch returned failure for user ID {UserId}. Check SendGrid configuration.", newUser.Id);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Failed to dispatch welcome email for user ID {UserId}", newUser.Id);
-            }
+            var emailTask = DispatchWelcomeEmailSafeAsync(
+                _emailService,
+                _logger,
+                newUser.Id,
+                newUser.Email,
+                newUser.DisplayName,
+                newUser.Username,
+                appUrl);
+
+            // Wait briefly so fast local/outbox dispatch completes inline,
+            // without letting slow external SMTP/SendGrid APIs time out user registration.
+            await Task.WhenAny(emailTask, Task.Delay(TimeSpan.FromMilliseconds(1500), cancellationToken));
         }
 
         return AuthMapper.ToDto(newUser, _jwtService.GenerateToken(newUser));
+    }
+
+    private static async Task DispatchWelcomeEmailSafeAsync(
+        IEmailService emailService,
+        ILogger<RegisterUserCommandHandler>? logger,
+        Guid userId,
+        string email,
+        string displayName,
+        string username,
+        string appUrl)
+    {
+        try
+        {
+            bool sent = await emailService.SendWelcomeEmailAsync(
+                email,
+                displayName,
+                username,
+                appUrl,
+                CancellationToken.None);
+            if (!sent)
+            {
+                logger?.LogWarning("Welcome email dispatch returned failure for user ID {UserId}. Check SendGrid configuration.", userId);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "Failed to dispatch welcome email for user ID {UserId}", userId);
+        }
     }
 }
 

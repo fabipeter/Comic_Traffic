@@ -52,34 +52,58 @@ public class JwtTokenService : IJwtTokenService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    private const int CurrentPbkdf2Iterations = 210000;
+    private const int LegacyPbkdf2Iterations = 10000;
+
     public string HashPassword(string password)
     {
         byte[] salt = RandomNumberGenerator.GetBytes(16);
         byte[] hash = Rfc2898DeriveBytes.Pbkdf2(
             Encoding.UTF8.GetBytes(password),
             salt,
-            iterations: 10000,
+            iterations: CurrentPbkdf2Iterations,
             hashAlgorithm: HashAlgorithmName.SHA256,
             outputLength: 32);
 
-        return $"{Convert.ToBase64String(salt)}.{Convert.ToBase64String(hash)}";
+        return $"v2.{CurrentPbkdf2Iterations}.{Convert.ToBase64String(salt)}.{Convert.ToBase64String(hash)}";
     }
 
     public bool VerifyPassword(string password, string storedHash)
     {
-        var parts = storedHash.Split('.');
-        if (parts.Length != 2)
+        if (string.IsNullOrWhiteSpace(storedHash))
             return false;
 
-        byte[] salt = Convert.FromBase64String(parts[0]);
-        byte[] expectedHash = Convert.FromBase64String(parts[1]);
+        var parts = storedHash.Split('.');
+        int iterations;
+        string saltB64;
+        string hashB64;
+
+        if (parts.Length == 4 && parts[0] == "v2" && int.TryParse(parts[1], out int parsedIter) && parsedIter >= 10000)
+        {
+            iterations = parsedIter;
+            saltB64 = parts[2];
+            hashB64 = parts[3];
+        }
+        else if (parts.Length == 2)
+        {
+            iterations = LegacyPbkdf2Iterations;
+            saltB64 = parts[0];
+            hashB64 = parts[1];
+        }
+        else
+        {
+            return false;
+        }
+
+        byte[] salt = Convert.FromBase64String(saltB64);
+        byte[] expectedHash = Convert.FromBase64String(hashB64);
 
         byte[] actualHash = Rfc2898DeriveBytes.Pbkdf2(
             Encoding.UTF8.GetBytes(password),
             salt,
-            iterations: 10000,
+            iterations: iterations,
             hashAlgorithm: HashAlgorithmName.SHA256,
-            outputLength: 32);
+            outputLength: expectedHash.Length);
 
         return CryptographicOperations.FixedTimeEquals(actualHash, expectedHash);
     }

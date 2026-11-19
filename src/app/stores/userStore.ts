@@ -1,5 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
-import { router } from "../router/Routes";
+import { navigateToAppRoute } from "../router/navigation";
 import { store } from "./store";
 import { encryptedBackendClient } from "../api/ratingApis";
 
@@ -51,14 +51,29 @@ export default class UserStore {
       const result = await encryptedBackendClient.sendEncryptedPost<
         { emailOrUsername: string; password: string },
         ComicTrafficUserProfile
-      >("/auth/login", {
-        emailOrUsername: creds.email,
-        password: creds.password || "",
-      });
+      >(
+        "/auth/login",
+        {
+          emailOrUsername: creds.email,
+          password: creds.password || "",
+        },
+        undefined,
+        false,
+        20000
+      );
 
-      if (!result.fromBackend || !result.data?.email) {
+      if (!result.fromBackend) {
         throw new Error(
-          "Unable to sign in. Please check your credentials and try again."
+          result.errorMessage ||
+            "Unable to sign in. Please check your connection and try again."
+        );
+      }
+
+      if (!result.data?.email) {
+        throw new Error(
+          (result.data as any)?.responseMessage ||
+            (result.data as any)?.message ||
+            "Unable to sign in. Please check your credentials and try again."
         );
       }
 
@@ -66,16 +81,20 @@ export default class UserStore {
 
       runInAction(() => {
         this.profile = resolvedProfile;
-        store.commonStore.setToken(resolvedProfile.accessToken);
+        store.commonStore.setToken(resolvedProfile.accessToken || null);
         store.commonStore.setLoggedInUser(resolvedProfile);
-        window.localStorage.setItem(
-          "ct_user_profile",
-          JSON.stringify(resolvedProfile)
-        );
+        try {
+          window.localStorage.setItem(
+            "ct_user_profile",
+            JSON.stringify(resolvedProfile)
+          );
+        } catch {
+          // Ignore storage restrictions
+        }
         this.loginStatus = "";
       });
 
-      router.navigate("/dashboard");
+      navigateToAppRoute("/dashboard");
       return resolvedProfile;
     } catch (error) {
       runInAction(() => {
@@ -116,34 +135,68 @@ export default class UserStore {
       const result = await encryptedBackendClient.sendEncryptedPost<
         any,
         ComicTrafficUserProfile
-      >("/auth/register", {
-        username: cleanUsername,
-        email: cleanEmail.toLowerCase(),
-        password: creds.password,
-        displayName: (creds.displayName || "").trim() || cleanUsername,
-        favoriteGenresCsv: (
-          creds.favoriteGenres || ["Superhero", "Sci-Fi", "Comic Book"]
-        ).join(","),
-      });
+      >(
+        "/auth/register",
+        {
+          username: cleanUsername,
+          email: cleanEmail.toLowerCase(),
+          password: creds.password,
+          displayName: (creds.displayName || "").trim() || cleanUsername,
+          favoriteGenresCsv: (
+            creds.favoriteGenres || ["Superhero", "Sci-Fi", "Comic Book"]
+          ).join(","),
+        },
+        undefined,
+        false,
+        20000
+      );
 
-      if (!result.fromBackend || !result.data?.email) {
-        throw new Error("Unable to create your account. Please try again.");
+      if (!result.fromBackend) {
+        throw new Error(
+          result.errorMessage ||
+            "Unable to reach the registration service. Please check your connection and try again."
+        );
       }
 
-      const resolvedProfile = result.data;
+      if (!result.data?.email) {
+        throw new Error(
+          (result.data as any)?.responseMessage ||
+            (result.data as any)?.message ||
+            "Unable to create your account. Please try again."
+        );
+      }
+
+      const rawProfile = result.data;
+      const resolvedProfile: ComicTrafficUserProfile = {
+        id: rawProfile.id || `user-${Date.now().toString(36)}`,
+        username: rawProfile.username || cleanUsername,
+        email: rawProfile.email,
+        displayName: rawProfile.displayName || cleanUsername,
+        bio: rawProfile.bio || "Comic book, cinema & series enthusiast.",
+        avatarUrl: rawProfile.avatarUrl || "/comic-traffic-logo.svg",
+        role: rawProfile.role || "User",
+        favoriteGenres: Array.isArray(rawProfile.favoriteGenres)
+          ? rawProfile.favoriteGenres
+          : creds.favoriteGenres || ["Superhero", "Sci-Fi", "Comic Book"],
+        accessToken: rawProfile.accessToken || "",
+      };
 
       runInAction(() => {
         this.profile = resolvedProfile;
-        store.commonStore.setToken(resolvedProfile.accessToken);
+        store.commonStore.setToken(resolvedProfile.accessToken || null);
         store.commonStore.setLoggedInUser(resolvedProfile);
-        window.localStorage.setItem(
-          "ct_user_profile",
-          JSON.stringify(resolvedProfile)
-        );
+        try {
+          window.localStorage.setItem(
+            "ct_user_profile",
+            JSON.stringify(resolvedProfile)
+          );
+        } catch {
+          // Ignore storage restrictions
+        }
         this.loginStatus = "";
       });
 
-      router.navigate("/dashboard");
+      navigateToAppRoute("/dashboard");
       return resolvedProfile;
     } catch (error) {
       runInAction(() => {

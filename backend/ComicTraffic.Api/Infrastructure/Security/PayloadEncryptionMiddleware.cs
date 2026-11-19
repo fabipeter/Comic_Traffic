@@ -62,8 +62,11 @@ public class PayloadEncryptionMiddleware
             (context.Request.Headers.TryGetValue("X-Response-Encrypted", out var respEncHeader) &&
              string.Equals(respEncHeader.ToString(), "true", StringComparison.OrdinalIgnoreCase));
 
-        // 1. Decrypt Incoming Request Payload if encrypted
-        if (context.Request.ContentLength > 0 &&
+        // 1. Decrypt Incoming Request Payload if encrypted (supports both fixed Content-Length and chunked/HTTP2 streams)
+        bool hasBodyMethod = HttpMethods.IsPost(context.Request.Method) ||
+                             HttpMethods.IsPut(context.Request.Method) ||
+                             HttpMethods.IsPatch(context.Request.Method);
+        if ((context.Request.ContentLength > 0 || (hasBodyMethod && context.Request.ContentLength is null)) &&
             (requestHasEncryptedHeader ||
              (context.Request.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) ?? false)))
         {
@@ -90,7 +93,8 @@ public class PayloadEncryptionMiddleware
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to decrypt incoming request payload.");
+                    string safePath = path.Replace("\r", string.Empty).Replace("\n", string.Empty);
+                    _logger.LogWarning("Rejected encrypted request payload on {Path}: {Reason}", safePath, ex.Message);
                     context.Response.StatusCode = StatusCodes.Status400BadRequest;
                     context.Response.ContentType = "application/json";
                     await context.Response.WriteAsync(JsonSerializer.Serialize(new

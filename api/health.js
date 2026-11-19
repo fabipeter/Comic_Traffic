@@ -3,16 +3,19 @@
  * Validates API security headers, rate-limit headers, and server-side Postgres configuration
  * without ever exposing database credentials to the client.
  */
+const ALLOWED_CORS_ORIGINS = new Map([
+  ["https://comictraffic.com", "https://comictraffic.com"],
+  ["https://www.comictraffic.com", "https://www.comictraffic.com"],
+  ["http://localhost:3000", "http://localhost:3000"],
+  ["http://127.0.0.1:3000", "http://127.0.0.1:3000"],
+  ["http://localhost:5173", "http://localhost:5173"],
+  ["http://127.0.0.1:5173", "http://127.0.0.1:5173"],
+]);
+
 module.exports = async function handler(req, res) {
   const rawOrigin = Array.isArray(req.headers?.origin) ? req.headers.origin[0] : req.headers?.origin;
   const cleanOrigin = typeof rawOrigin === "string" ? rawOrigin.trim().toLowerCase() : "";
-  const isAllowedOrigin = cleanOrigin && (
-    cleanOrigin === "https://comictraffic.com" ||
-    cleanOrigin === "https://www.comictraffic.com" ||
-    cleanOrigin.startsWith("http://localhost:") ||
-    cleanOrigin.startsWith("http://127.0.0.1:")
-  );
-  const corsOrigin = isAllowedOrigin ? rawOrigin.trim() : "https://comictraffic.com";
+  const corsOrigin = ALLOWED_CORS_ORIGINS.get(cleanOrigin) || "https://comictraffic.com";
 
   res.setHeader("Access-Control-Allow-Origin", corsOrigin);
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");

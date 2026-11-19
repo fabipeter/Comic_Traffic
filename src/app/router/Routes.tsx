@@ -7,6 +7,7 @@ import LoginPage from "../../features/authentication/login/LoginPage";
 import RegisterPage from "../../features/authentication/register/RegisterPage";
 import ForgotPasswordPage from "../../features/authentication/forgot-password/ForgotPasswordPage";
 import RequireAuth from "./RequireAuth";
+import { setAppNavigator } from "./navigation";
 
 export const routes: RouteObject[] = [
   {
@@ -32,3 +33,6 @@ export const routes: RouteObject[] = [
 ];
 
 export const router = createBrowserRouter(routes);
+setAppNavigator((to) => {
+  router.navigate(to);
+});

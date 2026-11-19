@@ -102,11 +102,45 @@ function toYear(value) {
   return y >= 1000 && y <= 2100 ? y : 0;
 }
 
+const ALLOWED_PROVIDER_HOSTS = new Set([
+  "api.themoviedb.org",
+  "www.omdbapi.com",
+  "api.tvmaze.com",
+  "itunes.apple.com",
+  "graphql.anilist.co",
+  "api.jikan.moe",
+  "comicvine.gamespot.com",
+  "api.hardcover.app",
+  "www.googleapis.com",
+  "openlibrary.org",
+]);
+
+function upgradeToHttps(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== "string") return "";
+  try {
+    const parsed = new URL(rawUrl.trim());
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return "";
+    parsed.protocol = "https:";
+    return parsed.toString();
+  } catch {
+    return "";
+  }
+}
+
 async function getJson(url, { headers = {}, method = "GET", body, timeoutMs = 5500 } = {}) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error("Blocked invalid provider URL");
+  }
+  if (parsed.protocol !== "https:" || !ALLOWED_PROVIDER_HOSTS.has(parsed.hostname)) {
+    throw new Error("Blocked outbound request to unapproved provider host");
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, {
+    const res = await fetch(parsed.toString(), {
       method,
       body,
       headers: { "User-Agent": USER_AGENT, Accept: "application/json", ...headers },
@@ -293,7 +327,7 @@ async function searchItunesMovies(q) {
         mediaType: "Movie",
         releaseYear: toYear(r.releaseDate),
         overview: r.longDescription || r.shortDescription || "",
-        posterUrl: r.artworkUrl100 ? String(r.artworkUrl100).replace("/100x100bb", "/600x600bb").replace(/^http:/, "https:") : "",
+        posterUrl: r.artworkUrl100 ? upgradeToHttps(String(r.artworkUrl100).replace("/100x100bb", "/600x600bb")) : "",
         genres: r.primaryGenreName ? [r.primaryGenreName] : [],
         publisherOrStudio: r.collectionArtistName || "",
         creatorOrDirector: r.artistName || "",
@@ -504,7 +538,7 @@ async function searchGoogleBooks(q, env) {
         yearLoose: true,
         releaseYear: toYear(vi.publishedDate),
         overview: stripHtml(vi.description || ""),
-        posterUrl: poster ? String(poster).replace(/^http:/, "https:").replace("&edge=curl", "") : "",
+        posterUrl: poster ? upgradeToHttps(String(poster)).replace("&edge=curl", "") : "",
         genres: Array.isArray(vi.categories) && vi.categories.length ? vi.categories : ["Book"],
         publisherOrStudio: vi.publisher || "",
         creatorOrDirector: Array.isArray(vi.authors) ? vi.authors.slice(0, 2).join(", ") : "",
@@ -536,7 +570,7 @@ async function searchAppleBooks(q) {
         yearLoose: true,
         releaseYear: toYear(r.releaseDate),
         overview: stripHtml(r.description || ""),
-        posterUrl: r.artworkUrl100 ? String(r.artworkUrl100).replace("/100x100bb", "/600x600bb").replace(/^http:/, "https:") : "",
+        posterUrl: r.artworkUrl100 ? upgradeToHttps(String(r.artworkUrl100).replace("/100x100bb", "/600x600bb")) : "",
         genres: Array.isArray(r.genres) && r.genres.length ? r.genres : ["Book"],
         creatorOrDirector: r.artistName || "",
         sources,
@@ -585,8 +619,18 @@ async function searchOpenLibrary(q) {
 
 function addSource(item, source) {
   const existing = item.sources.find((s) => s.sourceId === source.sourceId);
-  if (!existing) item.sources.push(source);
-  else if (source.voteCount > existing.voteCount) Object.assign(existing, source);
+  if (!existing) {
+    item.sources.push(source);
+  } else if (source.voteCount > existing.voteCount) {
+    existing.sourceId = source.sourceId;
+    existing.sourceName = source.sourceName;
+    existing.category = source.category;
+    existing.rawScoreDisplay = source.rawScoreDisplay;
+    existing.normalizedScore = source.normalizedScore;
+    existing.voteCount = source.voteCount;
+    existing.defaultWeight = source.defaultWeight;
+    existing.accentColor = source.accentColor;
+  }
 }
 
 function yearsCompatible(a, b) {
@@ -603,9 +647,12 @@ function mergeInto(target, inc) {
   for (const g of inc.genres || []) {
     if (target.genres.length < 8 && !target.genres.some((x) => x.toLowerCase() === g.toLowerCase())) target.genres.push(g);
   }
-  for (const f of ["publisherOrStudio", "creatorOrDirector", "runtimeOrIssueCount", "ageRating", "imdbId", "malKey"]) {
-    if (!target[f] && inc[f]) target[f] = inc[f];
-  }
+  if (!target.publisherOrStudio && inc.publisherOrStudio) target.publisherOrStudio = inc.publisherOrStudio;
+  if (!target.creatorOrDirector && inc.creatorOrDirector) target.creatorOrDirector = inc.creatorOrDirector;
+  if (!target.runtimeOrIssueCount && inc.runtimeOrIssueCount) target.runtimeOrIssueCount = inc.runtimeOrIssueCount;
+  if (!target.ageRating && inc.ageRating) target.ageRating = inc.ageRating;
+  if (!target.imdbId && inc.imdbId) target.imdbId = inc.imdbId;
+  if (!target.malKey && inc.malKey) target.malKey = inc.malKey;
   if (!target.releaseYear && inc.releaseYear) target.releaseYear = inc.releaseYear;
   if (target.yearLoose && !inc.yearLoose) target.yearLoose = false;
 }

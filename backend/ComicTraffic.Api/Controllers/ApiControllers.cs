@@ -8,6 +8,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 
 namespace ComicTraffic.Api.Controllers;
 
@@ -16,10 +17,12 @@ namespace ComicTraffic.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IMediator mediator)
+    public AuthController(IMediator mediator, ILogger<AuthController> logger)
     {
         _mediator = mediator;
+        _logger = logger;
     }
 
     [HttpPost("register")]
@@ -35,8 +38,14 @@ public class AuthController : ControllerBase
         {
             return BadRequest(new { isSuccessful = false, responseMessage = ex.Message });
         }
-        catch
+        catch (DbUpdateException ex)
         {
+            _logger.LogWarning(ex, "Database constraint error during user registration.");
+            return BadRequest(new { isSuccessful = false, responseMessage = "A user with that email or username already exists." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during user registration.");
             return StatusCode(500, new { isSuccessful = false, responseMessage = "Unable to complete registration at this time." });
         }
     }
@@ -122,7 +131,8 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> UpdatePreferences([FromBody] UpdateUserPreferencesCommand command, CancellationToken ct)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        Guid userId = Guid.TryParse(userIdClaim, out var parsed) ? parsed : command.UserId;
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized();
 
         var updated = await _mediator.Send(command with { UserId = userId }, ct);
         return Ok(new { isSuccessful = true, data = updated });
@@ -315,15 +325,19 @@ public class DashboardController : ControllerBase
 public class SecurityController : ControllerBase
 {
     private readonly IPayloadEncryptionService _encryptionService;
+    private readonly IWebHostEnvironment _env;
 
-    public SecurityController(IPayloadEncryptionService encryptionService)
+    public SecurityController(IPayloadEncryptionService encryptionService, IWebHostEnvironment env)
     {
         _encryptionService = encryptionService;
+        _env = env;
     }
 
     [HttpPost("encrypt")]
     public IActionResult Encrypt([FromBody] object plainObject)
     {
+        if (!_env.IsDevelopment())
+            return NotFound();
         var envelope = _encryptionService.EncryptObject(plainObject);
         return Ok(envelope);
     }
@@ -331,6 +345,8 @@ public class SecurityController : ControllerBase
     [HttpPost("decrypt")]
     public IActionResult Decrypt([FromBody] EncryptedEnvelopeDto envelope)
     {
+        if (!_env.IsDevelopment())
+            return NotFound();
         string plainJson = _encryptionService.DecryptPayload(envelope);
         using var parsedDoc = System.Text.Json.JsonDocument.Parse(plainJson);
         return new JsonResult(parsedDoc.RootElement.Clone());

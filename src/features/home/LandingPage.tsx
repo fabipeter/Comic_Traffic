@@ -5,11 +5,7 @@ import Nav from "./Nav";
 import Banner from "./Banner";
 import Row from "./Row";
 import {
-  CumulativeDetailModal,
-  CompareModal,
-  CustomWeightsModal,
   CompareThreeSlotPicker,
-  KeyboardShortcutsModal,
   CommunityBottomDrawer,
   getScoreColor,
 } from "./CumulativeModals";
@@ -837,11 +833,7 @@ const LandingPage = () => {
         </div>
       </footer>
 
-      {/* Interactive Modals & Community Bottom Drawer */}
-      <CumulativeDetailModal />
-      <CompareModal />
-      <CustomWeightsModal />
-      <KeyboardShortcutsModal />
+      {/* Community Bottom Drawer (Global modals are mounted in App.tsx) */}
       <CommunityBottomDrawer />
     </div>
   );

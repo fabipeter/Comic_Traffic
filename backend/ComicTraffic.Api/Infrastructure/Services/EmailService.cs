@@ -494,7 +494,7 @@ public class EmailService : IEmailService
       <table role=""presentation"" border=""0"" cellspacing=""0"" cellpadding=""0"" width=""100%"" style=""margin: 26px 0;"">
         <tr>
           <td align=""center"">
-            <a href=""{WebUtility.HtmlEncode(resetUrl)}"" target=""_blank"" class=""cta-button"" style=""display: block; width: 100%; box-sizing: border-box; padding: 15px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); background-color: #2563eb; color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45); letter-spacing: 0.5px;"">Reset Password Now</a>
+            <a href=""{WebUtility.HtmlEncode(resetUrl)}"" target=""_blank"" rel=""noopener noreferrer"" class=""cta-button"" style=""display: block; width: 100%; box-sizing: border-box; padding: 15px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); background-color: #2563eb; color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45); letter-spacing: 0.5px;"">Reset Password Now</a>
           </td>
         </tr>
       </table>
@@ -554,7 +554,7 @@ public class EmailService : IEmailService
       <table role=""presentation"" border=""0"" cellspacing=""0"" cellpadding=""0"" width=""100%"" style=""margin: 26px 0;"">
         <tr>
           <td align=""center"">
-            <a href=""{WebUtility.HtmlEncode(resolvedUrl)}/dashboard"" target=""_blank"" class=""cta-button"" style=""display: block; width: 100%; box-sizing: border-box; padding: 15px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); background-color: #2563eb; color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45); letter-spacing: 0.5px;"">Open Your Comic Traffic Hub</a>
+            <a href=""{WebUtility.HtmlEncode(resolvedUrl)}/dashboard"" target=""_blank"" rel=""noopener noreferrer"" class=""cta-button"" style=""display: block; width: 100%; box-sizing: border-box; padding: 15px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); background-color: #2563eb; color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45); letter-spacing: 0.5px;"">Open Your Comic Traffic Hub</a>
           </td>
         </tr>
       </table>

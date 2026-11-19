@@ -1,11 +1,12 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using ComicTraffic.Api.Domain.Entities;
 using ComicTraffic.Api.Infrastructure.Services;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace ComicTraffic.Api.Application.Features.Media;
 
@@ -127,27 +128,124 @@ public sealed class LiveMediaSearchService
         };
     }
 
+    private static readonly HashSet<string> AllowedProviderHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "api.themoviedb.org",
+        "www.omdbapi.com",
+        "api.tvmaze.com",
+        "itunes.apple.com",
+        "graphql.anilist.co",
+        "api.jikan.moe",
+        "comicvine.gamespot.com",
+        "api.hardcover.app",
+        "www.googleapis.com",
+        "openlibrary.org"
+    };
+
     public static string TitleKey(string? title)
     {
         if (string.IsNullOrWhiteSpace(title)) return "";
-        var sb = new StringBuilder();
-        foreach (char c in title.Normalize(NormalizationForm.FormKD))
+        var sb = new StringBuilder(title.Length);
+        bool prevSpace = true;
+        foreach (char rawChar in title.Normalize(NormalizationForm.FormKD))
         {
-            if (CharUnicodeInfo.GetUnicodeCategory(c) == UnicodeCategory.NonSpacingMark) continue;
-            sb.Append(c);
+            if (CharUnicodeInfo.GetUnicodeCategory(rawChar) == UnicodeCategory.NonSpacingMark) continue;
+            if (rawChar == '&')
+            {
+                if (!prevSpace) sb.Append(' ');
+                sb.Append("and ");
+                prevSpace = true;
+                continue;
+            }
+            char c = char.ToLowerInvariant(rawChar);
+            if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
+            {
+                sb.Append(c);
+                prevSpace = false;
+            }
+            else if (!prevSpace)
+            {
+                sb.Append(' ');
+                prevSpace = true;
+            }
         }
-        string s = sb.ToString().ToLowerInvariant().Replace("&", " and ");
-        s = Regex.Replace(s, "[^a-z0-9]+", " ").Trim();
-        return Regex.Replace(s, "^(the|a|an) ", "");
+        string s = sb.ToString().Trim();
+        if (s.StartsWith("the ", StringComparison.Ordinal)) return s[4..];
+        if (s.StartsWith("an ", StringComparison.Ordinal)) return s[3..];
+        if (s.StartsWith("a ", StringComparison.Ordinal)) return s[2..];
+        return s;
     }
 
     private static int ToYear(string? value)
     {
         if (string.IsNullOrEmpty(value)) return 0;
-        var m = Regex.Match(value, @"\d{4}");
-        if (!m.Success) return 0;
-        int y = int.Parse(m.Value, CultureInfo.InvariantCulture);
-        return y is >= 1000 and <= 2100 ? y : 0;
+        int run = 0;
+        for (int i = 0; i < value.Length; i++)
+        {
+            if (value[i] >= '0' && value[i] <= '9')
+            {
+                run++;
+                if (run == 4)
+                {
+                    int y = int.Parse(value.AsSpan(i - 3, 4), CultureInfo.InvariantCulture);
+                    if (y is >= 1000 and <= 2100) return y;
+                    run = 0;
+                }
+            }
+            else
+            {
+                run = 0;
+            }
+        }
+        return 0;
+    }
+
+    private enum ProviderEndpoint
+    {
+        TmdbSearchMulti,
+        TmdbTopRated,
+        TmdbNetflixOriginals,
+        TmdbTrending,
+        Omdb,
+        TvMazeSearch,
+        ItunesSearch,
+        AniListGraphQl,
+        JikanManga,
+        ComicVineSearch,
+        HardcoverGraphQl,
+        GoogleBooksVolumes,
+        OpenLibrarySearch
+    }
+
+    private static (string BaseUrl, string Host, string Path) ResolveEndpoint(ProviderEndpoint endpoint) => endpoint switch
+    {
+        ProviderEndpoint.TmdbSearchMulti => ("https://api.themoviedb.org/3/search/multi", "api.themoviedb.org", "/3/search/multi"),
+        ProviderEndpoint.TmdbTopRated => ("https://api.themoviedb.org/3/movie/top_rated", "api.themoviedb.org", "/3/movie/top_rated"),
+        ProviderEndpoint.TmdbNetflixOriginals => ("https://api.themoviedb.org/3/discover/tv", "api.themoviedb.org", "/3/discover/tv"),
+        ProviderEndpoint.TmdbTrending => ("https://api.themoviedb.org/3/trending/all/week", "api.themoviedb.org", "/3/trending/all/week"),
+        ProviderEndpoint.Omdb => ("https://www.omdbapi.com/", "www.omdbapi.com", "/"),
+        ProviderEndpoint.TvMazeSearch => ("https://api.tvmaze.com/search/shows", "api.tvmaze.com", "/search/shows"),
+        ProviderEndpoint.ItunesSearch => ("https://itunes.apple.com/search", "itunes.apple.com", "/search"),
+        ProviderEndpoint.AniListGraphQl => ("https://graphql.anilist.co/", "graphql.anilist.co", "/"),
+        ProviderEndpoint.JikanManga => ("https://api.jikan.moe/v4/manga", "api.jikan.moe", "/v4/manga"),
+        ProviderEndpoint.ComicVineSearch => ("https://comicvine.gamespot.com/api/search/", "comicvine.gamespot.com", "/api/search/"),
+        ProviderEndpoint.HardcoverGraphQl => ("https://api.hardcover.app/v1/graphql", "api.hardcover.app", "/v1/graphql"),
+        ProviderEndpoint.GoogleBooksVolumes => ("https://www.googleapis.com/books/v1/volumes", "www.googleapis.com", "/books/v1/volumes"),
+        ProviderEndpoint.OpenLibrarySearch => ("https://openlibrary.org/search.json", "openlibrary.org", "/search.json"),
+        _ => throw new ArgumentOutOfRangeException(nameof(endpoint), "Unsupported external media provider endpoint.")
+    };
+
+    private static string SanitizeSearchQuery(string? query)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return "";
+        var sb = new StringBuilder(Math.Min(query.Length, 150));
+        foreach (char ch in query.Trim())
+        {
+            if (char.IsControl(ch)) continue;
+            sb.Append(ch);
+            if (sb.Length >= 150) break;
+        }
+        return sb.ToString().Trim();
     }
 
     private static string StripHtml(string? text)
@@ -161,30 +259,112 @@ public sealed class LiveMediaSearchService
             else if (ch == '>' && inTag) inTag = false;
             else if (!inTag) sb.Append(ch);
         }
-        return sb.ToString().Replace("&amp;", "&").Replace("&quot;", "\"").Replace("&#39;", "'")
-            .Replace("&#039;", "'").Replace("&lt;", "<").Replace("&gt;", ">").Replace("&nbsp;", " ").Trim();
+        return sb.ToString()
+            .Replace("&quot;", "\"")
+            .Replace("&#39;", "'")
+            .Replace("&#039;", "'")
+            .Replace("&lt;", "<")
+            .Replace("&gt;", ">")
+            .Replace("&nbsp;", " ")
+            .Replace("&amp;", "&")
+            .Trim();
     }
 
     private async Task<JsonDocument> GetJsonAsync(
-        string url, CancellationToken ct, HttpMethod? method = null, string? jsonBody = null,
-        Dictionary<string, string>? headers = null, TimeSpan? timeout = null)
+        ProviderEndpoint endpoint,
+        CancellationToken ct,
+        IEnumerable<KeyValuePair<string, string?>>? queryParams = null,
+        HttpMethod? method = null,
+        string? jsonBody = null,
+        string? bearerToken = null,
+        TimeSpan? timeout = null)
     {
+        var (baseUrl, expectedHost, expectedPath) = ResolveEndpoint(endpoint);
+        string requestUrl = queryParams == null
+            ? baseUrl
+            : QueryHelpers.AddQueryString(baseUrl, queryParams);
+
+        if (!Uri.TryCreate(requestUrl, UriKind.Absolute, out var safeUri) ||
+            !string.Equals(safeUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+            !safeUri.IsDefaultPort ||
+            !string.Equals(safeUri.Host, expectedHost, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(safeUri.AbsolutePath, expectedPath, StringComparison.Ordinal) ||
+            !AllowedProviderHosts.Contains(safeUri.Host))
+        {
+            throw new InvalidOperationException("Blocked outbound request to unapproved provider URL.");
+        }
+
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(timeout ?? ProviderTimeout);
-        using var req = new HttpRequestMessage(method ?? HttpMethod.Get, url);
-        req.Headers.TryAddWithoutValidation("User-Agent", UserAgent);
-        req.Headers.TryAddWithoutValidation("Accept", "application/json");
+        using var req = new HttpRequestMessage(method ?? HttpMethod.Get, safeUri);
+        req.Headers.UserAgent.ParseAdd(UserAgent);
+        req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         if (jsonBody != null) req.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-        if (headers != null)
-            foreach (var h in headers) req.Headers.TryAddWithoutValidation(h.Key, h.Value);
+        if (!string.IsNullOrWhiteSpace(bearerToken))
+        {
+            string cleanToken = new string(bearerToken.Where(ch => !char.IsControl(ch)).ToArray()).Trim();
+            if (cleanToken.Length > 0)
+            {
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cleanToken);
+            }
+        }
         using var res = await _http.SendAsync(req, HttpCompletionOption.ResponseContentRead, cts.Token);
-        if (!res.IsSuccessStatusCode) throw new HttpRequestException($"HTTP {(int)res.StatusCode}");
+        if (!res.IsSuccessStatusCode) throw new HttpRequestException($"HTTP {(int)res.StatusCode}", null, res.StatusCode);
         string body = await res.Content.ReadAsStringAsync(cts.Token);
         return JsonDocument.Parse(body);
     }
 
+    public async Task<List<MediaItemDto>> FetchTmdbCuratedAsync(string category, string? forcedMediaType, CancellationToken ct)
+    {
+        string tmdbKey = _key("TMDB_API_KEY") ?? "";
+        if (string.IsNullOrWhiteSpace(tmdbKey)) return new List<MediaItemDto>();
+
+        ProviderEndpoint endpoint = (category ?? "trending").ToLowerInvariant() switch
+        {
+            "top_rated" => ProviderEndpoint.TmdbTopRated,
+            "netflix_originals" => ProviderEndpoint.TmdbNetflixOriginals,
+            _ => ProviderEndpoint.TmdbTrending
+        };
+        KeyValuePair<string, string?>[] queryParams = endpoint == ProviderEndpoint.TmdbNetflixOriginals
+            ? new KeyValuePair<string, string?>[]
+            {
+                new("with_networks", "213"),
+                new("api_key", tmdbKey)
+            }
+            : new KeyValuePair<string, string?>[]
+            {
+                new("language", "en-US"),
+                new("api_key", tmdbKey)
+            };
+
+        using var doc = await GetJsonAsync(
+            endpoint,
+            ct,
+            queryParams: queryParams,
+            timeout: TimeSpan.FromSeconds(4));
+
+        var list = new List<MediaItemDto>();
+        foreach (var raw in A(doc.RootElement, "results").Take(12))
+        {
+            var item = TmdbToItem(raw, forcedMediaType);
+            if (item != null) list.Add(ToDto(item));
+        }
+        return list;
+    }
+
+    private static string UpgradeToHttps(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return "";
+        if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri)) return "";
+        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase))
+            return "";
+        var ub = new UriBuilder(uri) { Scheme = Uri.UriSchemeHttps, Port = -1 };
+        return ub.Uri.ToString();
+    }
+
     private static string UpgradeArtwork(string? url) =>
-        string.IsNullOrEmpty(url) ? "" : url.Replace("/100x100bb", "/600x600bb").Replace("http://", "https://");
+        string.IsNullOrEmpty(url) ? "" : UpgradeToHttps(url.Replace("/100x100bb", "/600x600bb"));
 
     // ------------------------------------------------------------------ providers
 
@@ -224,11 +404,17 @@ public sealed class LiveMediaSearchService
 
     private async Task<List<LiveItem>> SearchTmdbAsync(string q, string key, CancellationToken ct)
     {
-        string baseUrl = (_key("TMDB_API_URL") ?? "https://api.themoviedb.org/3").TrimEnd('/');
         async Task<List<LiveItem>> Page(int page)
         {
-            using var doc = await GetJsonAsync(
-                $"{baseUrl}/search/multi?api_key={Uri.EscapeDataString(key)}&language=en-US&query={Uri.EscapeDataString(q)}&page={page}&include_adult=false", ct);
+            var queryParams = new KeyValuePair<string, string?>[]
+            {
+                new("api_key", key),
+                new("language", "en-US"),
+                new("query", q),
+                new("page", page.ToString(CultureInfo.InvariantCulture)),
+                new("include_adult", "false")
+            };
+            using var doc = await GetJsonAsync(ProviderEndpoint.TmdbSearchMulti, ct, queryParams: queryParams);
             var list = new List<LiveItem>();
             foreach (var raw in A(doc.RootElement, "results"))
             {
@@ -246,8 +432,13 @@ public sealed class LiveMediaSearchService
 
     private async Task<List<LiveItem>> SearchOmdbAsync(string q, string key, CancellationToken ct)
     {
-        using var doc = await GetJsonAsync(
-            $"https://www.omdbapi.com/?apikey={Uri.EscapeDataString(key)}&s={Uri.EscapeDataString(q)}&page=1", ct);
+        var queryParams = new KeyValuePair<string, string?>[]
+        {
+            new("apikey", key),
+            new("s", q),
+            new("page", "1")
+        };
+        using var doc = await GetJsonAsync(ProviderEndpoint.Omdb, ct, queryParams: queryParams);
         var list = new List<LiveItem>();
         if (S(doc.RootElement, "Response") == "False") return list;
         foreach (var r in A(doc.RootElement, "Search"))
@@ -271,11 +462,27 @@ public sealed class LiveMediaSearchService
     /// <summary>Adds real IMDb / Rotten Tomatoes / Metacritic values (and missing metadata) from OMDb.</summary>
     private async Task EnrichWithOmdbAsync(LiveItem item, string key, CancellationToken ct)
     {
-        string lookup = !string.IsNullOrEmpty(item.ImdbId)
-            ? $"i={Uri.EscapeDataString(item.ImdbId)}"
-            : $"t={Uri.EscapeDataString(item.Title)}{(item.Year > 0 ? $"&y={item.Year}" : "")}&type={(item.MediaType == "TvSeries" ? "series" : "movie")}";
+        var queryParams = new List<KeyValuePair<string, string?>>
+        {
+            new("apikey", key)
+        };
+        if (!string.IsNullOrEmpty(item.ImdbId))
+        {
+            queryParams.Add(new("i", item.ImdbId));
+        }
+        else
+        {
+            queryParams.Add(new("t", item.Title));
+            if (item.Year > 0)
+            {
+                queryParams.Add(new("y", item.Year.ToString(CultureInfo.InvariantCulture)));
+            }
+            queryParams.Add(new("type", item.MediaType == "TvSeries" ? "series" : "movie"));
+        }
+        queryParams.Add(new("plot", "short"));
+
         using var doc = await GetJsonAsync(
-            $"https://www.omdbapi.com/?apikey={Uri.EscapeDataString(key)}&{lookup}&plot=short", ct, timeout: TimeSpan.FromSeconds(3.5));
+            ProviderEndpoint.Omdb, ct, queryParams: queryParams, timeout: TimeSpan.FromSeconds(3.5));
         var d = doc.RootElement;
         if (S(d, "Response") == "False") return;
         // Never attach ratings to a title that merely resembles the requested one.
@@ -311,7 +518,8 @@ public sealed class LiveMediaSearchService
 
     private async Task<List<LiveItem>> SearchTvMazeAsync(string q, CancellationToken ct)
     {
-        using var doc = await GetJsonAsync($"https://api.tvmaze.com/search/shows?q={Uri.EscapeDataString(q)}", ct);
+        var queryParams = new KeyValuePair<string, string?>[] { new("q", q) };
+        using var doc = await GetJsonAsync(ProviderEndpoint.TvMazeSearch, ct, queryParams: queryParams);
         var list = new List<LiveItem>();
         if (doc.RootElement.ValueKind != JsonValueKind.Array) return list;
         foreach (var entry in doc.RootElement.EnumerateArray().Take(15))
@@ -344,8 +552,14 @@ public sealed class LiveMediaSearchService
 
     private async Task<List<LiveItem>> SearchItunesMoviesAsync(string q, CancellationToken ct)
     {
-        using var doc = await GetJsonAsync(
-            $"https://itunes.apple.com/search?term={Uri.EscapeDataString(q)}&media=movie&entity=movie&limit=25", ct);
+        var queryParams = new KeyValuePair<string, string?>[]
+        {
+            new("term", q),
+            new("media", "movie"),
+            new("entity", "movie"),
+            new("limit", "25")
+        };
+        using var doc = await GetJsonAsync(ProviderEndpoint.ItunesSearch, ct, queryParams: queryParams);
         var list = new List<LiveItem>();
         foreach (var r in A(doc.RootElement, "results"))
         {
@@ -406,7 +620,7 @@ query ($search: String) {
     private async Task<List<LiveItem>> SearchAniListAsync(string q, CancellationToken ct)
     {
         string body = JsonSerializer.Serialize(new { query = AniListQuery, variables = new { search = q } });
-        using var doc = await GetJsonAsync("https://graphql.anilist.co", ct, HttpMethod.Post, body);
+        using var doc = await GetJsonAsync(ProviderEndpoint.AniListGraphQl, ct, method: HttpMethod.Post, jsonBody: body);
         var data = O(doc.RootElement, "data") ?? throw new InvalidOperationException("AniList returned no data");
         var list = new List<LiveItem>();
 
@@ -455,7 +669,13 @@ query ($search: String) {
 
     private async Task<List<LiveItem>> SearchJikanMangaAsync(string q, CancellationToken ct)
     {
-        using var doc = await GetJsonAsync($"https://api.jikan.moe/v4/manga?q={Uri.EscapeDataString(q)}&limit=15&sfw=true", ct);
+        var queryParams = new KeyValuePair<string, string?>[]
+        {
+            new("q", q),
+            new("limit", "15"),
+            new("sfw", "true")
+        };
+        using var doc = await GetJsonAsync(ProviderEndpoint.JikanManga, ct, queryParams: queryParams);
         var list = new List<LiveItem>();
         foreach (var m in A(doc.RootElement, "data"))
         {
@@ -487,9 +707,16 @@ query ($search: String) {
 
     private async Task<List<LiveItem>> SearchComicVineAsync(string q, string key, CancellationToken ct)
     {
-        using var doc = await GetJsonAsync(
-            $"https://comicvine.gamespot.com/api/search/?api_key={Uri.EscapeDataString(key)}&format=json&resources=volume&limit=15&query={Uri.EscapeDataString(q)}&field_list=id,name,start_year,publisher,image,description,deck,count_of_issues",
-            ct);
+        var queryParams = new KeyValuePair<string, string?>[]
+        {
+            new("api_key", key),
+            new("format", "json"),
+            new("resources", "volume"),
+            new("limit", "15"),
+            new("query", q),
+            new("field_list", "id,name,start_year,publisher,image,description,deck,count_of_issues")
+        };
+        using var doc = await GetJsonAsync(ProviderEndpoint.ComicVineSearch, ct, queryParams: queryParams);
         if (D(doc.RootElement, "status_code") is var sc && sc != 0 && sc != 1)
             throw new InvalidOperationException($"ComicVine: {S(doc.RootElement, "error")}");
         var list = new List<LiveItem>();
@@ -516,14 +743,21 @@ query ($search: String) {
 
     private async Task<List<LiveItem>> SearchHardcoverAsync(string q, string token, CancellationToken ct)
     {
-        string bearer = Regex.Replace(token, "^Bearer\\s+", "", RegexOptions.IgnoreCase);
+        string trimmedToken = token.Trim();
+        string bearer = trimmedToken.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            ? trimmedToken[7..].TrimStart()
+            : trimmedToken;
         string body = JsonSerializer.Serialize(new
         {
             query = "query Search($q: String!) { search(query: $q, query_type: \"Book\", per_page: 15, page: 1) { results } }",
             variables = new { q }
         });
-        using var doc = await GetJsonAsync("https://api.hardcover.app/v1/graphql", ct, HttpMethod.Post, body,
-            new Dictionary<string, string> { ["Authorization"] = $"Bearer {bearer}" });
+        using var doc = await GetJsonAsync(
+            ProviderEndpoint.HardcoverGraphQl,
+            ct,
+            method: HttpMethod.Post,
+            jsonBody: body,
+            bearerToken: bearer);
         if (A(doc.RootElement, "errors").FirstOrDefault() is { ValueKind: JsonValueKind.Object } err)
             throw new InvalidOperationException($"Hardcover: {S(err, "message")}");
 
@@ -568,9 +802,18 @@ query ($search: String) {
     private async Task<List<LiveItem>> SearchGoogleBooksAsync(string q, CancellationToken ct)
     {
         string key = _key("GOOGLE_BOOKS_API_KEY") ?? "";
-        string keyPart = key != "" ? $"&key={Uri.EscapeDataString(key)}" : "";
-        using var doc = await GetJsonAsync(
-            $"https://www.googleapis.com/books/v1/volumes?q={Uri.EscapeDataString(q)}&maxResults=20&printType=books&orderBy=relevance{keyPart}", ct);
+        var queryParams = new List<KeyValuePair<string, string?>>
+        {
+            new("q", q),
+            new("maxResults", "20"),
+            new("printType", "books"),
+            new("orderBy", "relevance")
+        };
+        if (key != "")
+        {
+            queryParams.Add(new("key", key));
+        }
+        using var doc = await GetJsonAsync(ProviderEndpoint.GoogleBooksVolumes, ct, queryParams: queryParams);
         var list = new List<LiveItem>();
         foreach (var it in A(doc.RootElement, "items"))
         {
@@ -593,7 +836,7 @@ query ($search: String) {
             if (O(v, "imageLinks") is { } links)
             {
                 string thumb = S(links, "thumbnail") != "" ? S(links, "thumbnail") : S(links, "smallThumbnail");
-                item.PosterUrl = thumb.Replace("http://", "https://").Replace("&edge=curl", "");
+                item.PosterUrl = UpgradeToHttps(thumb).Replace("&edge=curl", "");
             }
             foreach (var c in A(v, "categories")) if (c.GetString() is { } cs) item.Genres.Add(cs);
             double avg = D(v, "averageRating");
@@ -607,8 +850,14 @@ query ($search: String) {
 
     private async Task<List<LiveItem>> SearchAppleBooksAsync(string q, CancellationToken ct)
     {
-        using var doc = await GetJsonAsync(
-            $"https://itunes.apple.com/search?term={Uri.EscapeDataString(q)}&media=ebook&entity=ebook&limit=20", ct);
+        var queryParams = new KeyValuePair<string, string?>[]
+        {
+            new("term", q),
+            new("media", "ebook"),
+            new("entity", "ebook"),
+            new("limit", "20")
+        };
+        using var doc = await GetJsonAsync(ProviderEndpoint.ItunesSearch, ct, queryParams: queryParams);
         var list = new List<LiveItem>();
         foreach (var r in A(doc.RootElement, "results"))
         {
@@ -638,8 +887,13 @@ query ($search: String) {
     private async Task<List<LiveItem>> SearchOpenLibraryAsync(string q, CancellationToken ct)
     {
         const string fields = "key,title,author_name,first_publish_year,cover_i,subject,edition_count,publisher,ratings_average,ratings_count";
-        using var doc = await GetJsonAsync(
-            $"https://openlibrary.org/search.json?q={Uri.EscapeDataString(q)}&limit=25&fields={fields}", ct);
+        var queryParams = new KeyValuePair<string, string?>[]
+        {
+            new("q", q),
+            new("limit", "25"),
+            new("fields", fields)
+        };
+        using var doc = await GetJsonAsync(ProviderEndpoint.OpenLibrarySearch, ct, queryParams: queryParams);
         var list = new List<LiveItem>();
         foreach (var d in A(doc.RootElement, "docs"))
         {
@@ -757,7 +1011,7 @@ query ($search: String) {
         if (genres.Count == 0) genres.Add(item.MediaType == "TvSeries" ? "TV Series" : item.MediaType == "Movie" ? "Movie" : "Book");
         return new MediaItemDto
         {
-            Id = new Guid(MD5.HashData(Encoding.UTF8.GetBytes(item.ExternalId))),
+            Id = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(item.ExternalId))[..16]),
             ExternalId = item.ExternalId,
             Title = item.Title,
             MediaType = item.MediaType,
@@ -778,7 +1032,7 @@ query ($search: String) {
 
     public async Task<SearchResult> SearchAsync(string query, CancellationToken ct)
     {
-        string clean = (query ?? "").Trim();
+        string clean = SanitizeSearchQuery(query);
         var diagnostics = new Dictionary<string, ProviderDiagnostic>();
         if (clean.Length < 2) return new SearchResult(new List<MediaItemDto>(), diagnostics);
 
@@ -821,7 +1075,12 @@ query ($search: String) {
             }
             catch (Exception ex)
             {
-                string msg = ex.Message.Length > 120 ? ex.Message[..120] : ex.Message;
+                string msg = ex switch
+                {
+                    OperationCanceledException => "timeout",
+                    HttpRequestException { StatusCode: { } statusCode } => $"HTTP {(int)statusCode}",
+                    _ => "provider_error"
+                };
                 return (p.Name, Items: new List<LiveItem>(), Diag: new ProviderDiagnostic(true, 0, msg));
             }
         }).ToList();

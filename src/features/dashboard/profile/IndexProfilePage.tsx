@@ -3,13 +3,7 @@ import { observer } from "mobx-react-lite";
 import { Navigate } from "react-router-dom";
 import { useStore } from "../../../app/stores/store";
 import Nav from "../../home/Nav";
-import {
-  CumulativeDetailModal,
-  CompareModal,
-  CustomWeightsModal,
-  KeyboardShortcutsModal,
-  CommunityBottomDrawer,
-} from "../../home/CumulativeModals";
+import { CommunityBottomDrawer } from "../../home/CumulativeModals";
 import {
   RATING_SOURCE_DEFINITIONS,
   WatchlistEntry,
@@ -541,10 +535,6 @@ const IndexProfilePage: React.FC = () => {
         )}
       </div>
 
-      <CumulativeDetailModal />
-      <CompareModal />
-      <CustomWeightsModal />
-      <KeyboardShortcutsModal />
       <CommunityBottomDrawer />
     </div>
   );

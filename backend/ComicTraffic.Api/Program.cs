@@ -187,7 +187,7 @@ builder.Services.AddCors(options =>
 // Configure PostgreSQL EF Core with environment variable priority (DATABASE_URL / ConnectionStrings__DefaultConnection)
 string configuredConn = !string.IsNullOrWhiteSpace(configuredDbUrl)
     ? configuredDbUrl
-    : "Host=localhost;Port=5432;Database=comictraffic_db;Username=postgres;Password=postgres";
+    : "Host=localhost;Port=5432;Database=comictraffic_db;Username=postgres";
 
 if (configuredConn.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
     configuredConn.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
@@ -438,8 +438,6 @@ static string? ResolveWorkingPostgresConnectionString(string configuredConnectio
         candidates.Add($"Host=localhost;Port=5432;Database=comictraffic_db;Username={currentOsUser}");
     }
     candidates.Add("Host=localhost;Port=5432;Database=comictraffic_db;Username=postgres");
-    candidates.Add("Host=localhost;Port=5432;Database=comictraffic_db;Username=postgres;Password=admin");
-    candidates.Add("Host=localhost;Port=5432;Database=comictraffic_db;Username=postgres;Password=root");
 
     foreach (var candidate in candidates.Distinct())
     {

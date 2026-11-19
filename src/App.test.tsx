@@ -2,7 +2,8 @@ import React from "react";
 import axios from "axios";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
+import App from "./App";
 import {
   AggregatedMediaItem,
   calculateCumulativeRating,
@@ -798,5 +799,243 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
 
     unmount();
     store.ratingStore.setSearchQuery("");
+  });
+
+  test("17. Registration Reliability: surfaces backend validation errors, recovers on undecryptable encrypted error, and handles timeouts clearly", async () => {
+    const staleAes = Buffer.alloc(32, 3).toString("base64");
+    const staleHmac = Buffer.alloc(32, 4).toString("base64");
+    const freshAes = Buffer.alloc(32, 9).toString("base64");
+    const freshHmac = Buffer.alloc(32, 10).toString("base64");
+    const dynamicTestPass = ["RegTest", Date.now().toString(36), "!"].join("_");
+    const dynamicAccessTok = ["tok", Date.now().toString(36)].join("_");
+
+    // 1. ValidationProblemDetails.errors field messages are surfaced directly
+    setRuntimeDerivedKeys(freshAes, freshHmac);
+    const valPostSpy = vi.spyOn(axios, "post").mockRejectedValueOnce({
+      response: {
+        status: 400,
+        data: {
+          title: "One or more validation errors occurred.",
+          errors: {
+            Email: ["The Email field is not a valid e-mail address."],
+          },
+        },
+      },
+    });
+    try {
+      await expect(
+        store.userStore.registerWithComicTraffic({
+          username: "val_tester",
+          email: "valid@comictraffic.io",
+          password: dynamicTestPass,
+          displayName: "Val Tester",
+        })
+      ).rejects.toThrow("The Email field is not a valid e-mail address.");
+    } finally {
+      valPostSpy.mockRestore();
+    }
+
+    // 2. Undecryptable encrypted error response refreshes session keys and retries instead of failing silently
+    setRuntimeDerivedKeys(staleAes, staleHmac);
+    const getSpy = vi.spyOn(axios, "get").mockResolvedValueOnce({
+      data: {
+        isSuccessful: true,
+        derivedAesKey: freshAes,
+        derivedHmacKey: freshHmac,
+      },
+    } as any);
+    const retryPostSpy = vi
+      .spyOn(axios, "post")
+      .mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            encrypted: true,
+            iv: Buffer.alloc(12, 1).toString("base64"),
+            payload: Buffer.alloc(32, 2).toString("base64"),
+            signature: "invalid",
+            timestamp: Date.now(),
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          isSuccessful: true,
+          data: {
+            id: "u-recovered",
+            username: "recovered_user",
+            email: "recovered@comictraffic.io",
+            displayName: "Recovered User",
+            bio: "",
+            avatarUrl: "/comic-traffic-logo.svg",
+            role: "User",
+            favoriteGenres: ["Superhero"],
+            accessToken: dynamicAccessTok,
+          },
+        },
+      } as any);
+
+    try {
+      const profile = await store.userStore.registerWithComicTraffic({
+        username: "recovered_user",
+        email: "recovered@comictraffic.io",
+        password: dynamicTestPass,
+        displayName: "Recovered User",
+      });
+      expect(profile.email).toBe("recovered@comictraffic.io");
+      expect(getSpy).toHaveBeenCalledTimes(1);
+      expect(retryPostSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      getSpy.mockRestore();
+      retryPostSpy.mockRestore();
+      store.userStore.logout();
+      clearRuntimeDerivedKeys();
+    }
+
+    // 3. Timeout reports clear server timeout message
+    setRuntimeDerivedKeys(freshAes, freshHmac);
+    const timeoutSpy = vi.spyOn(axios, "post").mockRejectedValueOnce({
+      code: "ECONNABORTED",
+      message: "timeout of 20000ms exceeded",
+    });
+    try {
+      await expect(
+        store.userStore.registerWithComicTraffic({
+          username: "timeout_user",
+          email: "timeout@comictraffic.io",
+          password: dynamicTestPass,
+          displayName: "Timeout User",
+        })
+      ).rejects.toThrow(/took too long to respond/i);
+    } finally {
+      timeoutSpy.mockRestore();
+      clearRuntimeDerivedKeys();
+    }
+  });
+
+  test("18. Login Page Menu Items: modals (Compare, Weights, Shortcuts) and navigation buttons all function on /login", () => {
+    store.userStore.logout();
+    store.ratingStore.catalog = [...MOCK_BACKEND_CATALOG];
+    store.ratingStore.setCompareModalOpen(false);
+    store.ratingStore.setWeightsModalOpen(false);
+    store.ratingStore.setShortcutsModalOpen(false);
+
+    const { unmount } = render(
+      <MemoryRouter initialEntries={["/login"]}>
+        <Routes>
+          <Route path="/" element={<App />}>
+            <Route path="" element={<LandingPage />} />
+            <Route path="login" element={<LoginPage />} />
+            <Route path="register" element={<RegisterPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
+
+    // On /login initially
+    expect(screen.getByText(/Sign In to Comic Traffic/i)).toBeInTheDocument();
+
+    // Open Menu and click Compare Arena -> CompareModal opens right on /login
+    fireEvent.click(screen.getByLabelText(/Toggle tools, search, and account menu/i));
+    fireEvent.click(screen.getByText(/Compare Arena/i));
+    expect(
+      screen.getByText(/Head-to-Head Cumulative Rating Arena/i)
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText(/Close compare arena/i));
+
+    // Open Menu and click Source Weights -> CustomWeightsModal opens right on /login
+    fireEvent.click(screen.getByLabelText(/Toggle tools, search, and account menu/i));
+    fireEvent.click(screen.getByRole("button", { name: /Source Weights/i }));
+    expect(
+      screen.getByText(/Custom Cumulative Rating Source Weights/i)
+    ).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(store.ratingStore.weightsModalOpen).toBe(false);
+
+    // Open Menu and click Shortcuts -> KeyboardShortcutsModal opens right on /login
+    fireEvent.click(screen.getByLabelText(/Toggle tools, search, and account menu/i));
+    fireEvent.click(screen.getByText(/Shortcuts/i));
+    expect(
+      screen.getByText(/Comic Traffic Keyboard Shortcuts/i)
+    ).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(store.ratingStore.shortcutsModalOpen).toBe(false);
+
+    // Open Menu and click Create Account -> navigates to /register
+    fireEvent.click(screen.getByLabelText(/Toggle tools, search, and account menu/i));
+    fireEvent.click(screen.getByRole("button", { name: /^Create Account$/i }));
+    expect(
+      screen.getByText(/Create Your Comic Traffic Account/i)
+    ).toBeInTheDocument();
+
+    // Click top-bar Comics menu item -> navigates back to "/" with ComicBook selected
+    fireEvent.click(screen.getByRole("button", { name: /^Comics$/i }));
+    expect(store.ratingStore.selectedCategory).toBe("ComicBook");
+    expect(
+      screen.getByText(/Cumulative Rating Explorer & General Search/i)
+    ).toBeInTheDocument();
+
+    unmount();
+    store.ratingStore.setCategory("All");
+  });
+
+  test("19. Handshake Concurrency: simultaneous POST requests await single in-flight handshake instead of encrypting with random keys", async () => {
+    clearRuntimeDerivedKeys();
+    const serverAes = Buffer.alloc(32, 11).toString("base64");
+    const serverHmac = Buffer.alloc(32, 12).toString("base64");
+
+    let resolveHandshake!: (val: any) => void;
+    const handshakePromise = new Promise((resolve) => {
+      resolveHandshake = resolve;
+    });
+
+    const getSpy = vi.spyOn(axios, "get").mockImplementation((url) => {
+      if (String(url).includes("/security/handshake")) {
+        return handshakePromise as any;
+      }
+      return Promise.resolve({ data: { isSuccessful: true, data: [] } }) as any;
+    });
+
+    const sentEnvelopes: any[] = [];
+    const postSpy = vi.spyOn(axios, "post").mockImplementation(async (_url, body) => {
+      sentEnvelopes.push(body);
+      return { data: { isSuccessful: true, data: [] } } as any;
+    });
+
+    try {
+      // Fire 3 concurrent encrypted requests while handshake is still pending
+      const p1 = encryptedBackendClient.sendEncryptedPost("/media/tmdb-row", { category: "trending" });
+      const p2 = encryptedBackendClient.sendEncryptedPost("/media/tmdb-row", { category: "top_rated" });
+      const p3 = encryptedBackendClient.sendEncryptedPost("/media/search-live", { query: "batman" });
+
+      // Complete the handshake after all 3 callers have entered ensureSessionKeys()
+      resolveHandshake({
+        data: {
+          isSuccessful: true,
+          derivedAesKey: serverAes,
+          derivedHmacKey: serverHmac,
+        },
+      });
+
+      await Promise.all([p1, p2, p3]);
+
+      // Only 1 handshake HTTP call should have been made
+      const handshakeCalls = getSpy.mock.calls.filter(([u]) =>
+        String(u).includes("/security/handshake")
+      );
+      expect(handshakeCalls.length).toBe(1);
+      expect(sentEnvelopes.length).toBe(3);
+
+      // Every envelope must decrypt cleanly with the server's derived AES key
+      for (const env of sentEnvelopes) {
+        expect(env.encrypted).toBe(true);
+        const decrypted = await decryptPayload<any>(env);
+        expect(decrypted).toBeTruthy();
+      }
+    } finally {
+      getSpy.mockRestore();
+      postSpy.mockRestore();
+      clearRuntimeDerivedKeys();
+    }
   });
 });

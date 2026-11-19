@@ -27,19 +27,55 @@ if (!string.IsNullOrWhiteSpace(platformPort) &&
 static string? CleanConfigValue(string? val) =>
     string.IsNullOrWhiteSpace(val) ? null : val.Trim().Trim('"', '\'').Trim();
 
-string? gatewaySharedSecret = CleanConfigValue(
-    builder.Configuration["GATEWAY_SHARED_SECRET"] ??
-    Environment.GetEnvironmentVariable("GATEWAY_SHARED_SECRET"));
+static string? ResolveConfig(IConfiguration config, params string[] candidateKeys)
+{
+    foreach (var key in candidateKeys)
+    {
+        string? val = CleanConfigValue(config[key]);
+        if (!string.IsNullOrWhiteSpace(val)) return val;
+    }
 
-string? configuredDbUrl = CleanConfigValue(
-    builder.Configuration["DATABASE_URL"] ??
-    Environment.GetEnvironmentVariable("DATABASE_URL") ??
-    builder.Configuration.GetConnectionString("DefaultConnection"));
+    var allEnv = Environment.GetEnvironmentVariables();
+    foreach (var candidate in candidateKeys)
+    {
+        foreach (var k in allEnv.Keys.Cast<object>().Select(o => o.ToString()!))
+        {
+            if (string.Equals(k.Trim(), candidate.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                string? envVal = CleanConfigValue(allEnv[k]?.ToString());
+                if (!string.IsNullOrWhiteSpace(envVal)) return envVal;
+            }
+        }
+    }
+    return null;
+}
 
-string? configuredJwtKey = CleanConfigValue(
-    builder.Configuration["JWT_SIGNING_KEY"] ??
-    Environment.GetEnvironmentVariable("JWT_SIGNING_KEY") ??
-    builder.Configuration["Jwt:Key"]);
+Console.WriteLine("=== CONTAINER BOOT DIAGNOSTICS ===");
+Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
+var presentKeys = Environment.GetEnvironmentVariables().Keys.Cast<object>().Select(k => k.ToString()!.Trim()).OrderBy(k => k).ToList();
+Console.WriteLine($"Total OS Env Vars: {presentKeys.Count}");
+Console.WriteLine($"Detected Env Keys: {string.Join(", ", presentKeys.Where(k => !k.Contains("SECRET", StringComparison.OrdinalIgnoreCase) && !k.Contains("KEY", StringComparison.OrdinalIgnoreCase) && !k.Contains("PASS", StringComparison.OrdinalIgnoreCase)))}");
+
+string? gatewaySharedSecret = ResolveConfig(builder.Configuration, "GATEWAY_SHARED_SECRET", "GATEWAY_SECRET");
+
+string? configuredDbUrl = ResolveConfig(builder.Configuration,
+    "DATABASE_URL",
+    "POSTGRES_URL",
+    "DATABASE_PUBLIC_URL",
+    "DATABASE_PRIVATE_URL",
+    "ConnectionStrings:DefaultConnection",
+    "ConnectionStrings__DefaultConnection");
+
+string? configuredJwtKey = ResolveConfig(builder.Configuration,
+    "JWT_SIGNING_KEY",
+    "JWT_SECRET",
+    "Jwt:Key",
+    "Jwt__Key");
+
+Console.WriteLine($"DATABASE_URL resolved: {!string.IsNullOrWhiteSpace(configuredDbUrl)}");
+Console.WriteLine($"JWT_SIGNING_KEY resolved: {!string.IsNullOrWhiteSpace(configuredJwtKey)}");
+Console.WriteLine($"GATEWAY_SHARED_SECRET resolved: {!string.IsNullOrWhiteSpace(gatewaySharedSecret)}");
+Console.WriteLine("==================================");
 
 // Fail fast in production: never boot with ephemeral/default secrets or an open API.
 if (isProduction)
@@ -49,15 +85,15 @@ if (isProduction)
         missing.Add("DATABASE_URL");
 
     if (string.IsNullOrWhiteSpace(configuredJwtKey) || configuredJwtKey.Length < 32)
-        missing.Add("JWT_SIGNING_KEY (min 32 characters)");
+        missing.Add($"JWT_SIGNING_KEY (min 32 characters, got {configuredJwtKey?.Length ?? 0})");
 
     if (string.IsNullOrWhiteSpace(gatewaySharedSecret) || gatewaySharedSecret.Length < 24)
-        missing.Add("GATEWAY_SHARED_SECRET (min 24 characters)");
+        missing.Add($"GATEWAY_SHARED_SECRET (min 24 characters, got {gatewaySharedSecret?.Length ?? 0})");
 
     if (missing.Count > 0)
     {
         throw new InvalidOperationException(
-            "Production configuration is incomplete. Set: " + string.Join(", ", missing));
+            $"Production configuration is incomplete. Set: {string.Join(", ", missing)}. Available keys: [{string.Join(", ", presentKeys)}]");
     }
 }
 

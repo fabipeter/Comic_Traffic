@@ -567,8 +567,10 @@ export default class RatingStore {
     }
     if (trimmed.length >= 2) {
       this.searchDebounceTimer = setTimeout(() => {
-        this.executeLiveMultiApiSearch(trimmed);
-      }, 220);
+        // Do NOT sync back into searchQuery: the trimmed value would erase a trailing
+        // space the user just typed (the cause of the "weird" space-bar behaviour).
+        this.executeLiveMultiApiSearch(trimmed, false);
+      }, 350);
     }
   };
 

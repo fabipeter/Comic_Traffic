@@ -484,7 +484,9 @@ export const encryptedBackendClient = {
     endpoint: string,
     payload: TReq,
     token?: string | null,
-    hasRetriedOnKeyMismatch: boolean = false
+    hasRetriedOnKeyMismatch: boolean = false,
+    timeoutMs: number = 8000,
+    signal?: AbortSignal
   ): Promise<{ fromBackend: boolean; data?: TRes; envelope: EncryptedEnvelope }> {
     const canEncrypt = isWebCryptoAvailable();
     await this.ensureSessionKeys();
@@ -531,7 +533,8 @@ export const encryptedBackendClient = {
         outboundBody,
         {
           headers,
-          timeout: 4000,
+          timeout: timeoutMs,
+          signal,
         }
       );
 
@@ -657,6 +660,11 @@ export const encryptedBackendClient = {
 };
 
 /**
+ * Active AbortController for live multi-API search to supersede stale in-flight typing searches.
+ */
+let activeLiveSearchController: AbortController | null = null;
+
+/**
  * Dispatches an encrypted search command to the Backend API (/api/media/search-live).
  */
 export async function searchLiveMultiApis(
@@ -665,16 +673,37 @@ export async function searchLiveMultiApis(
   if (!query || query.trim().length < 2) return [];
   const cleanQuery = query.trim();
 
+  // Abort any previous pending search before starting a fresh search
+  if (activeLiveSearchController) {
+    try {
+      activeLiveSearchController.abort();
+    } catch {
+      // Abort is best-effort
+    }
+  }
+  activeLiveSearchController = new AbortController();
+  const signal = activeLiveSearchController.signal;
+
   try {
     const res = await encryptedBackendClient.sendEncryptedPost<
       { query: string },
       AggregatedMediaItem[]
-    >("/media/search-live", { query: cleanQuery });
+    >(
+      "/media/search-live",
+      { query: cleanQuery },
+      undefined,
+      false,
+      15000,
+      signal
+    );
     if (Array.isArray(res.data)) {
       return res.data;
     }
     return [];
-  } catch {
+  } catch (err: any) {
+    if (axios.isCancel(err) || err?.name === "CanceledError" || err?.name === "AbortError") {
+      return [];
+    }
     return [];
   }
 }

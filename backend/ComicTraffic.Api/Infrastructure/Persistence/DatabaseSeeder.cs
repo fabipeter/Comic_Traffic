@@ -194,6 +194,124 @@ public static class DatabaseSeeder
                     new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.0 / 10", NormalizedScore = 90.0, VoteCount = 3190, DefaultWeight = 1.1, AccentColor = "#a855f7" }
                 }),
 
+            CreateSeededItem(calculator,
+                externalId: "movie-pirates-black-pearl-2003",
+                title: "Pirates of the Caribbean: The Curse of the Black Pearl",
+                category: MediaCategory.Movie,
+                year: 2003,
+                publisher: "Walt Disney Pictures / Jerry Bruckheimer Films",
+                creator: "Gore Verbinski (Director), Ted Elliott, Terry Rossio (Writers)",
+                runtime: "143 min",
+                ageRating: "PG-13",
+                genres: "Action,Adventure,Fantasy,Pirates,Cinema",
+                posterUrl: "https://image.tmdb.org/t/p/original/z8onk7LV9MPk6zjvBiBQ9NDeNwD.jpg",
+                backdropUrl: "https://image.tmdb.org/t/p/original/83ta7vdjTjh9zX5pP5m4yB58hE7.jpg",
+                overview: "Blacksmith Will Turner teams up with eccentric pirate Captain Jack Sparrow to save his love, Elizabeth Swann, from Jack's former pirate allies, who are now undead cursed phantoms.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "imdb", SourceName = "IMDb", Category = "Audience", RawScoreDisplay = "8.1 / 10", NormalizedScore = 81.0, VoteCount = 1190000, DefaultWeight = 1.25, AccentColor = "#f5c518" },
+                    new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "80%", NormalizedScore = 80.0, VoteCount = 220, DefaultWeight = 1.2, AccentColor = "#fa320a" },
+                    new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "86%", NormalizedScore = 86.0, VoteCount = 250000, DefaultWeight = 1.1, AccentColor = "#ff6b35" },
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "63 / 100", NormalizedScore = 63.0, VoteCount = 40, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "7.8 / 10", NormalizedScore = 78.0, VoteCount = 20100, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
+                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.1 / 10", NormalizedScore = 91.0, VoteCount = 14200, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "movie-pirates-dead-mans-chest-2006",
+                title: "Pirates of the Caribbean: Dead Man's Chest",
+                category: MediaCategory.Movie,
+                year: 2006,
+                publisher: "Walt Disney Pictures / Jerry Bruckheimer",
+                creator: "Gore Verbinski",
+                runtime: "151 min",
+                ageRating: "PG-13",
+                genres: "Action,Adventure,Fantasy,Pirates,Cinema",
+                posterUrl: "https://image.tmdb.org/t/p/original/uXEqmloGyP7UXA2Mm58dsFTLFjm.jpg",
+                backdropUrl: "https://image.tmdb.org/t/p/original/w23d0vR26pZkHkY00pM9aR25wXg.jpg",
+                overview: "Jack Sparrow races to recover the heart of Davy Jones to avoid enslaving his soul to the Flying Dutchman, as other friends and foes seek the heart for their own agendas.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "imdb", SourceName = "IMDb", Category = "Audience", RawScoreDisplay = "7.4 / 10", NormalizedScore = 74.0, VoteCount = 750000, DefaultWeight = 1.25, AccentColor = "#f5c518" },
+                    new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "53%", NormalizedScore = 53.0, VoteCount = 228, DefaultWeight = 1.2, AccentColor = "#fa320a" },
+                    new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "72%", NormalizedScore = 72.0, VoteCount = 250000, DefaultWeight = 1.1, AccentColor = "#ff6b35" },
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "53 / 100", NormalizedScore = 53.0, VoteCount = 37, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "7.3 / 10", NormalizedScore = 73.0, VoteCount = 15300, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
+                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "8.4 / 10", NormalizedScore = 84.0, VoteCount = 8900, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "movie-zack-snyders-justice-league-2021",
+                title: "Zack Snyder's Justice League",
+                category: MediaCategory.Movie,
+                year: 2021,
+                publisher: "Warner Bros. / DC Films / HBO Max",
+                creator: "Zack Snyder (Director), Chris Terrio (Writer)",
+                runtime: "242 min",
+                ageRating: "R",
+                genres: "Action,Adventure,Fantasy,Sci-Fi,Superhero,DC Comics",
+                posterUrl: "https://image.tmdb.org/t/p/original/tnAuB8q5vv7Ax92je58VOY4utZs.jpg",
+                backdropUrl: "https://image.tmdb.org/t/p/original/pcDc2WJAYGJTTvRSEIpRZwM3Ola.jpg",
+                overview: "Determined to ensure Superman's ultimate sacrifice was not in vain, Bruce Wayne aligns forces with Diana Prince with plans to recruit a team of metahumans to protect the world from an approaching threat of catastrophic proportions.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "imdb", SourceName = "IMDb", Category = "Audience", RawScoreDisplay = "7.9 / 10", NormalizedScore = 79.0, VoteCount = 440000, DefaultWeight = 1.25, AccentColor = "#f5c518" },
+                    new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "71%", NormalizedScore = 71.0, VoteCount = 312, DefaultWeight = 1.2, AccentColor = "#fa320a" },
+                    new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "93%", NormalizedScore = 93.0, VoteCount = 100000, DefaultWeight = 1.1, AccentColor = "#ff6b35" },
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "54 / 100", NormalizedScore = 54.0, VoteCount = 46, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.1 / 10", NormalizedScore = 81.0, VoteCount = 9600, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
+                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.7 / 5", NormalizedScore = 94.0, VoteCount = 12500, DefaultWeight = 1.25, AccentColor = "#e62429" },
+                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.2 / 10", NormalizedScore = 92.0, VoteCount = 14800, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "movie-the-avengers-2012",
+                title: "The Avengers",
+                category: MediaCategory.Movie,
+                year: 2012,
+                publisher: "Marvel Studios / Disney",
+                creator: "Joss Whedon",
+                runtime: "143 min",
+                ageRating: "PG-13",
+                genres: "Action,Adventure,Sci-Fi,Superhero,Marvel",
+                posterUrl: "https://image.tmdb.org/t/p/original/RYMX2wcKCBAr24UyPD7xwmjaTn.jpg",
+                backdropUrl: "https://image.tmdb.org/t/p/original/9BBTo63ANSmhC4e6r62OJFuK2GL.jpg",
+                overview: "Earth's mightiest heroes must come together and learn to fight as a team if they are going to stop the mischievous Loki and his alien army from enslaving humanity.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "imdb", SourceName = "IMDb", Category = "Audience", RawScoreDisplay = "8.0 / 10", NormalizedScore = 80.0, VoteCount = 1480000, DefaultWeight = 1.25, AccentColor = "#f5c518" },
+                    new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "91%", NormalizedScore = 91.0, VoteCount = 368, DefaultWeight = 1.2, AccentColor = "#fa320a" },
+                    new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "91%", NormalizedScore = 91.0, VoteCount = 250000, DefaultWeight = 1.1, AccentColor = "#ff6b35" },
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "69 / 100", NormalizedScore = 69.0, VoteCount = 43, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "7.7 / 10", NormalizedScore = 77.0, VoteCount = 29800, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
+                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.8 / 5", NormalizedScore = 96.0, VoteCount = 18200, DefaultWeight = 1.2, AccentColor = "#e62429" },
+                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.2 / 10", NormalizedScore = 92.0, VoteCount = 12100, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "movie-avengers-infinity-war-2018",
+                title: "Avengers: Infinity War",
+                category: MediaCategory.Movie,
+                year: 2018,
+                publisher: "Marvel Studios / Disney",
+                creator: "Anthony Russo, Joe Russo",
+                runtime: "149 min",
+                ageRating: "PG-13",
+                genres: "Action,Adventure,Sci-Fi,Superhero,Marvel",
+                posterUrl: "https://image.tmdb.org/t/p/original/7WsyChQLEftFiDOVTGkv3hFpyyt.jpg",
+                backdropUrl: "https://image.tmdb.org/t/p/original/bOGkgRGdhrBYJSLpXaxhXVstNsV.jpg",
+                overview: "The Avengers and their allies must be willing to sacrifice all in an attempt to defeat the powerful Thanos before his blitz of devastation and ruin puts an end to the universe.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "imdb", SourceName = "IMDb", Category = "Audience", RawScoreDisplay = "8.4 / 10", NormalizedScore = 84.0, VoteCount = 1180000, DefaultWeight = 1.25, AccentColor = "#f5c518" },
+                    new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "85%", NormalizedScore = 85.0, VoteCount = 492, DefaultWeight = 1.2, AccentColor = "#fa320a" },
+                    new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "92%", NormalizedScore = 92.0, VoteCount = 100000, DefaultWeight = 1.1, AccentColor = "#ff6b35" },
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "68 / 100", NormalizedScore = 68.0, VoteCount = 54, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.2 / 10", NormalizedScore = 82.0, VoteCount = 28900, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
+                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.9 / 5", NormalizedScore = 98.0, VoteCount = 21900, DefaultWeight = 1.2, AccentColor = "#e62429" },
+                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.5 / 10", NormalizedScore = 95.0, VoteCount = 13600, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                }),
+
             // TV SERIES
             CreateSeededItem(calculator,
                 externalId: "tv-invincible-2021",
@@ -481,6 +599,72 @@ public static class DatabaseSeeder
                     new() { SourceId = "goodreads", SourceName = "Goodreads Graphic Novels", Category = "Audience", RawScoreDisplay = "4.36 / 5", NormalizedScore = 87.2, VoteCount = 94000, DefaultWeight = 1.15, AccentColor = "#a16207" },
                     new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookRoundup Critics", Category = "Critic", RawScoreDisplay = "9.0 / 10", NormalizedScore = 90.0, VoteCount = 42, DefaultWeight = 1.2, AccentColor = "#fa320a" },
                     new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.3 / 10", NormalizedScore = 93.0, VoteCount = 4600, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "comic-jla-tower-of-babel-2000",
+                title: "JLA: Tower of Babel (#43–46)",
+                category: MediaCategory.ComicBook,
+                year: 2000,
+                publisher: "DC Comics",
+                creator: "Mark Waid (Writer), Howard Porter (Artist)",
+                runtime: "4 Issues / 128 Pages",
+                ageRating: "Teen (12+)",
+                genres: "Superhero,Justice League,Graphic Novel,Strategy,DC Comics",
+                posterUrl: "https://images.unsplash.com/photo-1563089145-599997674d42?auto=format&fit=crop&w=900&q=80",
+                backdropUrl: "https://images.unsplash.com/photo-1563089145-599997674d42?auto=format&fit=crop&w=1600&q=80",
+                overview: "Ra's al Ghul steals Batman's confidential contingency dossiers designed to neutralize every member of the Justice League, methodically taking down Superman, Wonder Woman, the Flash, Green Lantern, and Martian Manhunter.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.86 / 5", NormalizedScore = 97.2, VoteCount = 24100, DefaultWeight = 1.3, AccentColor = "#e62429" },
+                    new() { SourceId = "league_of_comic_geeks", SourceName = "League of Comic Geeks", Category = "ComicCommunity", RawScoreDisplay = "95 / 100", NormalizedScore = 95.0, VoteCount = 22800, DefaultWeight = 1.25, AccentColor = "#00d1b2" },
+                    new() { SourceId = "goodreads", SourceName = "Goodreads Graphic Novels", Category = "Audience", RawScoreDisplay = "4.26 / 5", NormalizedScore = 85.2, VoteCount = 84000, DefaultWeight = 1.15, AccentColor = "#a16207" },
+                    new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookRoundup Critics", Category = "Critic", RawScoreDisplay = "9.3 / 10", NormalizedScore = 93.0, VoteCount = 52, DefaultWeight = 1.25, AccentColor = "#fa320a" },
+                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.5 / 10", NormalizedScore = 95.0, VoteCount = 7800, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "comic-infinity-gauntlet-1991",
+                title: "The Infinity Gauntlet (#1–6 Complete)",
+                category: MediaCategory.ComicBook,
+                year: 1991,
+                publisher: "Marvel Comics",
+                creator: "Jim Starlin (Writer), George Pérez, Ron Lim (Artists)",
+                runtime: "6 Issues / 256 Pages",
+                ageRating: "Teen (12+)",
+                genres: "Superhero,Marvel,Cosmic,Graphic Novel,Epic",
+                posterUrl: "https://images.unsplash.com/photo-1569003339405-ea396a5a8a90?auto=format&fit=crop&w=900&q=80",
+                backdropUrl: "https://images.unsplash.com/photo-1569003339405-ea396a5a8a90?auto=format&fit=crop&w=1600&q=80",
+                overview: "The seminal Marvel cosmic epic. The Mad Titan Thanos seizes the six Infinity Gems to form the Infinity Gauntlet, eradicating half of all life in the universe with a snap of his fingers to woo Mistress Death.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.89 / 5", NormalizedScore = 97.8, VoteCount = 31200, DefaultWeight = 1.3, AccentColor = "#e62429" },
+                    new() { SourceId = "league_of_comic_geeks", SourceName = "League of Comic Geeks", Category = "ComicCommunity", RawScoreDisplay = "96 / 100", NormalizedScore = 96.0, VoteCount = 29500, DefaultWeight = 1.25, AccentColor = "#00d1b2" },
+                    new() { SourceId = "goodreads", SourceName = "Goodreads Graphic Novels", Category = "Audience", RawScoreDisplay = "4.29 / 5", NormalizedScore = 85.8, VoteCount = 115000, DefaultWeight = 1.15, AccentColor = "#a16207" },
+                    new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookRoundup Critics", Category = "Critic", RawScoreDisplay = "9.4 / 10", NormalizedScore = 94.0, VoteCount = 68, DefaultWeight = 1.25, AccentColor = "#fa320a" },
+                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.6 / 10", NormalizedScore = 96.0, VoteCount = 9200, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "comic-civil-war-2006",
+                title: "Civil War (#1–7 Complete Event)",
+                category: MediaCategory.ComicBook,
+                year: 2006,
+                publisher: "Marvel Comics",
+                creator: "Mark Millar (Writer), Steve McNiven (Artist)",
+                runtime: "7 Issues / 208 Pages",
+                ageRating: "Teen+ (15+)",
+                genres: "Superhero,Marvel,Political Thriller,Graphic Novel,Action",
+                posterUrl: "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=900&q=80",
+                backdropUrl: "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=1600&q=80",
+                overview: "A tragedy in Stamford sparks the Superhuman Registration Act, fracturing the Marvel Universe as Iron Man leads the pro-registration faction while Captain America leads an underground resistance.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.82 / 5", NormalizedScore = 96.4, VoteCount = 38400, DefaultWeight = 1.3, AccentColor = "#e62429" },
+                    new() { SourceId = "league_of_comic_geeks", SourceName = "League of Comic Geeks", Category = "ComicCommunity", RawScoreDisplay = "93 / 100", NormalizedScore = 93.0, VoteCount = 35100, DefaultWeight = 1.25, AccentColor = "#00d1b2" },
+                    new() { SourceId = "goodreads", SourceName = "Goodreads Graphic Novels", Category = "Audience", RawScoreDisplay = "4.21 / 5", NormalizedScore = 84.2, VoteCount = 160000, DefaultWeight = 1.15, AccentColor = "#a16207" },
+                    new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookRoundup Critics", Category = "Critic", RawScoreDisplay = "8.9 / 10", NormalizedScore = 89.0, VoteCount = 104, DefaultWeight = 1.25, AccentColor = "#fa320a" },
+                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.3 / 10", NormalizedScore = 93.0, VoteCount = 10800, DefaultWeight = 1.15, AccentColor = "#a855f7" }
                 }),
 
             CreateSeededItem(calculator,

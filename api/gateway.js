@@ -1939,7 +1939,10 @@ module.exports = async function handler(req, res) {
     const endpoint = typeof rawEndpoint === "string" ? rawEndpoint : "";
 
     // Backend Proxy: forward data & auth operations to the .NET Web API if BACKEND_API_URL is configured
-    const backendBase = (process.env.BACKEND_API_URL || "").trim().replace(/\/+$/, "");
+    const backendBase = (process.env.BACKEND_API_URL || "")
+      .trim()
+      .replace(/\/+$/, "")
+      .replace(/\/api\/?$/i, "");
     const hasConfiguredBackend =
       /^https:\/\//i.test(backendBase) ||
       /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(backendBase);
@@ -1981,10 +1984,11 @@ module.exports = async function handler(req, res) {
           ...(hasPayload ? { body: JSON.stringify(forwardBody) } : {}),
           signal: controller.signal,
         });
-      } catch {
+      } catch (proxyErr) {
+        console.error("[Gateway Proxy Error]", proxyErr?.message || proxyErr, "Target:", `${backendBase}/api${endpoint}`);
         return res.status(502).json({
           isSuccessful: false,
-          message: "Unable to reach the backend service. Please verify BACKEND_API_URL and container health.",
+          message: `Unable to reach backend service (${proxyErr?.message || "connection failed"}). Target: ${backendBase}/api${endpoint}`,
         });
       } finally {
         clearTimeout(timer);

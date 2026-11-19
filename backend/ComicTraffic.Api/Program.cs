@@ -17,12 +17,19 @@ var builder = WebApplication.CreateBuilder(args);
 bool isProduction = builder.Environment.IsProduction();
 
 // Cloud platforms (Railway, Render, Fly, Heroku-style hosts) inject the listening port via PORT.
-string? platformPort = Environment.GetEnvironmentVariable("PORT");
-if (!string.IsNullOrWhiteSpace(platformPort) &&
-    string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
+var bindUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
 {
-    builder.WebHost.UseUrls($"http://0.0.0.0:{platformPort}");
+    "http://0.0.0.0:8080",
+    "http://0.0.0.0:3000"
+};
+
+string? platformPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(platformPort) && int.TryParse(platformPort, out int portNum) && portNum >= 1024)
+{
+    bindUrls.Add($"http://0.0.0.0:{portNum}");
 }
+
+builder.WebHost.UseUrls(string.Join(";", bindUrls));
 
 static string? CleanConfigValue(string? val) =>
     string.IsNullOrWhiteSpace(val) ? null : val.Trim().Trim('"', '\'').Trim();

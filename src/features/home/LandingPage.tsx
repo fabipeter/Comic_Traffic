@@ -176,7 +176,7 @@ const LandingPage = () => {
                   </>
                 ) : (
                   <>
-                    Every Movie, TV Series, and Comic Book ranked by its unified{" "}
+                    Every Movie, TV Series, Comic Book, Graphic Novel, and Book ranked by its unified{" "}
                     <strong>Final Cumulative Average</strong> (Bayesian +
                     Multi-API Weighted Consensus).
                   </>
@@ -214,7 +214,7 @@ const LandingPage = () => {
                         {cat === "All"
                           ? `All Media${countLabel}`
                           : cat === "ComicBook"
-                          ? `📚 Comics${countLabel}`
+                          ? `📚 Comics & Books${countLabel}`
                           : cat === "Movie"
                           ? `🎬 Movies${countLabel}`
                           : `📺 TV Series${countLabel}`}
@@ -260,7 +260,7 @@ const LandingPage = () => {
             <input
               type="text"
               className="ct-general-search-input"
-              placeholder="General Search: Type any movie, TV series, comic book, creator (e.g., Alan Moore, Watchmen, Spider-Verse, Invincible)..."
+              placeholder="Search any Movie, Series, Comic Book, Graphic Novel, or Literature (e.g. Watchmen, Dune, Batman, Sandman, Invincible, Lord of the Rings)..."
               aria-label="General catalog search"
               value={ratingStore.searchQuery}
               onChange={(e) => ratingStore.setSearchQuery(e.target.value)}
@@ -428,15 +428,17 @@ const LandingPage = () => {
                 </p>
                 <div className="ct-search-chip-group">
                   {[
-                    "The Flash",
-                    "Flashpoint",
                     "Watchmen",
+                    "Dune",
                     "The Dark Knight",
+                    "The Sandman",
                     "Spider-Man",
                     "Invincible",
+                    "Lord of the Rings",
+                    "Berserk",
                     "Saga",
                     "Alan Moore",
-                    "Christopher Nolan",
+                    "Stephen King",
                   ].map((keyword) => (
                     <button
                       key={keyword}

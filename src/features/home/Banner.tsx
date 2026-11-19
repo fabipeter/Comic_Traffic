@@ -73,7 +73,7 @@ const Banner = () => {
               </span>
               <span className="ct-banner-tag-type">
                 {featured.mediaType === "ComicBook"
-                  ? "📚 Comic Book / Graphic Novel"
+                  ? "📚 Comic Book / Graphic Novel / Book"
                   : featured.mediaType === "TvSeries"
                   ? "📺 TV Series"
                   : "🎬 Movie"}
@@ -179,7 +179,7 @@ const Banner = () => {
             <form onSubmit={handleSearch} className="ct-hero-search-form">
               <input
                 type="text"
-                placeholder="Quick Search: The Flash, Watchmen, Batman, Spider-Verse, Invincible..."
+                placeholder="Search any Movie, Series, Comic Book, Graphic Novel, or Literature (e.g. Watchmen, Dune, Batman, Sandman, Invincible, Lord of the Rings)..."
                 value={searchInput}
                 onChange={(e) => {
                   setSearchInput(e.target.value);

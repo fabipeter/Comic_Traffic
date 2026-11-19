@@ -338,15 +338,7 @@ export function calculateCumulativeRating(
  * End-to-End Encrypted Backend Client
  * All comic/movie/series catalog items, external rating APIs, and keys live exclusively on the backend.
  */
-const isLocalCraDevServer =
-  typeof window !== "undefined" &&
-  (window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1") &&
-  window.location.port === "3000";
-
-const PRIMARY_BACKEND_URL = isLocalCraDevServer
-  ? "http://localhost:5120/api"
-  : "/api";
+const PRIMARY_BACKEND_URL = "/api";
 
 let logSeq = 0;
 

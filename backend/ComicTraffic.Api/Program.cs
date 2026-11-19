@@ -16,20 +16,23 @@ var builder = WebApplication.CreateBuilder(args);
 
 bool isProduction = builder.Environment.IsProduction();
 
-// Cloud platforms (Railway, Render, Fly, Heroku-style hosts) inject the listening port via PORT.
-var bindUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-{
-    "http://0.0.0.0:8080",
-    "http://0.0.0.0:3000"
-};
-
+// Configure listener port:
+// - Cloud platforms (Railway, Render, Fly) inject PORT (e.g. 8080).
+// - Local development listens on port 5120 to match launchSettings.json & Vite proxy target,
+//   leaving port 3000 free for the React / Vite frontend.
 string? platformPort = Environment.GetEnvironmentVariable("PORT");
-if (!string.IsNullOrWhiteSpace(platformPort) && int.TryParse(platformPort, out int portNum) && portNum >= 1024)
+if (!string.IsNullOrWhiteSpace(platformPort) && int.TryParse(platformPort, out int portNum) && portNum >= 80)
 {
-    bindUrls.Add($"http://0.0.0.0:{portNum}");
+    builder.WebHost.UseUrls($"http://0.0.0.0:{portNum}");
 }
-
-builder.WebHost.UseUrls(string.Join(";", bindUrls));
+else if (isProduction)
+{
+    builder.WebHost.UseUrls("http://0.0.0.0:8080");
+}
+else
+{
+    builder.WebHost.UseUrls("http://0.0.0.0:5120");
+}
 
 static string? CleanConfigValue(string? val) =>
     string.IsNullOrWhiteSpace(val) ? null : val.Trim().Trim('"', '\'').Trim();

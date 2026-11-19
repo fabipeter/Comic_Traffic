@@ -10,7 +10,7 @@
  *  - Providers needing a key are skipped (and reported as "not configured") when the key is absent.
  *
  * Keys (all optional, see README / docs):
- *   TMDB_API_KEY, OMDB_API_KEY, COMICVINE_API_KEY, GOOGLE_BOOKS_API_KEY, HARDCOVER_API_TOKEN
+ *   TMDB_API_KEY, OMDB_API_KEY, MDBLIST_API_KEY, COMICVINE_API_KEY, GOOGLE_BOOKS_API_KEY, HARDCOVER_API_TOKEN
  */
 
 const PLACEHOLDER_POSTER =
@@ -34,7 +34,10 @@ const SOURCES = {
   tmdb: { id: "tmdb", name: "TMDB", category: "Audience", weight: 1.0, color: "#01b4e4" },
   imdb: { id: "imdb", name: "IMDb (OMDb)", category: "Audience", weight: 1.25, color: "#f5c518" },
   rt: { id: "rotten_tomatoes_critics", name: "Rotten Tomatoes (Critics)", category: "Critic", weight: 1.2, color: "#fa320a" },
+  rtAudience: { id: "rotten_tomatoes_audience", name: "Rotten Tomatoes (Audience)", category: "Audience", weight: 1.1, color: "#ff6b35" },
   metacritic: { id: "metacritic", name: "Metacritic", category: "Critic", weight: 1.2, color: "#ffcc33" },
+  trakt: { id: "trakt", name: "Trakt.tv", category: "Audience", weight: 0.95, color: "#ed1c24" },
+  letterboxd: { id: "letterboxd", name: "Letterboxd", category: "Audience", weight: 1.1, color: "#00e054" },
   tvmaze: { id: "tvmaze", name: "TVMaze API", category: "Audience", weight: 0.95, color: "#3c948b" },
   anilist: { id: "anilist", name: "AniList", category: "ComicCommunity", weight: 1.2, color: "#02a9ff" },
   mal: { id: "myanimelist", name: "MyAnimeList", category: "ComicCommunity", weight: 1.2, color: "#2e51a2" },
@@ -105,6 +108,7 @@ function toYear(value) {
 const ALLOWED_PROVIDER_HOSTS = new Set([
   "api.themoviedb.org",
   "www.omdbapi.com",
+  "api.mdblist.com",
   "api.tvmaze.com",
   "itunes.apple.com",
   "graphql.anilist.co",
@@ -187,8 +191,10 @@ function tmdbToItem(raw, forcedCategory) {
   if (typeof raw.vote_average === "number" && raw.vote_average > 0 && raw.vote_count > 0) {
     sources.push(makeSource("tmdb", `${raw.vote_average.toFixed(1)} / 10`, raw.vote_average * 10, raw.vote_count));
   }
+  const tmdbId = Number(raw.id);
   return baseItem({
     externalId: `tmdb-${mediaType.toLowerCase()}-${raw.id}`,
+    tmdbId: Number.isInteger(tmdbId) && tmdbId > 0 ? tmdbId : undefined,
     title,
     mediaType,
     releaseYear: toYear(raw.release_date || raw.first_air_date),
@@ -278,6 +284,164 @@ async function enrichWithOmdb(item, env) {
   if (d.Genre && d.Genre !== "N/A") {
     for (const g of d.Genre.split(",").map((s) => s.trim())) if (g && !item.genres.includes(g)) item.genres.push(g);
   }
+}
+
+function applyMdbListEntry(item, entry) {
+  if (!entry || typeof entry !== "object") return false;
+  const ids = entry.ids && typeof entry.ids === "object" ? entry.ids : {};
+  const imdbId = ids.imdb || entry.imdbid || "";
+  if (!item.imdbId && typeof imdbId === "string" && imdbId.startsWith("tt")) {
+    item.imdbId = imdbId;
+  }
+
+  let addedAny = false;
+  const ratings = Array.isArray(entry.ratings) ? entry.ratings : [];
+  for (const r of ratings) {
+    if (!r || typeof r !== "object") continue;
+    const src = String(r.source || "").toLowerCase();
+    const rawVal = typeof r.value === "number" ? r.value : parseFloat(r.value);
+    const rawScore = typeof r.score === "number" ? r.score : parseFloat(r.score);
+    const votes = Math.max(0, parseInt(r.votes, 10) || 0);
+    const hasVal = Number.isFinite(rawVal) && rawVal > 0;
+    const hasScore = Number.isFinite(rawScore) && rawScore > 0;
+    if (!hasVal && !hasScore) continue;
+
+    if (src === "imdb") {
+      const outOf10 = hasVal && rawVal <= 10 ? rawVal : (hasScore ? rawScore / 10 : rawVal / 10);
+      const norm = hasScore ? rawScore : outOf10 * 10;
+      addSource(item, makeSource("imdb", `${outOf10.toFixed(1)} / 10`, norm, votes));
+      addedAny = true;
+    } else if (src === "tomatoes") {
+      const norm = hasScore ? rawScore : rawVal;
+      addSource(item, makeSource("rt", `${Math.round(norm)}%`, norm, votes));
+      addedAny = true;
+    } else if (src === "popcorn" || src === "tomatoesaudience") {
+      const norm = hasScore ? rawScore : rawVal;
+      addSource(item, makeSource("rtAudience", `${Math.round(norm)}%`, norm, votes));
+      addedAny = true;
+    } else if (src === "metacritic") {
+      const norm = hasScore ? rawScore : rawVal;
+      addSource(item, makeSource("metacritic", `${Math.round(norm)} / 100`, norm, votes));
+      addedAny = true;
+    } else if (src === "trakt") {
+      const norm = hasScore ? rawScore : (rawVal <= 10 ? rawVal * 10 : rawVal);
+      addSource(item, makeSource("trakt", `${Math.round(norm)}%`, norm, votes));
+      addedAny = true;
+    } else if (src === "letterboxd") {
+      const outOf5 = hasVal && rawVal <= 5 ? rawVal : (hasScore ? rawScore / 20 : rawVal / 20);
+      const norm = hasScore ? rawScore : outOf5 * 20;
+      addSource(item, makeSource("letterboxd", `${outOf5.toFixed(1)} / 5`, norm, votes));
+      addedAny = true;
+    } else if (src === "tmdb") {
+      const outOf10 = hasVal && rawVal <= 10 ? rawVal : (hasScore ? rawScore / 10 : rawVal / 10);
+      const norm = hasScore ? rawScore : outOf10 * 10;
+      addSource(item, makeSource("tmdb", `${outOf10.toFixed(1)} / 10`, norm, votes));
+      addedAny = true;
+    }
+  }
+
+  if (!item.overview && typeof entry.description === "string" && entry.description.trim()) {
+    item.overview = entry.description.trim();
+  }
+  if (!item.ageRating && typeof entry.certification === "string" && entry.certification.trim()) {
+    item.ageRating = entry.certification.trim();
+  }
+  if (!item.runtimeOrIssueCount && typeof entry.runtime === "number" && entry.runtime > 0) {
+    const mins = Math.round(entry.runtime);
+    item.runtimeOrIssueCount =
+      item.mediaType === "TvSeries"
+        ? `${mins} min / ep`
+        : mins >= 60
+        ? `${Math.floor(mins / 60)}h ${mins % 60}m`
+        : `${mins}m`;
+  }
+  if (!item.posterUrl && typeof entry.poster === "string" && entry.poster.trim()) {
+    item.posterUrl = upgradeToHttps(entry.poster);
+  }
+  return addedAny;
+}
+
+/**
+ * Batch-enriches top Movie/TV matches via MDBList (IMDb, RT Critics, RT Audience / Popcornmeter,
+ * Metacritic, Trakt, Letterboxd, TMDB) using at most 1 request per (provider, mediaType) bucket.
+ */
+async function enrichWithMdbList(candidates, env) {
+  const apiKey = String(env.MDBLIST_API_KEY || "").trim();
+  if (!apiKey || !candidates.length) return 0;
+
+  const tmdbMovieMap = new Map();
+  const tmdbShowMap = new Map();
+  const imdbMovieMap = new Map();
+  const imdbShowMap = new Map();
+
+  for (const item of candidates) {
+    if (item.mediaType !== "Movie" && item.mediaType !== "TvSeries") continue;
+    const isShow = item.mediaType === "TvSeries";
+    if (item.tmdbId) {
+      const targetMap = isShow ? tmdbShowMap : tmdbMovieMap;
+      if (!targetMap.has(String(item.tmdbId))) targetMap.set(String(item.tmdbId), item);
+    } else if (item.imdbId) {
+      const targetMap = isShow ? imdbShowMap : imdbMovieMap;
+      if (!targetMap.has(item.imdbId)) targetMap.set(item.imdbId, item);
+    }
+  }
+
+  const encodedKey = encodeURIComponent(apiKey);
+  const postBatch = (url, ids, matchByTmdb, itemMap) => {
+    if (!ids.length) return Promise.resolve(0);
+    return getJson(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+      timeoutMs: 4500,
+    })
+      .then((res) => {
+        const entries = Array.isArray(res) ? res : res && typeof res === "object" ? [res] : [];
+        let enriched = 0;
+        for (const entry of entries) {
+          if (!entry || typeof entry !== "object") continue;
+          const idObj = entry.ids && typeof entry.ids === "object" ? entry.ids : {};
+          const lookupKey = matchByTmdb
+            ? String(idObj.tmdb ?? entry.tmdbid ?? "")
+            : String(idObj.imdb ?? entry.imdbid ?? "");
+          const target = lookupKey ? itemMap.get(lookupKey) : null;
+          if (target && applyMdbListEntry(target, entry)) {
+            enriched++;
+          }
+        }
+        return enriched;
+      })
+      .catch(() => 0);
+  };
+
+  const counts = await Promise.all([
+    postBatch(
+      `https://api.mdblist.com/tmdb/movie?apikey=${encodedKey}`,
+      Array.from(tmdbMovieMap.keys()).map((id) => Number(id)),
+      true,
+      tmdbMovieMap
+    ),
+    postBatch(
+      `https://api.mdblist.com/tmdb/show?apikey=${encodedKey}`,
+      Array.from(tmdbShowMap.keys()).map((id) => Number(id)),
+      true,
+      tmdbShowMap
+    ),
+    postBatch(
+      `https://api.mdblist.com/imdb/movie?apikey=${encodedKey}`,
+      Array.from(imdbMovieMap.keys()),
+      false,
+      imdbMovieMap
+    ),
+    postBatch(
+      `https://api.mdblist.com/imdb/show?apikey=${encodedKey}`,
+      Array.from(imdbShowMap.keys()),
+      false,
+      imdbShowMap
+    ),
+  ]);
+
+  return counts.reduce((sum, n) => sum + n, 0);
 }
 
 async function searchTvMaze(q) {
@@ -652,6 +816,7 @@ function mergeInto(target, inc) {
   if (!target.runtimeOrIssueCount && inc.runtimeOrIssueCount) target.runtimeOrIssueCount = inc.runtimeOrIssueCount;
   if (!target.ageRating && inc.ageRating) target.ageRating = inc.ageRating;
   if (!target.imdbId && inc.imdbId) target.imdbId = inc.imdbId;
+  if (!target.tmdbId && inc.tmdbId) target.tmdbId = inc.tmdbId;
   if (!target.malKey && inc.malKey) target.malKey = inc.malKey;
   if (!target.releaseYear && inc.releaseYear) target.releaseYear = inc.releaseYear;
   if (target.yearLoose && !inc.yearLoose) target.yearLoose = false;
@@ -667,6 +832,7 @@ class Merger {
   idKeys(item) {
     const keys = [];
     if (item.imdbId) keys.push(`imdb:${item.imdbId}`);
+    if (item.tmdbId) keys.push(`tmdb:${item.mediaType}:${item.tmdbId}`);
     if (item.malKey) keys.push(`mal:${item.malKey}`);
     return keys;
   }
@@ -722,7 +888,7 @@ function totalVotes(item) {
 
 function finalizeItem(item, calculateCumulativeSummary) {
   const {
-    sources, imdbId, malKey, yearLoose, // internal merge helpers, not part of the public item
+    sources, imdbId, tmdbId, malKey, yearLoose, // internal merge helpers, not part of the public item
     ...rest
   } = item;
   const poster = rest.posterUrl || PLACEHOLDER_POSTER;
@@ -825,10 +991,36 @@ async function executeLiveSearch(query, { env = process.env, calculateCumulative
     arr.sort((a, b) => rank(b) - rank(a) || totalVotes(b) - totalVotes(a));
   sortItems(merged);
 
-  // Real IMDb / Rotten Tomatoes / Metacritic for the best screen matches.
+  // Batch-enrich top screen matches via MDBList (IMDb, RT Critics, RT Audience, Metacritic, Trakt, Letterboxd).
+  if (env.MDBLIST_API_KEY) {
+    const mdbCandidates = merged
+      .filter((i) => (i.mediaType === "Movie" || i.mediaType === "TvSeries") && (i.tmdbId || i.imdbId))
+      .slice(0, 15);
+    try {
+      const enrichedCount = await enrichWithMdbList(mdbCandidates, env);
+      diagnostics.mdblist = { configured: true, count: enrichedCount };
+    } catch (err) {
+      diagnostics.mdblist = {
+        configured: true,
+        count: 0,
+        error: String((err && err.message) || err).slice(0, 120),
+      };
+    }
+    sortItems(merged);
+  } else {
+    diagnostics.mdblist = { configured: false, count: 0 };
+  }
+
+  // Real IMDb / Rotten Tomatoes / Metacritic for the best screen matches still missing them.
   if (env.OMDB_API_KEY) {
     const candidates = merged
-      .filter((i) => (i.mediaType === "Movie" || i.mediaType === "TvSeries") && !i.sources.some((s) => s.sourceId === "imdb"))
+      .filter(
+        (i) =>
+          (i.mediaType === "Movie" || i.mediaType === "TvSeries") &&
+          (!i.sources.some((s) => s.sourceId === "imdb") ||
+            !i.sources.some((s) => s.sourceId === "rotten_tomatoes_critics") ||
+            !i.sources.some((s) => s.sourceId === "metacritic"))
+      )
       .slice(0, 10);
     await Promise.all(
       candidates.map((c) =>

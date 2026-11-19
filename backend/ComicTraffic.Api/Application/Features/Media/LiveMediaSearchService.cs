@@ -17,8 +17,8 @@ namespace ComicTraffic.Api.Application.Features.Media;
 /// Items known to several providers are merged (IMDb id, MAL id, or title + type + year) so the
 /// cumulative score combines every real source. Providers that need a key are skipped when it is absent.
 ///
-/// Keys (env var or ExternalApis:* config): TMDB_API_KEY, OMDB_API_KEY, COMICVINE_API_KEY,
-/// GOOGLE_BOOKS_API_KEY, HARDCOVER_API_TOKEN.
+/// Keys (env var or ExternalApis:* config): TMDB_API_KEY, OMDB_API_KEY, MDBLIST_API_KEY,
+/// COMICVINE_API_KEY, GOOGLE_BOOKS_API_KEY, HARDCOVER_API_TOKEN.
 /// </summary>
 public sealed class LiveMediaSearchService
 {
@@ -43,7 +43,10 @@ public sealed class LiveMediaSearchService
         Tmdb,
         Imdb,
         RottenTomatoes,
+        RottenTomatoesAudience,
         Metacritic,
+        Trakt,
+        Letterboxd,
         TvMaze,
         AniList,
         MyAnimeList,
@@ -60,7 +63,10 @@ public sealed class LiveMediaSearchService
         [RatingProvider.Tmdb] = new("tmdb", "TMDB", "Audience", 1.0, "#01b4e4"),
         [RatingProvider.Imdb] = new("imdb", "IMDb (OMDb)", "Audience", 1.25, "#f5c518"),
         [RatingProvider.RottenTomatoes] = new("rotten_tomatoes_critics", "Rotten Tomatoes (Critics)", "Critic", 1.2, "#fa320a"),
+        [RatingProvider.RottenTomatoesAudience] = new("rotten_tomatoes_audience", "Rotten Tomatoes (Audience)", "Audience", 1.1, "#ff6b35"),
         [RatingProvider.Metacritic] = new("metacritic", "Metacritic", "Critic", 1.2, "#ffcc33"),
+        [RatingProvider.Trakt] = new("trakt", "Trakt.tv", "Audience", 0.95, "#ed1c24"),
+        [RatingProvider.Letterboxd] = new("letterboxd", "Letterboxd", "Audience", 1.1, "#00e054"),
         [RatingProvider.TvMaze] = new("tvmaze", "TVMaze API", "Audience", 0.95, "#3c948b"),
         [RatingProvider.AniList] = new("anilist", "AniList", "ComicCommunity", 1.2, "#02a9ff"),
         [RatingProvider.MyAnimeList] = new("myanimelist", "MyAnimeList", "ComicCommunity", 1.2, "#2e51a2"),
@@ -86,6 +92,7 @@ public sealed class LiveMediaSearchService
         public string AgeRating = "";
         public List<ExternalRatingSource> Sources = new();
         public string? ImdbId;
+        public int? TmdbId;
         public string? MalKey;
         public bool YearLoose;
     }
@@ -147,6 +154,7 @@ public sealed class LiveMediaSearchService
     {
         "api.themoviedb.org",
         "www.omdbapi.com",
+        "api.mdblist.com",
         "api.tvmaze.com",
         "itunes.apple.com",
         "graphql.anilist.co",
@@ -222,6 +230,10 @@ public sealed class LiveMediaSearchService
         TmdbNetflixOriginals,
         TmdbTrending,
         Omdb,
+        MdbListTmdbMovie,
+        MdbListTmdbShow,
+        MdbListImdbMovie,
+        MdbListImdbShow,
         TvMazeSearch,
         ItunesSearch,
         AniListGraphQl,
@@ -239,6 +251,10 @@ public sealed class LiveMediaSearchService
         ProviderEndpoint.TmdbNetflixOriginals => ("https://api.themoviedb.org/3/discover/tv", "api.themoviedb.org", "/3/discover/tv"),
         ProviderEndpoint.TmdbTrending => ("https://api.themoviedb.org/3/trending/all/week", "api.themoviedb.org", "/3/trending/all/week"),
         ProviderEndpoint.Omdb => ("https://www.omdbapi.com/", "www.omdbapi.com", "/"),
+        ProviderEndpoint.MdbListTmdbMovie => ("https://api.mdblist.com/tmdb/movie", "api.mdblist.com", "/tmdb/movie"),
+        ProviderEndpoint.MdbListTmdbShow => ("https://api.mdblist.com/tmdb/show", "api.mdblist.com", "/tmdb/show"),
+        ProviderEndpoint.MdbListImdbMovie => ("https://api.mdblist.com/imdb/movie", "api.mdblist.com", "/imdb/movie"),
+        ProviderEndpoint.MdbListImdbShow => ("https://api.mdblist.com/imdb/show", "api.mdblist.com", "/imdb/show"),
         ProviderEndpoint.TvMazeSearch => ("https://api.tvmaze.com/search/shows", "api.tvmaze.com", "/search/shows"),
         ProviderEndpoint.ItunesSearch => ("https://itunes.apple.com/search", "itunes.apple.com", "/search"),
         ProviderEndpoint.AniListGraphQl => ("https://graphql.anilist.co/", "graphql.anilist.co", "/"),
@@ -397,9 +413,13 @@ public sealed class LiveMediaSearchService
                      (S(raw, "media_type") == "tv" || P(raw, "first_air_date") != null));
         string mediaType = isTv ? "TvSeries" : "Movie";
 
+        int? tmdbId = int.TryParse(S(raw, "id"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsedTmdbId) && parsedTmdbId > 0
+            ? parsedTmdbId
+            : null;
         var item = new LiveItem
         {
             ExternalId = $"tmdb-{mediaType.ToLowerInvariant()}-{S(raw, "id")}",
+            TmdbId = tmdbId,
             Title = title,
             MediaType = mediaType,
             Year = ToYear(S(raw, "release_date") != "" ? S(raw, "release_date") : S(raw, "first_air_date")),
@@ -529,6 +549,207 @@ public sealed class LiveMediaSearchService
         if (item.PosterUrl == "") item.PosterUrl = Known("Poster");
         foreach (var g in Known("Genre").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             if (!item.Genres.Contains(g, StringComparer.OrdinalIgnoreCase)) item.Genres.Add(g);
+    }
+
+    private static double ParseOptionalDouble(JsonElement el, string name)
+    {
+        var prop = P(el, name);
+        if (prop == null) return 0;
+        if (prop.Value.ValueKind == JsonValueKind.Number) return prop.Value.GetDouble();
+        if (prop.Value.ValueKind == JsonValueKind.String &&
+            double.TryParse(prop.Value.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+            return parsed;
+        return 0;
+    }
+
+    private static bool ApplyMdbListEntry(LiveItem item, JsonElement entry)
+    {
+        if (entry.ValueKind != JsonValueKind.Object) return false;
+
+        string imdbId = O(entry, "ids") is { } idsObj ? S(idsObj, "imdb") : "";
+        if (string.IsNullOrEmpty(imdbId)) imdbId = S(entry, "imdbid");
+        if (string.IsNullOrEmpty(item.ImdbId) && imdbId.StartsWith("tt", StringComparison.OrdinalIgnoreCase))
+        {
+            item.ImdbId = imdbId;
+        }
+
+        bool addedAny = false;
+        foreach (var r in A(entry, "ratings"))
+        {
+            if (r.ValueKind != JsonValueKind.Object) continue;
+            string src = S(r, "source").ToLowerInvariant();
+            double rawVal = ParseOptionalDouble(r, "value");
+            double rawScore = ParseOptionalDouble(r, "score");
+            int votes = Math.Max(0, (int)ParseOptionalDouble(r, "votes"));
+            bool hasVal = rawVal > 0;
+            bool hasScore = rawScore > 0;
+            if (!hasVal && !hasScore) continue;
+
+            switch (src)
+            {
+                case "imdb":
+                {
+                    double outOf10 = hasVal && rawVal <= 10 ? rawVal : (hasScore ? rawScore / 10.0 : rawVal / 10.0);
+                    double norm = hasScore ? rawScore : outOf10 * 10.0;
+                    AddSource(item, MakeSource(RatingProvider.Imdb, $"{outOf10:F1} / 10", norm, votes));
+                    addedAny = true;
+                    break;
+                }
+                case "tomatoes":
+                {
+                    double norm = hasScore ? rawScore : rawVal;
+                    AddSource(item, MakeSource(RatingProvider.RottenTomatoes, $"{(int)Math.Round(norm)}%", norm, votes));
+                    addedAny = true;
+                    break;
+                }
+                case "popcorn":
+                case "tomatoesaudience":
+                {
+                    double norm = hasScore ? rawScore : rawVal;
+                    AddSource(item, MakeSource(RatingProvider.RottenTomatoesAudience, $"{(int)Math.Round(norm)}%", norm, votes));
+                    addedAny = true;
+                    break;
+                }
+                case "metacritic":
+                {
+                    double norm = hasScore ? rawScore : rawVal;
+                    AddSource(item, MakeSource(RatingProvider.Metacritic, $"{(int)Math.Round(norm)} / 100", norm, votes));
+                    addedAny = true;
+                    break;
+                }
+                case "trakt":
+                {
+                    double norm = hasScore ? rawScore : (rawVal <= 10 ? rawVal * 10.0 : rawVal);
+                    AddSource(item, MakeSource(RatingProvider.Trakt, $"{(int)Math.Round(norm)}%", norm, votes));
+                    addedAny = true;
+                    break;
+                }
+                case "letterboxd":
+                {
+                    double outOf5 = hasVal && rawVal <= 5 ? rawVal : (hasScore ? rawScore / 20.0 : rawVal / 20.0);
+                    double norm = hasScore ? rawScore : outOf5 * 20.0;
+                    AddSource(item, MakeSource(RatingProvider.Letterboxd, $"{outOf5:F1} / 5", norm, votes));
+                    addedAny = true;
+                    break;
+                }
+                case "tmdb":
+                {
+                    double outOf10 = hasVal && rawVal <= 10 ? rawVal : (hasScore ? rawScore / 10.0 : rawVal / 10.0);
+                    double norm = hasScore ? rawScore : outOf10 * 10.0;
+                    AddSource(item, MakeSource(RatingProvider.Tmdb, $"{outOf10:F1} / 10", norm, votes));
+                    addedAny = true;
+                    break;
+                }
+            }
+        }
+
+        if (item.Overview == "" && S(entry, "description") is { Length: > 0 } desc)
+            item.Overview = desc.Trim();
+        if (item.AgeRating == "" && S(entry, "certification") is { Length: > 0 } cert)
+            item.AgeRating = cert.Trim();
+        if (item.Runtime == "" && D(entry, "runtime") is var rt && rt > 0)
+        {
+            int mins = (int)Math.Round(rt);
+            item.Runtime = item.MediaType == "TvSeries"
+                ? $"{mins} min / ep"
+                : mins >= 60
+                    ? $"{mins / 60}h {mins % 60}m"
+                    : $"{mins}m";
+        }
+        if (item.PosterUrl == "" && S(entry, "poster") is { Length: > 0 } poster)
+            item.PosterUrl = UpgradeToHttps(poster);
+
+        return addedAny;
+    }
+
+    /// <summary>
+    /// Batch-enriches top Movie/TV matches via MDBList (IMDb, RT Critics, RT Audience / Popcornmeter,
+    /// Metacritic, Trakt, Letterboxd, TMDB) using at most 1 POST per (provider, mediaType) bucket.
+    /// </summary>
+    private async Task<int> EnrichWithMdbListAsync(List<LiveItem> candidates, string mdbListApiKey, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(mdbListApiKey) || candidates.Count == 0) return 0;
+
+        var tmdbMovieMap = new Dictionary<string, LiveItem>(StringComparer.Ordinal);
+        var tmdbShowMap = new Dictionary<string, LiveItem>(StringComparer.Ordinal);
+        var imdbMovieMap = new Dictionary<string, LiveItem>(StringComparer.OrdinalIgnoreCase);
+        var imdbShowMap = new Dictionary<string, LiveItem>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in candidates)
+        {
+            if (item.MediaType != "Movie" && item.MediaType != "TvSeries") continue;
+            bool isShow = item.MediaType == "TvSeries";
+            if (item.TmdbId is > 0)
+            {
+                string idStr = item.TmdbId.Value.ToString(CultureInfo.InvariantCulture);
+                var targetMap = isShow ? tmdbShowMap : tmdbMovieMap;
+                targetMap.TryAdd(idStr, item);
+            }
+            else if (!string.IsNullOrEmpty(item.ImdbId))
+            {
+                var targetMap = isShow ? imdbShowMap : imdbMovieMap;
+                targetMap.TryAdd(item.ImdbId, item);
+            }
+        }
+
+        async Task<int> PostBatchAsync(ProviderEndpoint endpoint, object idsPayload, bool matchByTmdb, Dictionary<string, LiveItem> map)
+        {
+            if (map.Count == 0) return 0;
+            try
+            {
+                var queryParams = new KeyValuePair<string, string?>[]
+                {
+                    new("apikey", mdbListApiKey)
+                };
+                string body = JsonSerializer.Serialize(new { ids = idsPayload });
+                using var doc = await GetJsonAsync(
+                    endpoint,
+                    ct,
+                    queryParams: queryParams,
+                    method: HttpMethod.Post,
+                    jsonBody: body,
+                    timeout: TimeSpan.FromSeconds(4.5));
+
+                IEnumerable<JsonElement> entries = doc.RootElement.ValueKind switch
+                {
+                    JsonValueKind.Array => doc.RootElement.EnumerateArray(),
+                    JsonValueKind.Object => new[] { doc.RootElement },
+                    _ => Enumerable.Empty<JsonElement>()
+                };
+
+                int enriched = 0;
+                foreach (var entry in entries)
+                {
+                    if (entry.ValueKind != JsonValueKind.Object) continue;
+                    string lookup = "";
+                    if (O(entry, "ids") is { } idsObj)
+                    {
+                        lookup = matchByTmdb ? S(idsObj, "tmdb") : S(idsObj, "imdb");
+                    }
+                    if (string.IsNullOrEmpty(lookup))
+                    {
+                        lookup = matchByTmdb ? S(entry, "tmdbid") : S(entry, "imdbid");
+                    }
+                    if (!string.IsNullOrEmpty(lookup) && map.TryGetValue(lookup, out var target) && ApplyMdbListEntry(target, entry))
+                    {
+                        enriched++;
+                    }
+                }
+                return enriched;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        int[] counts = await Task.WhenAll(
+            PostBatchAsync(ProviderEndpoint.MdbListTmdbMovie, tmdbMovieMap.Keys.Select(int.Parse).ToArray(), true, tmdbMovieMap),
+            PostBatchAsync(ProviderEndpoint.MdbListTmdbShow, tmdbShowMap.Keys.Select(int.Parse).ToArray(), true, tmdbShowMap),
+            PostBatchAsync(ProviderEndpoint.MdbListImdbMovie, imdbMovieMap.Keys.ToArray(), false, imdbMovieMap),
+            PostBatchAsync(ProviderEndpoint.MdbListImdbShow, imdbShowMap.Keys.ToArray(), false, imdbShowMap)
+        );
+        return counts.Sum();
     }
 
     private async Task<List<LiveItem>> SearchTvMazeAsync(string q, CancellationToken ct)
@@ -961,6 +1182,7 @@ query ($search: String) {
         if (target.Runtime == "") target.Runtime = inc.Runtime;
         if (target.AgeRating == "") target.AgeRating = inc.AgeRating;
         target.ImdbId ??= inc.ImdbId;
+        target.TmdbId ??= inc.TmdbId;
         target.MalKey ??= inc.MalKey;
         if (target.Year == 0) target.Year = inc.Year;
         if (target.YearLoose && !inc.YearLoose) target.YearLoose = false;
@@ -975,6 +1197,7 @@ query ($search: String) {
         IEnumerable<string> IdKeys(LiveItem i)
         {
             if (!string.IsNullOrEmpty(i.ImdbId)) yield return $"imdb:{i.ImdbId}";
+            if (i.TmdbId is > 0) yield return $"tmdb:{i.MediaType}:{i.TmdbId.Value}";
             if (!string.IsNullOrEmpty(i.MalKey)) yield return $"mal:{i.MalKey}";
         }
 
@@ -1061,6 +1284,7 @@ query ($search: String) {
 
         string tmdb = _key("TMDB_API_KEY") ?? "";
         string omdb = _key("OMDB_API_KEY") ?? "";
+        string mdbList = _key("MDBLIST_API_KEY") ?? "";
         string comicVine = _key("COMICVINE_API_KEY") ?? "";
         string hardcover = _key("HARDCOVER_API_TOKEN") ?? "";
 
@@ -1106,10 +1330,35 @@ query ($search: String) {
         var merged = Merge(settled.Select(s => (IEnumerable<LiveItem>)s.Items));
         merged = merged.OrderByDescending(i => Relevance(i, normalizedQuery, tokens)).ThenByDescending(TotalVotes).ToList();
 
+        if (mdbList != "")
+        {
+            var mdbCandidates = merged
+                .Where(i => (i.MediaType == "Movie" || i.MediaType == "TvSeries") && (i.TmdbId is > 0 || !string.IsNullOrEmpty(i.ImdbId)))
+                .Take(15).ToList();
+            try
+            {
+                int enriched = await EnrichWithMdbListAsync(mdbCandidates, mdbList, ct);
+                diagnostics["mdblist"] = new ProviderDiagnostic(true, enriched, null);
+            }
+            catch
+            {
+                diagnostics["mdblist"] = new ProviderDiagnostic(true, 0, "provider_error");
+            }
+            merged = merged.OrderByDescending(i => Relevance(i, normalizedQuery, tokens)).ThenByDescending(TotalVotes).ToList();
+        }
+        else
+        {
+            diagnostics["mdblist"] = new ProviderDiagnostic(false, 0, null);
+        }
+
         if (omdb != "")
         {
             var candidates = merged
-                .Where(i => (i.MediaType == "Movie" || i.MediaType == "TvSeries") && !i.Sources.Any(s => s.SourceId == "imdb"))
+                .Where(i =>
+                    (i.MediaType == "Movie" || i.MediaType == "TvSeries") &&
+                    (!i.Sources.Any(s => s.SourceId == "imdb") ||
+                     !i.Sources.Any(s => s.SourceId == "rotten_tomatoes_critics") ||
+                     !i.Sources.Any(s => s.SourceId == "metacritic")))
                 .Take(10).ToList();
             await Task.WhenAll(candidates.Select(async c =>
             {

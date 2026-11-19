@@ -628,4 +628,29 @@ public class ComicTrafficBackendTests
         Assert.NotEmpty(fallbackRes.Items);
         Assert.Contains(fallbackRes.Items, i => i.Title.Contains("Watchmen", StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public async Task LiveMediaSearchService_EnrichesTvSeriesViaMdbListWithRtCriticsRtAudienceMetacriticAndTrakt()
+    {
+        var handler = new RouteStubHttpHandler(new List<(string, string)>
+        {
+            ("themoviedb.org", """{"results":[{"id":246,"media_type":"tv","name":"Avatar: The Last Airbender","first_air_date":"2005-02-21","vote_average":8.7,"vote_count":4200,"genre_ids":[16,10759],"poster_path":"/atla.jpg"}]}"""),
+            ("api.tvmaze.com/search/shows", """[{"show":{"id":555,"name":"Avatar: The Last Airbender","premiered":"2005-02-21","externals":{"imdb":"tt0417299"},"rating":{"average":8.9},"genres":["Animation"]}}]"""),
+            ("api.mdblist.com/tmdb/show?apikey=mdb", """[{"title":"Avatar: The Last Airbender","year":2005,"ids":{"tmdb":246,"imdb":"tt0417299"},"certification":"TV-Y7-FV","ratings":[{"source":"imdb","value":9.3,"score":93,"votes":390000},{"source":"tomatoes","value":100,"score":100,"votes":68},{"source":"popcorn","value":98,"score":98,"votes":42500},{"source":"metacritic","value":90,"score":90,"votes":28},{"source":"trakt","value":92,"score":92,"votes":54000}]}]""")
+        });
+        using var http = new HttpClient(handler);
+        var keys = new Dictionary<string, string?> { ["TMDB_API_KEY"] = "k", ["MDBLIST_API_KEY"] = "mdb" };
+        var service = new LiveMediaSearchService(http, k => keys.GetValueOrDefault(k), new CumulativeRatingCalculator());
+
+        var result = await service.SearchAsync("avatar the last airbender", CancellationToken.None);
+
+        var avatar = Assert.Single(result.Items, i => i.Title == "Avatar: The Last Airbender");
+        var sourceIds = avatar.CumulativeRating.Sources.Select(s => s.SourceId).OrderBy(s => s).ToArray();
+        Assert.Equal(
+            new[] { "imdb", "metacritic", "rotten_tomatoes_audience", "rotten_tomatoes_critics", "tmdb", "trakt", "tvmaze" },
+            sourceIds);
+        Assert.Equal("TV-Y7-FV", avatar.AgeRating);
+        Assert.True(result.Providers["mdblist"].Configured);
+        Assert.Equal(1, result.Providers["mdblist"].Count);
+    }
 }

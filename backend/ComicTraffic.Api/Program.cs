@@ -248,6 +248,7 @@ builder.Services.AddSingleton(sp =>
             "TMDB_API_KEY" => "ExternalApis:TmdbApiKey",
             "TMDB_API_URL" => "ExternalApis:TmdbApiUrl",
             "OMDB_API_KEY" => "ExternalApis:OmdbApiKey",
+            "MDBLIST_API_KEY" => "ExternalApis:MdbListApiKey",
             "COMICVINE_API_KEY" => "ExternalApis:ComicVineApiKey",
             "GOOGLE_BOOKS_API_KEY" => "ExternalApis:GoogleBooksApiKey",
             "HARDCOVER_API_TOKEN" => "ExternalApis:HardcoverApiToken",

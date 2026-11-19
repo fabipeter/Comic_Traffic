@@ -169,6 +169,14 @@ export const RATING_SOURCE_DEFINITIONS: {
     badge: "Trakt",
   },
   {
+    sourceId: "letterboxd",
+    name: "Letterboxd",
+    category: "Audience",
+    defaultWeight: 1.1,
+    color: "#00e054",
+    badge: "Letterboxd",
+  },
+  {
     sourceId: "comicvine",
     name: "ComicVine API",
     category: "ComicCommunity",

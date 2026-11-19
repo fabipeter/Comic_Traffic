@@ -138,4 +138,65 @@ describe("executeLiveSearch", () => {
     expect(fallback).toBe(true);
     expect(items[0].title).toBe("Watchmen");
   });
+
+  it("batch-enriches TV series via MDBList with RT Critics, RT Audience, Metacritic, IMDb, and Trakt", async () => {
+    vi.stubGlobal(
+      "fetch",
+      routeFetch([
+        [
+          "themoviedb.org",
+          {
+            results: [
+              { id: 246, media_type: "tv", name: "Avatar: The Last Airbender", first_air_date: "2005-02-21", vote_average: 8.7, vote_count: 4200, genre_ids: [16, 10759], poster_path: "/atla.jpg" },
+            ],
+          },
+        ],
+        [
+          "api.tvmaze.com/search/shows",
+          [
+            { show: { id: 555, name: "Avatar: The Last Airbender", premiered: "2005-02-21", externals: { imdb: "tt0417299" }, rating: { average: 8.9 }, genres: ["Animation"] } },
+          ],
+        ],
+        [
+          "api.mdblist.com/tmdb/show?apikey=mdb",
+          [
+            {
+              title: "Avatar: The Last Airbender",
+              year: 2005,
+              ids: { tmdb: 246, imdb: "tt0417299" },
+              certification: "TV-Y7-FV",
+              ratings: [
+                { source: "imdb", value: 9.3, score: 93, votes: 390000 },
+                { source: "tomatoes", value: 100, score: 100, votes: 68 },
+                { source: "popcorn", value: 98, score: 98, votes: 42500 },
+                { source: "metacritic", value: 90, score: 90, votes: 28 },
+                { source: "trakt", value: 92, score: 92, votes: 54000 },
+              ],
+            },
+          ],
+        ],
+      ])
+    );
+
+    const { items, providers } = await executeLiveSearch("avatar the last airbender", {
+      env: { TMDB_API_KEY: "k", MDBLIST_API_KEY: "mdb" },
+      calculateCumulativeSummary: calc,
+    });
+
+    const avatar = items.find((i) => i.title === "Avatar: The Last Airbender");
+    expect(avatar).toBeDefined();
+    expect(avatar.tmdbId).toBeUndefined();
+    expect(avatar.ageRating).toBe("TV-Y7-FV");
+    const ids = avatar.cumulativeRating.sources.map((s) => s.sourceId).sort();
+    expect(ids).toEqual([
+      "imdb",
+      "metacritic",
+      "rotten_tomatoes_audience",
+      "rotten_tomatoes_critics",
+      "tmdb",
+      "trakt",
+      "tvmaze",
+    ]);
+    expect(providers.mdblist).toEqual({ configured: true, count: 1 });
+  });
 });

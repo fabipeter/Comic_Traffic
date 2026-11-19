@@ -38,21 +38,36 @@ public sealed class LiveMediaSearchService
         [10764] = "Reality", [10765] = "Sci-Fi & Fantasy", [10766] = "Soap", [10767] = "Talk", [10768] = "War & Politics"
     };
 
+    public enum RatingProvider
+    {
+        Tmdb,
+        Imdb,
+        RottenTomatoes,
+        Metacritic,
+        TvMaze,
+        AniList,
+        MyAnimeList,
+        OpenLibrary,
+        GoogleBooks,
+        Hardcover,
+        AppleBooks
+    }
+
     private sealed record SourceDef(string Id, string Name, string Category, double Weight, string Color);
 
-    private static readonly Dictionary<string, SourceDef> Defs = new()
+    private static readonly Dictionary<RatingProvider, SourceDef> SourceDefs = new()
     {
-        ["tmdb"] = new("tmdb", "TMDB", "Audience", 1.0, "#01b4e4"),
-        ["imdb"] = new("imdb", "IMDb (OMDb)", "Audience", 1.25, "#f5c518"),
-        ["rt"] = new("rotten_tomatoes_critics", "Rotten Tomatoes (Critics)", "Critic", 1.2, "#fa320a"),
-        ["metacritic"] = new("metacritic", "Metacritic", "Critic", 1.2, "#ffcc33"),
-        ["tvmaze"] = new("tvmaze", "TVMaze API", "Audience", 0.95, "#3c948b"),
-        ["anilist"] = new("anilist", "AniList", "ComicCommunity", 1.2, "#02a9ff"),
-        ["mal"] = new("myanimelist", "MyAnimeList", "ComicCommunity", 1.2, "#2e51a2"),
-        ["openlibrary"] = new("openlibrary", "Open Library", "Audience", 1.0, "#059669"),
-        ["googleBooks"] = new("google_books", "Google Books", "Audience", 1.0, "#4285f4"),
-        ["hardcover"] = new("hardcover", "Hardcover", "Audience", 1.25, "#7c3aed"),
-        ["appleBooks"] = new("apple_books", "Apple Books", "Audience", 1.0, "#9ca3af")
+        [RatingProvider.Tmdb] = new("tmdb", "TMDB", "Audience", 1.0, "#01b4e4"),
+        [RatingProvider.Imdb] = new("imdb", "IMDb (OMDb)", "Audience", 1.25, "#f5c518"),
+        [RatingProvider.RottenTomatoes] = new("rotten_tomatoes_critics", "Rotten Tomatoes (Critics)", "Critic", 1.2, "#fa320a"),
+        [RatingProvider.Metacritic] = new("metacritic", "Metacritic", "Critic", 1.2, "#ffcc33"),
+        [RatingProvider.TvMaze] = new("tvmaze", "TVMaze API", "Audience", 0.95, "#3c948b"),
+        [RatingProvider.AniList] = new("anilist", "AniList", "ComicCommunity", 1.2, "#02a9ff"),
+        [RatingProvider.MyAnimeList] = new("myanimelist", "MyAnimeList", "ComicCommunity", 1.2, "#2e51a2"),
+        [RatingProvider.OpenLibrary] = new("openlibrary", "Open Library", "Audience", 1.0, "#059669"),
+        [RatingProvider.GoogleBooks] = new("google_books", "Google Books", "Audience", 1.0, "#4285f4"),
+        [RatingProvider.Hardcover] = new("hardcover", "Hardcover", "Audience", 1.25, "#7c3aed"),
+        [RatingProvider.AppleBooks] = new("apple_books", "Apple Books", "Audience", 1.0, "#9ca3af")
     };
 
     public sealed class LiveItem
@@ -112,9 +127,9 @@ public sealed class LiveMediaSearchService
     private static JsonElement? O(JsonElement e, string name) =>
         P(e, name) is { ValueKind: JsonValueKind.Object } o ? o : null;
 
-    public static ExternalRatingSource MakeSource(string key, string raw, double normalized, int votes)
+    public static ExternalRatingSource MakeSource(RatingProvider provider, string raw, double normalized, int votes)
     {
-        var d = Defs[key];
+        var d = SourceDefs[provider];
         return new ExternalRatingSource
         {
             SourceId = d.Id,
@@ -398,7 +413,7 @@ public sealed class LiveMediaSearchService
         double avg = D(raw, "vote_average");
         int votes = (int)D(raw, "vote_count");
         if (avg > 0 && votes > 0)
-            item.Sources.Add(MakeSource("tmdb", $"{avg:F1} / 10", avg * 10, votes));
+            item.Sources.Add(MakeSource(RatingProvider.Tmdb, $"{avg:F1} / 10", avg * 10, votes));
         return item;
     }
 
@@ -494,16 +509,16 @@ public sealed class LiveMediaSearchService
         if (double.TryParse(S(d, "imdbRating"), NumberStyles.Float, CultureInfo.InvariantCulture, out var imdb) && imdb > 0)
         {
             int.TryParse(S(d, "imdbVotes").Replace(",", ""), out int votes);
-            AddSource(item, MakeSource("imdb", $"{imdb:F1} / 10", imdb * 10, votes));
+            AddSource(item, MakeSource(RatingProvider.Imdb, $"{imdb:F1} / 10", imdb * 10, votes));
         }
         foreach (var r in A(d, "Ratings"))
         {
             if (S(r, "Source") == "Rotten Tomatoes" &&
                 int.TryParse(S(r, "Value").TrimEnd('%'), out int pct))
-                AddSource(item, MakeSource("rt", $"{pct}%", pct, 0));
+                AddSource(item, MakeSource(RatingProvider.RottenTomatoes, $"{pct}%", pct, 0));
         }
         if (int.TryParse(S(d, "Metascore"), out int meta))
-            AddSource(item, MakeSource("metacritic", $"{meta} / 100", meta, 0));
+            AddSource(item, MakeSource(RatingProvider.Metacritic, $"{meta} / 100", meta, 0));
 
         string Known(string field) { var v = S(d, field); return v == "N/A" ? "" : v; }
         if (item.Overview == "") item.Overview = Known("Plot");
@@ -544,7 +559,7 @@ public sealed class LiveMediaSearchService
             double rt = D(s, "averageRuntime") > 0 ? D(s, "averageRuntime") : D(s, "runtime");
             if (rt > 0) item.Runtime = $"{(int)rt} min / ep";
             if (O(s, "rating") is { } rating && D(rating, "average") is var avg && avg > 0)
-                item.Sources.Add(MakeSource("tvmaze", $"{avg:0.#} / 10", avg * 10, 0));
+                item.Sources.Add(MakeSource(RatingProvider.TvMaze, $"{avg:0.#} / 10", avg * 10, 0));
             list.Add(item);
         }
         return list;
@@ -658,7 +673,7 @@ query ($search: String) {
             }
             double score = D(m, "averageScore");
             if (score > 0)
-                item.Sources.Add(MakeSource("anilist", $"{(int)score} / 100", score, (int)D(m, "popularity")));
+                item.Sources.Add(MakeSource(RatingProvider.AniList, $"{(int)score} / 100", score, (int)D(m, "popularity")));
             list.Add(item);
         }
 
@@ -699,7 +714,7 @@ query ($search: String) {
             item.Runtime = D(m, "chapters") > 0 ? $"{(int)D(m, "chapters")} Chapters" : D(m, "volumes") > 0 ? $"{(int)D(m, "volumes")} Volumes" : "";
             double score = D(m, "score");
             if (score > 0)
-                item.Sources.Add(MakeSource("mal", $"{score:0.##} / 10", score * 10, (int)D(m, "scored_by")));
+                item.Sources.Add(MakeSource(RatingProvider.MyAnimeList, $"{score:0.##} / 10", score * 10, (int)D(m, "scored_by")));
             list.Add(item);
         }
         return list;
@@ -791,7 +806,7 @@ query ($search: String) {
                 double rating = D(d, "rating");
                 int count = (int)D(d, "ratings_count");
                 if (rating > 0 && count > 0)
-                    item.Sources.Add(MakeSource("hardcover", $"{rating:F2} / 5", rating * 20, count));
+                    item.Sources.Add(MakeSource(RatingProvider.Hardcover, $"{rating:F2} / 5", rating * 20, count));
                 list.Add(item);
             }
             return list;
@@ -842,7 +857,7 @@ query ($search: String) {
             double avg = D(v, "averageRating");
             int count = (int)D(v, "ratingsCount");
             if (avg > 0 && count > 0)
-                item.Sources.Add(MakeSource("googleBooks", $"{avg:F1} / 5", avg * 20, count));
+                item.Sources.Add(MakeSource(RatingProvider.GoogleBooks, $"{avg:F1} / 5", avg * 20, count));
             list.Add(item);
         }
         return list;
@@ -878,7 +893,7 @@ query ($search: String) {
             double avg = D(r, "averageUserRating");
             int count = (int)D(r, "userRatingCount");
             if (avg > 0 && count > 0)
-                item.Sources.Add(MakeSource("appleBooks", $"{avg:F1} / 5", avg * 20, count));
+                item.Sources.Add(MakeSource(RatingProvider.AppleBooks, $"{avg:F1} / 5", avg * 20, count));
             list.Add(item);
         }
         return list;
@@ -915,7 +930,7 @@ query ($search: String) {
             double avg = D(d, "ratings_average");
             int count = (int)D(d, "ratings_count");
             if (avg > 0 && count > 0)
-                item.Sources.Add(MakeSource("openlibrary", $"{avg:F2} / 5", avg * 20, count));
+                item.Sources.Add(MakeSource(RatingProvider.OpenLibrary, $"{avg:F2} / 5", avg * 20, count));
             list.Add(item);
         }
         return list;

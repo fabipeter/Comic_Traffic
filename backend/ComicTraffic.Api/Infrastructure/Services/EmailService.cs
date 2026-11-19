@@ -373,13 +373,16 @@ public class EmailService : IEmailService
     private static string WrapBrandedEmailHtml(
         string title,
         string subtitle,
-        string headerBg,
+        string headerBgColor,
+        string topAccentColor,
         string borderColor,
         string accentColor,
         string bodyHtml,
-        bool includeNoReplyFooter = false)
+        bool includeNoReplyFooter = false,
+        bool isSuccessTheme = false)
     {
         int year = DateTime.UtcNow.Year;
+        string headerClass = isSuccessTheme ? "header header-success" : "header";
         string extraFooter = includeNoReplyFooter
             ? "<br />This is an automated security transmission. Please do not reply directly to this address."
             : string.Empty;
@@ -390,13 +393,13 @@ public class EmailService : IEmailService
   <meta charset=""UTF-8"" />
   <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"" />
   <meta http-equiv=""X-UA-Compatible"" content=""IE=edge"" />
-  <meta name=""color-scheme"" content=""light dark"" />
-  <meta name=""supported-color-schemes"" content=""light dark"" />
+  <meta name=""color-scheme"" content=""light only"" />
+  <meta name=""supported-color-schemes"" content=""light only"" />
   <title>{WebUtility.HtmlEncode(title)}</title>
   <style>
     :root {{
-      color-scheme: light dark;
-      supported-color-schemes: light dark;
+      color-scheme: light only;
+      supported-color-schemes: light only;
     }}
     body, table, td, a {{
       -webkit-text-size-adjust: 100%;
@@ -413,10 +416,14 @@ public class EmailService : IEmailService
     }}
     .email-body {{ background-color: #060911; }}
     .email-card {{ background-color: #0b1222; }}
+    .header {{ background-color: #0f172a; }}
+    .header-success {{ background-color: #064e3b; }}
+    .brand-title, .brand-comic {{ color: #f8fafc !important; -webkit-text-fill-color: #f8fafc; }}
+    .brand-sub {{ color: #cbd5e1 !important; }}
     .email-content {{ background-color: #0b1222; color: #cbd5e1; }}
     .code-box {{ background-color: #0f172a; }}
     .code-value {{ color: #60a5fa; }}
-    .cta-button {{ background-color: #2563eb; color: #ffffff !important; }}
+    .cta-button {{ background-color: #2563eb; color: #f8fafc !important; -webkit-text-fill-color: #f8fafc; }}
     .notice {{ background-color: #1e1b18; color: #fde68a; }}
     .alert-box {{ background-color: #062e24; color: #a7f3d0; }}
     .feature-box {{ background-color: #0f172a; color: #e2e8f0; }}
@@ -424,39 +431,49 @@ public class EmailService : IEmailService
     @media (prefers-color-scheme: dark) {{
       body, .email-body {{ background-color: #050811 !important; color: #e2e8f0 !important; }}
       .email-card {{ background-color: #0b1222 !important; border-color: rgba(59, 130, 246, 0.45) !important; }}
+      .header {{ background-color: #0f172a !important; }}
+      .header-success {{ background-color: #064e3b !important; }}
+      .brand-title, .brand-comic {{ color: #f8fafc !important; -webkit-text-fill-color: #f8fafc !important; }}
+      .brand-sub {{ color: #cbd5e1 !important; }}
       .email-content {{ background-color: #0b1222 !important; color: #cbd5e1 !important; }}
       .code-box {{ background-color: #0f172a !important; border-color: #3b82f6 !important; }}
       .code-value {{ color: #60a5fa !important; }}
+      .cta-button {{ background-color: #2563eb !important; color: #f8fafc !important; -webkit-text-fill-color: #f8fafc !important; }}
       .feature-box {{ background-color: #0f172a !important; border-color: rgba(59, 130, 246, 0.4) !important; color: #e2e8f0 !important; }}
       .notice {{ background-color: #1e1b18 !important; border-color: #f59e0b !important; color: #fde68a !important; }}
       .alert-box {{ background-color: #062e24 !important; border-color: #10b981 !important; color: #a7f3d0 !important; }}
       h1 {{ color: #f8fafc !important; }}
       p {{ color: #cbd5e1 !important; }}
-      .footer {{ background-color: #070b14 !important; color: #64748b !important; }}
+      .footer {{ background-color: #070b14 !important; color: #94a3b8 !important; }}
     }}
 
     [data-ogsc] body, [data-ogsc] .email-body {{ background-color: #050811 !important; }}
     [data-ogsc] .email-card {{ background-color: #0b1222 !important; }}
+    [data-ogsb] .header {{ background-color: #0f172a !important; }}
+    [data-ogsb] .header-success {{ background-color: #064e3b !important; }}
+    [data-ogsc] .brand-title, [data-ogsc] .brand-comic {{ color: #f8fafc !important; -webkit-text-fill-color: #f8fafc !important; }}
+    [data-ogsc] .brand-sub {{ color: #cbd5e1 !important; }}
     [data-ogsc] .email-content {{ background-color: #0b1222 !important; }}
     [data-ogsc] .code-box {{ background-color: #0f172a !important; }}
     [data-ogsc] .code-value {{ color: #60a5fa !important; }}
+    [data-ogsc] .cta-button {{ background-color: #2563eb !important; color: #f8fafc !important; -webkit-text-fill-color: #f8fafc !important; }}
     [data-ogsc] .feature-box {{ background-color: #0f172a !important; }}
     [data-ogsc] .notice {{ background-color: #1e1b18 !important; color: #fde68a !important; }}
     [data-ogsc] .alert-box {{ background-color: #062e24 !important; color: #a7f3d0 !important; }}
     [data-ogsc] h1 {{ color: #f8fafc !important; }}
     [data-ogsc] p {{ color: #cbd5e1 !important; }}
-    [data-ogsc] .footer {{ background-color: #070b14 !important; color: #64748b !important; }}
+    [data-ogsc] .footer {{ background-color: #070b14 !important; color: #94a3b8 !important; }}
   </style>
 </head>
-<body bgcolor=""#060911"" class=""email-body"" style=""margin: 0; padding: 0; background-color: #060911; color: #e2e8f0;"">
+<body bgcolor=""#060911"" class=""body email-body"" style=""margin: 0; padding: 0; background-color: #060911; color: #e2e8f0;"">
   <table role=""presentation"" width=""100%"" border=""0"" cellspacing=""0"" cellpadding=""0"" bgcolor=""#060911"" class=""email-body"" style=""background-color: #060911; width: 100%; margin: 0; padding: 36px 12px;"">
     <tr>
       <td align=""center"" style=""padding: 0;"">
         <table role=""presentation"" width=""100%"" border=""0"" cellspacing=""0"" cellpadding=""0"" bgcolor=""#0b1222"" class=""email-card container"" style=""background-color: #0b1222; max-width: 600px; width: 100%; border: 1px solid {borderColor}; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);"">
           <tr>
-            <td align=""center"" bgcolor=""#0f172a"" class=""header"" style=""background: {headerBg}; background-color: #0f172a; padding: 32px 24px; text-align: center; border-bottom: 1px solid {borderColor};"">
-              <div class=""brand-title"" style=""font-size: 24px; font-weight: 900; letter-spacing: 2px; color: #ffffff; text-transform: uppercase; margin: 0;"">COMIC<span style=""color: {accentColor};"">TRAFFIC</span></div>
-              <div class=""brand-sub"" style=""font-size: 11px; letter-spacing: 3px; color: #94a3b8; margin-top: 6px; text-transform: uppercase; font-weight: 600;"">{WebUtility.HtmlEncode(subtitle)}</div>
+            <td align=""center"" bgcolor=""{headerBgColor}"" class=""{headerClass}"" style=""background-color: {headerBgColor}; border-top: 4px solid {topAccentColor}; padding: 30px 24px 28px 24px; text-align: center; border-bottom: 1px solid {borderColor};"">
+              <div class=""brand-title"" style=""font-size: 24px; font-weight: 900; letter-spacing: 2px; color: #f8fafc; text-transform: uppercase; margin: 0;""><span class=""brand-comic"" style=""color: #f8fafc;"">COMIC</span><span class=""brand-accent"" style=""color: {accentColor};"">TRAFFIC</span></div>
+              <div class=""brand-sub"" style=""font-size: 11px; letter-spacing: 3px; color: #cbd5e1; margin-top: 6px; text-transform: uppercase; font-weight: 600;"">{WebUtility.HtmlEncode(subtitle)}</div>
             </td>
           </tr>
           <tr>
@@ -465,7 +482,7 @@ public class EmailService : IEmailService
             </td>
           </tr>
           <tr>
-            <td align=""center"" bgcolor=""#070b14"" class=""footer"" style=""background-color: #070b14; border-top: 1px solid rgba(255, 255, 255, 0.08); padding: 22px 24px; text-align: center; font-size: 11px; color: #64748b; line-height: 1.7;"">
+            <td align=""center"" bgcolor=""#070b14"" class=""footer"" style=""background-color: #070b14; border-top: 1px solid rgba(255, 255, 255, 0.08); padding: 22px 24px; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.7;"">
               &copy; {year} Comic Traffic Telemetry Consensus Engine. All rights reserved.{extraFooter}
             </td>
           </tr>
@@ -494,7 +511,7 @@ public class EmailService : IEmailService
       <table role=""presentation"" border=""0"" cellspacing=""0"" cellpadding=""0"" width=""100%"" style=""margin: 26px 0;"">
         <tr>
           <td align=""center"">
-            <a href=""{WebUtility.HtmlEncode(resetUrl)}"" target=""_blank"" rel=""noopener noreferrer"" class=""cta-button"" style=""display: block; width: 100%; box-sizing: border-box; padding: 15px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); background-color: #2563eb; color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45); letter-spacing: 0.5px;"">Reset Password Now</a>
+            <a href=""{WebUtility.HtmlEncode(resetUrl)}"" target=""_blank"" rel=""noopener noreferrer"" class=""cta-button"" style=""display: block; width: 100%; box-sizing: border-box; padding: 15px 28px; background-color: #2563eb; color: #f8fafc !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45); letter-spacing: 0.5px;"">Reset Password Now</a>
           </td>
         </tr>
       </table>
@@ -506,9 +523,10 @@ public class EmailService : IEmailService
         return WrapBrandedEmailHtml(
             title: "Reset Your Comic Traffic Password",
             subtitle: "CUMULATIVE RATING HUB \u2022 ACCOUNT SECURITY",
-            headerBg: "linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)",
+            headerBgColor: "#0f172a",
+            topAccentColor: "#3b82f6",
             borderColor: "rgba(59, 130, 246, 0.35)",
-            accentColor: "#3b82f6",
+            accentColor: "#60a5fa",
             bodyHtml: body,
             includeNoReplyFooter: true);
     }
@@ -520,7 +538,7 @@ public class EmailService : IEmailService
       <h1 style=""font-size: 20px; font-weight: 800; color: #f8fafc; margin-top: 0; margin-bottom: 16px; letter-spacing: -0.3px;"">&#10003; Password Updated Successfully</h1>
       <p style=""font-size: 14px; line-height: 1.7; color: #cbd5e1; margin: 14px 0;"">Hello <strong style=""color: #f8fafc;"">{WebUtility.HtmlEncode(username)}</strong>,</p>
       <div class=""alert-box"" style=""padding: 16px 20px; background-color: #062e24; border: 1px solid #10b981; border-radius: 10px; color: #a7f3d0; font-size: 13px; margin: 20px 0; line-height: 1.6;"">
-        The password for your Comic Traffic account was updated on <strong style=""color: #ffffff;"">{WebUtility.HtmlEncode(timestamp)}</strong>.
+        The password for your Comic Traffic account was updated on <strong style=""color: #f8fafc;"">{WebUtility.HtmlEncode(timestamp)}</strong>.
       </div>
       <p style=""font-size: 14px; line-height: 1.7; color: #cbd5e1; margin: 14px 0;"">You can now sign in with your new password on any device.</p>
       <p style=""font-size: 13px; color: #f87171; line-height: 1.6; margin-top: 20px;"">
@@ -530,11 +548,13 @@ public class EmailService : IEmailService
         return WrapBrandedEmailHtml(
             title: "Comic Traffic Password Changed",
             subtitle: "CUMULATIVE RATING HUB \u2022 ACCOUNT SECURITY",
-            headerBg: "linear-gradient(135deg, #064e3b 0%, #047857 100%)",
+            headerBgColor: "#064e3b",
+            topAccentColor: "#10b981",
             borderColor: "rgba(16, 185, 129, 0.35)",
             accentColor: "#34d399",
             bodyHtml: body,
-            includeNoReplyFooter: false);
+            includeNoReplyFooter: false,
+            isSuccessTheme: true);
     }
 
     private static string BuildWelcomeHtml(string displayName, string username, string appUrl)
@@ -554,7 +574,7 @@ public class EmailService : IEmailService
       <table role=""presentation"" border=""0"" cellspacing=""0"" cellpadding=""0"" width=""100%"" style=""margin: 26px 0;"">
         <tr>
           <td align=""center"">
-            <a href=""{WebUtility.HtmlEncode(resolvedUrl)}/dashboard"" target=""_blank"" rel=""noopener noreferrer"" class=""cta-button"" style=""display: block; width: 100%; box-sizing: border-box; padding: 15px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); background-color: #2563eb; color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45); letter-spacing: 0.5px;"">Open Your Comic Traffic Hub</a>
+            <a href=""{WebUtility.HtmlEncode(resolvedUrl)}/dashboard"" target=""_blank"" rel=""noopener noreferrer"" class=""cta-button"" style=""display: block; width: 100%; box-sizing: border-box; padding: 15px 28px; background-color: #2563eb; color: #f8fafc !important; text-decoration: none; font-weight: 700; font-size: 15px; text-align: center; border-radius: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45); letter-spacing: 0.5px;"">Open Your Comic Traffic Hub</a>
           </td>
         </tr>
       </table>
@@ -566,9 +586,10 @@ public class EmailService : IEmailService
         return WrapBrandedEmailHtml(
             title: "Welcome to Comic Traffic",
             subtitle: "CUMULATIVE RATING HUB \u2022 WELCOME ABOARD",
-            headerBg: "linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)",
+            headerBgColor: "#0f172a",
+            topAccentColor: "#3b82f6",
             borderColor: "rgba(59, 130, 246, 0.35)",
-            accentColor: "#3b82f6",
+            accentColor: "#60a5fa",
             bodyHtml: body,
             includeNoReplyFooter: false);
     }

@@ -21,7 +21,7 @@ public static class DatabaseSeeder
         if (await db.MediaItems.AnyAsync())
             return;
 
-        // 1. Seed Demo Users
+        // 1. Seed Demo Users (Save first to satisfy foreign key constraints)
         string demoAdminUsername = Environment.GetEnvironmentVariable("SEED_ADMIN_USER")
             ?? string.Join(string.Empty, new[] { "comic", "warden" });
         string demoAdminPass = Environment.GetEnvironmentVariable("SEED_ADMIN_PASS")
@@ -32,44 +32,63 @@ public static class DatabaseSeeder
         string secondPass = Environment.GetEnvironmentVariable("SEED_USER_PASS")
             ?? string.Concat("GO_", Guid.NewGuid().ToString("N")[..8]);
 
-        var demoUser = new AppUser
+        var demoUserId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var demoUser = await db.Users.FirstOrDefaultAsync(u => u.Id == demoUserId || u.Email == "demo@comictraffic.io");
+        if (demoUser == null)
         {
-            Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-            Username = demoAdminUsername,
-            Email = "demo@comictraffic.io",
-            DisplayName = "Alex Mercer (ComicWarden)",
-            Bio = "Cumulative rating analyst, graphic novel collector, and sci-fi cinema critic.",
-            Role = "Admin",
-            FavoriteGenresCsv = "Superhero,Sci-Fi,Noir,Graphic Novel,Animation",
-            PasswordHash = jwtTokenService.HashPassword(demoAdminPass),
-            PreferredWeightsJson = JsonSerializer.Serialize(new Dictionary<string, double>
+            demoUser = new AppUser
             {
-                ["imdb"] = 1.2,
-                ["rotten_tomatoes_critics"] = 1.1,
-                ["rotten_tomatoes_audience"] = 1.1,
-                ["metacritic"] = 1.15,
-                ["tmdb"] = 1.0,
-                ["trakt"] = 0.95,
-                ["comicvine"] = 1.25,
-                ["league_of_comic_geeks"] = 1.2,
-                ["anilist"] = 1.0,
-                ["comictraffic_community"] = 1.15
-            }, JsonOptions)
-        };
+                Id = demoUserId,
+                Username = demoAdminUsername,
+                Email = "demo@comictraffic.io",
+                DisplayName = "Alex Mercer (ComicWarden)",
+                Bio = "Cumulative rating analyst, graphic novel collector, and sci-fi cinema critic.",
+                Role = "Admin",
+                FavoriteGenresCsv = "Superhero,Sci-Fi,Noir,Graphic Novel,Animation",
+                PasswordHash = jwtTokenService.HashPassword(demoAdminPass),
+                PreferredWeightsJson = JsonSerializer.Serialize(new Dictionary<string, double>
+                {
+                    ["imdb"] = 1.2,
+                    ["rotten_tomatoes_critics"] = 1.1,
+                    ["rotten_tomatoes_audience"] = 1.1,
+                    ["metacritic"] = 1.15,
+                    ["tmdb"] = 1.0,
+                    ["trakt"] = 0.95,
+                    ["comicvine"] = 1.25,
+                    ["league_of_comic_geeks"] = 1.2,
+                    ["anilist"] = 1.0,
+                    ["comictraffic_community"] = 1.15
+                }, JsonOptions)
+            };
+            db.Users.Add(demoUser);
+        }
 
-        var secondUser = new AppUser
+        var secondUserId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var secondUser = await db.Users.FirstOrDefaultAsync(u => u.Id == secondUserId || u.Email == "barbara@comictraffic.io");
+        if (secondUser == null)
         {
-            Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-            Username = secondUsername,
-            Email = "barbara@comictraffic.io",
-            DisplayName = "Barbara Gordon",
-            Bio = "Tracking every issue, crossover event, and live-action adaptation.",
-            Role = "User",
-            FavoriteGenresCsv = "Detective,Mystery,Comic Book,Thriller",
-            PasswordHash = jwtTokenService.HashPassword(secondPass)
-        };
+            secondUser = new AppUser
+            {
+                Id = secondUserId,
+                Username = secondUsername,
+                Email = "barbara@comictraffic.io",
+                DisplayName = "Barbara Gordon",
+                Bio = "Tracking every issue, crossover event, and live-action adaptation.",
+                Role = "User",
+                FavoriteGenresCsv = "Detective,Mystery,Comic Book,Thriller",
+                PasswordHash = jwtTokenService.HashPassword(secondPass)
+            };
+            db.Users.Add(secondUser);
+        }
 
-        db.Users.AddRange(demoUser, secondUser);
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DatabaseSeeder] Users sync warning: {ex.Message}");
+        }
 
         // 2. Seed Movies, TV Series, and Comic Books with Multi-API Rating Breakdown
         var items = new List<MediaItem>
@@ -534,144 +553,189 @@ public static class DatabaseSeeder
                 })
         };
 
-        db.MediaItems.AddRange(items);
+        if (!await db.MediaItems.AnyAsync())
+        {
+            db.MediaItems.AddRange(items);
+            try
+            {
+                await db.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DatabaseSeeder] MediaItems sync note: {ex.Message}");
+            }
+        }
 
         // 3. Seed Reviews
-        db.Reviews.AddRange(
-            new UserReview
+        if (!await db.Reviews.AnyAsync())
+        {
+            db.Reviews.AddRange(
+                new UserReview
+                {
+                    UserId = demoUser.Id,
+                    Username = demoUser.Username,
+                    UserAvatarUrl = demoUser.AvatarUrl,
+                    ExternalMediaId = "comic-watchmen-1986",
+                    MediaTitle = "Watchmen #1–12 (Absolute Edition)",
+                    MediaType = MediaCategory.ComicBook,
+                    Score = 98,
+                    Headline = "The gold standard of sequential art and nine-panel symmetry",
+                    ReviewText = "Issue #4 (Watchmaker) and Issue #5 (Fearful Symmetry) remain unmatched in how they use the physical medium of comic books. Every rating API agrees: a structural masterpiece.",
+                    ContainsSpoilers = false,
+                    HelpfulVotes = 48,
+                    CreatedAt = DateTime.UtcNow.AddDays(-6)
+                },
+                new UserReview
+                {
+                    UserId = secondUser.Id,
+                    Username = secondUser.Username,
+                    UserAvatarUrl = secondUser.AvatarUrl,
+                    ExternalMediaId = "movie-spiderverse-2023",
+                    MediaTitle = "Spider-Man: Across the Spider-Verse",
+                    MediaType = MediaCategory.Movie,
+                    Score = 95,
+                    Headline = "Every frame looks like a hand-inked comic cover come to life",
+                    ReviewText = "Gwen's watercolor Earth-65 palette reacting to her emotional state and Hobie Brown's collage punk animation push theatrical animation into uncharted territory.",
+                    ContainsSpoilers = false,
+                    HelpfulVotes = 34,
+                    CreatedAt = DateTime.UtcNow.AddDays(-3)
+                },
+                new UserReview
+                {
+                    UserId = demoUser.Id,
+                    Username = demoUser.Username,
+                    UserAvatarUrl = demoUser.AvatarUrl,
+                    ExternalMediaId = "tv-invincible-2021",
+                    MediaTitle = "Invincible",
+                    MediaType = MediaCategory.TvSeries,
+                    Score = 93,
+                    Headline = "Faithful to Kirkman's Image Comics run while sharpening the pacing",
+                    ReviewText = "Seeing Omni-Man and Invincible's arc adapted with full dramatic weight makes this one of the highest-rated comic book television adaptations across IMDb, RT, and TVMaze.",
+                    ContainsSpoilers = false,
+                    HelpfulVotes = 29,
+                    CreatedAt = DateTime.UtcNow.AddDays(-1)
+                }
+            );
+
+            try
             {
-                UserId = demoUser.Id,
-                Username = demoUser.Username,
-                UserAvatarUrl = demoUser.AvatarUrl,
-                ExternalMediaId = "comic-watchmen-1986",
-                MediaTitle = "Watchmen #1–12 (Absolute Edition)",
-                MediaType = MediaCategory.ComicBook,
-                Score = 98,
-                Headline = "The gold standard of sequential art and nine-panel symmetry",
-                ReviewText = "Issue #4 (Watchmaker) and Issue #5 (Fearful Symmetry) remain unmatched in how they use the physical medium of comic books. Every rating API agrees: a structural masterpiece.",
-                ContainsSpoilers = false,
-                HelpfulVotes = 48,
-                CreatedAt = DateTime.UtcNow.AddDays(-6)
-            },
-            new UserReview
-            {
-                UserId = secondUser.Id,
-                Username = secondUser.Username,
-                UserAvatarUrl = secondUser.AvatarUrl,
-                ExternalMediaId = "movie-spiderverse-2023",
-                MediaTitle = "Spider-Man: Across the Spider-Verse",
-                MediaType = MediaCategory.Movie,
-                Score = 95,
-                Headline = "Every frame looks like a hand-inked comic cover come to life",
-                ReviewText = "Gwen's watercolor Earth-65 palette reacting to her emotional state and Hobie Brown's collage punk animation push theatrical animation into uncharted territory.",
-                ContainsSpoilers = false,
-                HelpfulVotes = 34,
-                CreatedAt = DateTime.UtcNow.AddDays(-3)
-            },
-            new UserReview
-            {
-                UserId = demoUser.Id,
-                Username = demoUser.Username,
-                UserAvatarUrl = demoUser.AvatarUrl,
-                ExternalMediaId = "tv-invincible-2021",
-                MediaTitle = "Invincible",
-                MediaType = MediaCategory.TvSeries,
-                Score = 93,
-                Headline = "Faithful to Kirkman's Image Comics run while sharpening the pacing",
-                ReviewText = "Seeing Omni-Man and Invincible's arc adapted with full dramatic weight makes this one of the highest-rated comic book television adaptations across IMDb, RT, and TVMaze.",
-                ContainsSpoilers = false,
-                HelpfulVotes = 29,
-                CreatedAt = DateTime.UtcNow.AddDays(-1)
+                await db.SaveChangesAsync();
             }
-        );
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DatabaseSeeder] Reviews sync note: {ex.Message}");
+            }
+        }
 
         // 4. Seed Demo User's Watchlist & Reading List
-        db.WatchlistItems.AddRange(
-            new WatchlistItem
+        if (!await db.WatchlistItems.AnyAsync())
+        {
+            db.WatchlistItems.AddRange(
+                new WatchlistItem
+                {
+                    UserId = demoUser.Id,
+                    ExternalMediaId = "comic-watchmen-1986",
+                    Title = "Watchmen #1–12 (Absolute Edition)",
+                    MediaType = MediaCategory.ComicBook,
+                    PosterUrl = "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&w=900&q=80",
+                    CumulativeAverage = 95.6,
+                    UserPersonalScore = 98,
+                    Status = "Completed",
+                    Notes = "Re-read the Absolute Edition with Dave Gibbons' annotations."
+                },
+                new WatchlistItem
+                {
+                    UserId = demoUser.Id,
+                    ExternalMediaId = "movie-spiderverse-2023",
+                    Title = "Spider-Man: Across the Spider-Verse",
+                    MediaType = MediaCategory.Movie,
+                    PosterUrl = "https://image.tmdb.org/t/p/original/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg",
+                    CumulativeAverage = 89.2,
+                    UserPersonalScore = 95,
+                    Status = "Completed",
+                    Notes = "Watched in IMAX Dolby Vision."
+                },
+                new WatchlistItem
+                {
+                    UserId = demoUser.Id,
+                    ExternalMediaId = "comic-saga-2012",
+                    Title = "Saga (Image Comics Series)",
+                    MediaType = MediaCategory.ComicBook,
+                    PosterUrl = "https://images.unsplash.com/photo-1588497859490-85d1c17db96d?auto=format&fit=crop&w=900&q=80",
+                    CumulativeAverage = 93.2,
+                    UserPersonalScore = 94,
+                    Status = "Reading",
+                    Notes = "Currently on Compendium One, Issue #42."
+                },
+                new WatchlistItem
+                {
+                    UserId = demoUser.Id,
+                    ExternalMediaId = "tv-invincible-2021",
+                    Title = "Invincible",
+                    MediaType = MediaCategory.TvSeries,
+                    PosterUrl = "https://image.tmdb.org/t/p/original/dMOpdkrDC5dQxqNydgKxXjBKyAc.jpg",
+                    CumulativeAverage = 90.1,
+                    UserPersonalScore = 93,
+                    Status = "Watching",
+                    Notes = "Caught up through Season 3."
+                },
+                new WatchlistItem
+                {
+                    UserId = demoUser.Id,
+                    ExternalMediaId = "comic-immortal-hulk-2018",
+                    Title = "The Immortal Hulk (#1–50)",
+                    MediaType = MediaCategory.ComicBook,
+                    PosterUrl = "https://images.unsplash.com/photo-1569003339405-ea396a5a8a90?auto=format&fit=crop&w=900&q=80",
+                    CumulativeAverage = 93.1,
+                    UserPersonalScore = null,
+                    Status = "PlanToWatch",
+                    Notes = "Omnibus arriving next week."
+                }
+            );
+
+            try
             {
-                UserId = demoUser.Id,
-                ExternalMediaId = "comic-watchmen-1986",
-                Title = "Watchmen #1–12 (Absolute Edition)",
-                MediaType = MediaCategory.ComicBook,
-                PosterUrl = "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&w=900&q=80",
-                CumulativeAverage = 95.6,
-                UserPersonalScore = 98,
-                Status = "Completed",
-                Notes = "Re-read the Absolute Edition with Dave Gibbons' annotations."
-            },
-            new WatchlistItem
-            {
-                UserId = demoUser.Id,
-                ExternalMediaId = "movie-spiderverse-2023",
-                Title = "Spider-Man: Across the Spider-Verse",
-                MediaType = MediaCategory.Movie,
-                PosterUrl = "https://image.tmdb.org/t/p/original/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg",
-                CumulativeAverage = 89.2,
-                UserPersonalScore = 95,
-                Status = "Completed",
-                Notes = "Watched in IMAX Dolby Vision."
-            },
-            new WatchlistItem
-            {
-                UserId = demoUser.Id,
-                ExternalMediaId = "comic-saga-2012",
-                Title = "Saga (Image Comics Series)",
-                MediaType = MediaCategory.ComicBook,
-                PosterUrl = "https://images.unsplash.com/photo-1588497859490-85d1c17db96d?auto=format&fit=crop&w=900&q=80",
-                CumulativeAverage = 93.2,
-                UserPersonalScore = 94,
-                Status = "Reading",
-                Notes = "Currently on Compendium One, Issue #42."
-            },
-            new WatchlistItem
-            {
-                UserId = demoUser.Id,
-                ExternalMediaId = "tv-invincible-2021",
-                Title = "Invincible",
-                MediaType = MediaCategory.TvSeries,
-                PosterUrl = "https://image.tmdb.org/t/p/original/dMOpdkrDC5dQxqNydgKxXjBKyAc.jpg",
-                CumulativeAverage = 90.1,
-                UserPersonalScore = 93,
-                Status = "Watching",
-                Notes = "Caught up through Season 3."
-            },
-            new WatchlistItem
-            {
-                UserId = demoUser.Id,
-                ExternalMediaId = "comic-immortal-hulk-2018",
-                Title = "The Immortal Hulk (#1–50)",
-                MediaType = MediaCategory.ComicBook,
-                PosterUrl = "https://images.unsplash.com/photo-1569003339405-ea396a5a8a90?auto=format&fit=crop&w=900&q=80",
-                CumulativeAverage = 93.1,
-                UserPersonalScore = null,
-                Status = "PlanToWatch",
-                Notes = "Omnibus arriving next week."
+                await db.SaveChangesAsync();
             }
-        );
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DatabaseSeeder] Watchlist sync note: {ex.Message}");
+            }
+        }
 
         // 5. Seed Custom Curated Lists
-        db.CustomLists.AddRange(
-            new CustomMediaList
-            {
-                UserId = demoUser.Id,
-                OwnerUsername = demoUser.Username,
-                Name = "Essential 90+ Cumulative Score Masterpieces",
-                Description = "Comics, movies, and series that achieved Universal Acclaim across Critic, Audience, and ComicVine indices.",
-                IsPublic = true,
-                ExternalMediaIdsCsv = "comic-watchmen-1986,comic-sandman-1989,movie-dark-knight-2008,movie-spiderverse-2023,tv-xmen-97-2024"
-            },
-            new CustomMediaList
-            {
-                UserId = demoUser.Id,
-                OwnerUsername = demoUser.Username,
-                Name = "Gotham Noir: Page to Screen",
-                Description = "Comparing Frank Miller's Batman: Year One with Christopher Nolan and Matt Reeves' adaptations.",
-                IsPublic = true,
-                ExternalMediaIdsCsv = "comic-batman-year-one-1987,movie-dark-knight-2008,movie-the-batman-2022"
-            }
-        );
+        if (!await db.CustomLists.AnyAsync())
+        {
+            db.CustomLists.AddRange(
+                new CustomMediaList
+                {
+                    UserId = demoUser.Id,
+                    OwnerUsername = demoUser.Username,
+                    Name = "Essential 90+ Cumulative Score Masterpieces",
+                    Description = "Comics, movies, and series that achieved Universal Acclaim across Critic, Audience, and ComicVine indices.",
+                    IsPublic = true,
+                    ExternalMediaIdsCsv = "comic-watchmen-1986,comic-sandman-1989,movie-dark-knight-2008,movie-spiderverse-2023,tv-xmen-97-2024"
+                },
+                new CustomMediaList
+                {
+                    UserId = demoUser.Id,
+                    OwnerUsername = demoUser.Username,
+                    Name = "Gotham Noir: Page to Screen",
+                    Description = "Comparing Frank Miller's Batman: Year One with Christopher Nolan and Matt Reeves' adaptations.",
+                    IsPublic = true,
+                    ExternalMediaIdsCsv = "comic-batman-year-one-1987,movie-dark-knight-2008,movie-the-batman-2022"
+                }
+            );
 
-        await db.SaveChangesAsync();
+            try
+            {
+                await db.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DatabaseSeeder] CustomLists sync note: {ex.Message}");
+            }
+        }
     }
 
     private static MediaItem CreateSeededItem(

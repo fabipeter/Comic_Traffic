@@ -35,13 +35,8 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&w=1600&q=80",
     overview: "In an alternate 1985 where costumed vigilantes have shaped world history, the murder of The Comedian draws Rorschach, Nite Owl, Silk Spectre, Ozymandias, and Doctor Manhattan into a conspiracy with nuclear stakes.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.92 / 5", normalizedScore: 98.4, voteCount: 34200, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "97 / 100", normalizedScore: 97.0, voteCount: 28500, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.38 / 5", normalizedScore: 87.6, voteCount: 598000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "9.8 / 10", normalizedScore: 98.0, voteCount: 112, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "metacritic", sourceName: "Metacritic Literary", category: "Critic", rawScoreDisplay: "96 / 100", normalizedScore: 96.0, voteCount: 48, defaultWeight: 1.2, accentColor: "#ffcc33" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.7 / 10", normalizedScore: 97.0, voteCount: 11200, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+      { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "96 / 100", normalizedScore: 96.0, voteCount: 48, defaultWeight: 1.2, accentColor: "#ffcc33" },
+    ]
   }),
   createItem({
     id: "102",
@@ -58,12 +53,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1608889175123-8ee362201f81?auto=format&fit=crop&w=1600&q=80",
     overview: "Dream of the Endless escapes after seventy years of occult imprisonment and sets out to rebuild his kingdom of the Dreaming across time, mythology, and human consciousness.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.88 / 5", normalizedScore: 97.6, voteCount: 29100, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "96 / 100", normalizedScore: 96.0, voteCount: 24600, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.55 / 5", normalizedScore: 91.0, voteCount: 342000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "9.5 / 10", normalizedScore: 95.0, voteCount: 96, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.6 / 10", normalizedScore: 96.0, voteCount: 8750, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "103",
@@ -80,12 +70,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1588497859490-85d1c17db96d?auto=format&fit=crop&w=1600&q=80",
     overview: "Two soldiers from opposite sides of a never-ending galactic war fall in love and risk everything to bring a fragile new life—their daughter Hazel—into an unforgiving cosmos.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.82 / 5", normalizedScore: 96.4, voteCount: 26400, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "95 / 100", normalizedScore: 95.0, voteCount: 31900, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.46 / 5", normalizedScore: 89.2, voteCount: 415000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "9.2 / 10", normalizedScore: 92.0, voteCount: 610, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.4 / 10", normalizedScore: 94.0, voteCount: 7400, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "104",
@@ -102,12 +87,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1531259683007-016a7b628fc3?auto=format&fit=crop&w=1600&q=80",
     overview: "Bruce Wayne returns to Gotham City after twelve years abroad to begin his war on crime, while newly transferred Lieutenant James Gordon fights corruption inside the Gotham City Police Department.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.89 / 5", normalizedScore: 97.8, voteCount: 31000, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "96 / 100", normalizedScore: 96.0, voteCount: 29400, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.27 / 5", normalizedScore: 85.4, voteCount: 264000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "9.6 / 10", normalizedScore: 96.0, voteCount: 74, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.5 / 10", normalizedScore: 95.0, voteCount: 9320, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "105",
@@ -124,12 +104,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=1600&q=80",
     overview: "A 55-year-old Bruce Wayne comes out of retirement in a dystopian future to reclaim Gotham City from the Mutants, facing off against the Joker and Superman himself.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.91 / 5", normalizedScore: 98.2, voteCount: 38200, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "97 / 100", normalizedScore: 97.0, voteCount: 33100, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.28 / 5", normalizedScore: 85.6, voteCount: 220000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "9.7 / 10", normalizedScore: 97.0, voteCount: 88, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.6 / 10", normalizedScore: 96.0, voteCount: 10400, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "106",
@@ -146,11 +121,8 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=1600&q=80",
     overview: "The first graphic novel to win a Pulitzer Prize. A brutal, profoundly moving memoir depicting the author interviewing his father about his experiences as a Polish Jew and Holocaust survivor.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.95 / 5", normalizedScore: 99.0, voteCount: 21000, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.56 / 5", normalizedScore: 91.2, voteCount: 450000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "metacritic", sourceName: "Metacritic Literary", category: "Critic", rawScoreDisplay: "98 / 100", normalizedScore: 98.0, voteCount: 35, defaultWeight: 1.2, accentColor: "#ffcc33" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.8 / 10", normalizedScore: 98.0, voteCount: 14200, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+      { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "98 / 100", normalizedScore: 98.0, voteCount: 35, defaultWeight: 1.2, accentColor: "#ffcc33" },
+    ]
   }),
   createItem({
     id: "107",
@@ -167,11 +139,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1563089145-599997674d42?auto=format&fit=crop&w=1600&q=80",
     overview: "In a future where the traditional heroes have retired and a reckless new generation of vigilantes wreaks havoc, Superman returns to re-establish justice.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.86 / 5", normalizedScore: 97.2, voteCount: 22400, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "96 / 100", normalizedScore: 96.0, voteCount: 19800, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.33 / 5", normalizedScore: 86.6, voteCount: 112000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.5 / 10", normalizedScore: 95.0, voteCount: 7800, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "108",
@@ -188,11 +156,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=1600&q=80",
     overview: "After being poisoned by solar radiation during a rescue mission near the sun, Superman spends his final year completing twelve legendary labors.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.88 / 5", normalizedScore: 97.6, voteCount: 24100, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "95 / 100", normalizedScore: 95.0, voteCount: 18400, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.26 / 5", normalizedScore: 85.2, voteCount: 98000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.4 / 10", normalizedScore: 94.0, voteCount: 6500, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "109",
@@ -209,12 +173,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1509281373149-e957c6296406?auto=format&fit=crop&w=1600&q=80",
     overview: "Taking place during Batman's early days of crime-fighting, a serial killer named Holiday strikes Gotham mob families on key holidays each month.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.87 / 5", normalizedScore: 97.4, voteCount: 27800, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "96 / 100", normalizedScore: 96.0, voteCount: 25100, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.31 / 5", normalizedScore: 86.2, voteCount: 165000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "9.5 / 10", normalizedScore: 95.0, voteCount: 65, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.5 / 10", normalizedScore: 95.0, voteCount: 8900, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "110",
@@ -231,12 +190,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1600&q=80",
     overview: "Karen Page sells Matt Murdock's secret identity for a shot of heroin. When Kingpin learns the truth, he systematically dismantles Matt's life piece by piece.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.90 / 5", normalizedScore: 98.0, voteCount: 22100, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "97 / 100", normalizedScore: 97.0, voteCount: 21300, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.34 / 5", normalizedScore: 86.8, voteCount: 88000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "9.6 / 10", normalizedScore: 96.0, voteCount: 54, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.6 / 10", normalizedScore: 96.0, voteCount: 7100, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "111",
@@ -253,12 +207,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1569003339405-ea396a5a8a90?auto=format&fit=crop&w=1600&q=80",
     overview: "Bruce Banner walks the backroads of America by day—and even if he dies, when night falls the Green Door opens and the Immortal Hulk rises to enact existential judgment.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.78 / 5", normalizedScore: 95.6, voteCount: 18700, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "94 / 100", normalizedScore: 94.0, voteCount: 26400, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.30 / 5", normalizedScore: 86.0, voteCount: 72000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "9.1 / 10", normalizedScore: 91.0, voteCount: 580, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.3 / 10", normalizedScore: 93.0, voteCount: 5240, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "112",
@@ -275,12 +224,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=1600&q=80",
     overview: "In a post-apocalyptic fascist Britain, an enigmatic anarchist cloaked in a Guy Fawkes mask orchestrates a theatrical campaign to bring down the totalitarian government.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.84 / 5", normalizedScore: 96.8, voteCount: 25400, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "95 / 100", normalizedScore: 95.0, voteCount: 21900, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.25 / 5", normalizedScore: 85.0, voteCount: 310000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "9.4 / 10", normalizedScore: 94.0, voteCount: 78, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.5 / 10", normalizedScore: 95.0, voteCount: 8400, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "113",
@@ -297,12 +241,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1604200213928-ba3cf4fc8436?auto=format&fit=crop&w=1600&q=80",
     overview: "Kraven the Hunter tracks down Spider-Man, shoots him, buries him alive, and assumes his identity to prove himself superior to his greatest prey.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.85 / 5", normalizedScore: 97.0, voteCount: 19800, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "95 / 100", normalizedScore: 95.0, voteCount: 17200, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.22 / 5", normalizedScore: 84.4, voteCount: 56000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "9.3 / 10", normalizedScore: 93.0, voteCount: 42, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.4 / 10", normalizedScore: 94.0, voteCount: 5800, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "114",
@@ -319,12 +258,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=1600&q=80",
     overview: "In a nightmarish future where Sentinels have exterminated or interned mutantkind, an adult Kate Pryde sends her consciousness back into her teenage self to stop the assassination that triggers the holocaust.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.88 / 5", normalizedScore: 97.6, voteCount: 23500, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "96 / 100", normalizedScore: 96.0, voteCount: 20100, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.29 / 5", normalizedScore: 85.8, voteCount: 78000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "9.5 / 10", normalizedScore: 95.0, voteCount: 46, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.5 / 10", normalizedScore: 95.0, voteCount: 6900, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "115",
@@ -341,12 +275,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=1600&q=80",
     overview: "The official direct continuation of the beloved animated masterpiece. Aang and Fire Lord Zuko attempt to peacefully resolve Fire Nation colonial tensions.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.74 / 5", normalizedScore: 94.8, voteCount: 16500, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "93 / 100", normalizedScore: 93.0, voteCount: 18900, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.24 / 5", normalizedScore: 84.8, voteCount: 94000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "9.0 / 10", normalizedScore: 90.0, voteCount: 38, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.2 / 10", normalizedScore: 92.0, voteCount: 5100, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "116",
@@ -363,12 +292,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&w=1600&q=80",
     overview: "Barry Allen wakes in a radically altered DC reality where his mother is alive, Atlantis and Themyscira are locked in global war, Thomas Wayne is a grim Batman, and Superman never arrived. The Scarlet Speedster must restore the timeline.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.85 / 5", normalizedScore: 97.0, voteCount: 22400, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "92 / 100", normalizedScore: 92.0, voteCount: 19800, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.28 / 5", normalizedScore: 85.6, voteCount: 88500, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "8.9 / 10", normalizedScore: 89.0, voteCount: 78, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.3 / 10", normalizedScore: 93.0, voteCount: 8700, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "117",
@@ -385,12 +309,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=1600&q=80",
     overview: "The resurrection of Barry Allen threatens to unravel the Speed Force itself as Professor Zoom orchestrates an insidious assault on the Flash family legacy in this iconic Geoff Johns saga.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.72 / 5", normalizedScore: 94.4, voteCount: 16800, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "89 / 100", normalizedScore: 89.0, voteCount: 14200, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.15 / 5", normalizedScore: 83.0, voteCount: 52000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "8.6 / 10", normalizedScore: 86.0, voteCount: 64, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.0 / 10", normalizedScore: 90.0, voteCount: 6500, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "118",
@@ -407,12 +326,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1563089145-599997674d42?auto=format&fit=crop&w=1600&q=80",
     overview: "Ra's al Ghul steals Batman's confidential contingency dossiers designed to neutralize every member of the Justice League, methodically taking down Superman, Wonder Woman, the Flash, Green Lantern, and Martian Manhunter.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.86 / 5", normalizedScore: 97.2, voteCount: 24100, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "95 / 100", normalizedScore: 95.0, voteCount: 22800, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.26 / 5", normalizedScore: 85.2, voteCount: 84000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "9.3 / 10", normalizedScore: 93.0, voteCount: 52, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.5 / 10", normalizedScore: 95.0, voteCount: 7800, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "119",
@@ -429,12 +343,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1569003339405-ea396a5a8a90?auto=format&fit=crop&w=1600&q=80",
     overview: "The seminal Marvel cosmic epic. The Mad Titan Thanos seizes the six Infinity Gems to form the Infinity Gauntlet, eradicating half of all life in the universe with a snap of his fingers to woo Mistress Death.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.89 / 5", normalizedScore: 97.8, voteCount: 31200, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "96 / 100", normalizedScore: 96.0, voteCount: 29500, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.29 / 5", normalizedScore: 85.8, voteCount: 115000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "9.4 / 10", normalizedScore: 94.0, voteCount: 68, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.6 / 10", normalizedScore: 96.0, voteCount: 9200, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "120",
@@ -451,12 +360,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
     backdropUrl: "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=1600&q=80",
     overview: "A tragedy in Stamford sparks the Superhuman Registration Act, fracturing the Marvel Universe as Iron Man leads the pro-registration faction while Captain America leads an underground resistance.",
     sources: [
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.82 / 5", normalizedScore: 96.4, voteCount: 38400, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "league_of_comic_geeks", sourceName: "League of Comic Geeks", category: "ComicCommunity", rawScoreDisplay: "93 / 100", normalizedScore: 93.0, voteCount: 35100, defaultWeight: 1.25, accentColor: "#00d1b2" },
-      { sourceId: "goodreads", sourceName: "Goodreads Graphic Novels", category: "Audience", rawScoreDisplay: "4.21 / 5", normalizedScore: 84.2, voteCount: 160000, defaultWeight: 1.15, accentColor: "#a16207" },
-      { sourceId: "comicbookroundup_critics", sourceName: "ComicBookRoundup Critics", category: "Critic", rawScoreDisplay: "8.9 / 10", normalizedScore: 89.0, voteCount: 104, defaultWeight: 1.25, accentColor: "#fa320a" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.3 / 10", normalizedScore: 93.0, voteCount: 10800, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
 
   // ==========================================
@@ -482,9 +386,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "94%", normalizedScore: 94.0, voteCount: 1850000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "84 / 100", normalizedScore: 84.0, voteCount: 40, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.5 / 10", normalizedScore: 85.0, voteCount: 32400, defaultWeight: 1.0, accentColor: "#01b4e4" },
-      { sourceId: "comicvine", sourceName: "ComicVine Adaptation Score", category: "ComicCommunity", rawScoreDisplay: "4.9 / 5", normalizedScore: 98.0, voteCount: 21400, defaultWeight: 1.15, accentColor: "#e62429" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.5 / 10", normalizedScore: 95.0, voteCount: 9180, defaultWeight: 1.1, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "202",
@@ -506,9 +408,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "94%", normalizedScore: 94.0, voteCount: 25000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "86 / 100", normalizedScore: 86.0, voteCount: 60, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.4 / 10", normalizedScore: 84.0, voteCount: 6720, defaultWeight: 1.0, accentColor: "#01b4e4" },
-      { sourceId: "comicvine", sourceName: "ComicVine Adaptation Score", category: "ComicCommunity", rawScoreDisplay: "4.7 / 5", normalizedScore: 94.0, voteCount: 8900, defaultWeight: 1.15, accentColor: "#e62429" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.2 / 10", normalizedScore: 92.0, voteCount: 4250, defaultWeight: 1.1, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "203",
@@ -530,7 +430,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "94%", normalizedScore: 94.0, voteCount: 50000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "87 / 100", normalizedScore: 87.0, voteCount: 50, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.4 / 10", normalizedScore: 84.0, voteCount: 15200, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "204",
@@ -552,9 +452,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "87%", normalizedScore: 87.0, voteCount: 50000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "72 / 100", normalizedScore: 72.0, voteCount: 68, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "7.7 / 10", normalizedScore: 77.0, voteCount: 9950, defaultWeight: 1.0, accentColor: "#01b4e4" },
-      { sourceId: "comicvine", sourceName: "ComicVine Adaptation Score", category: "ComicCommunity", rawScoreDisplay: "4.6 / 5", normalizedScore: 92.0, voteCount: 11200, defaultWeight: 1.15, accentColor: "#e62429" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "8.8 / 10", normalizedScore: 88.0, voteCount: 3810, defaultWeight: 1.1, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "205",
@@ -576,7 +474,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "90%", normalizedScore: 90.0, voteCount: 100000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "78 / 100", normalizedScore: 78.0, voteCount: 57, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.2 / 10", normalizedScore: 82.0, voteCount: 25400, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "206",
@@ -598,9 +496,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "90%", normalizedScore: 90.0, voteCount: 92000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "77 / 100", normalizedScore: 77.0, voteCount: 51, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "7.8 / 10", normalizedScore: 78.0, voteCount: 19100, defaultWeight: 1.0, accentColor: "#01b4e4" },
-      { sourceId: "comicvine", sourceName: "ComicVine Adaptation Score", category: "ComicCommunity", rawScoreDisplay: "4.7 / 5", normalizedScore: 94.0, voteCount: 9600, defaultWeight: 1.15, accentColor: "#e62429" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.0 / 10", normalizedScore: 90.0, voteCount: 3190, defaultWeight: 1.1, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "207",
@@ -622,7 +518,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "91%", normalizedScore: 91.0, voteCount: 250000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "79 / 100", normalizedScore: 79.0, voteCount: 38, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "7.6 / 10", normalizedScore: 76.0, voteCount: 26000, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "208",
@@ -644,7 +540,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "92%", normalizedScore: 92.0, voteCount: 250000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "70 / 100", normalizedScore: 70.0, voteCount: 48, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "7.7 / 10", normalizedScore: 77.0, voteCount: 18500, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "209",
@@ -666,7 +562,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "92%", normalizedScore: 92.0, voteCount: 250000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "76 / 100", normalizedScore: 76.0, voteCount: 53, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "7.9 / 10", normalizedScore: 79.0, voteCount: 27100, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "210",
@@ -688,7 +584,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "94%", normalizedScore: 94.0, voteCount: 500000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "70 / 100", normalizedScore: 70.0, voteCount: 41, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "7.7 / 10", normalizedScore: 77.0, voteCount: 20400, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "211",
@@ -710,7 +606,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "94%", normalizedScore: 94.0, voteCount: 50000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "56 / 100", normalizedScore: 56.0, voteCount: 58, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "7.7 / 10", normalizedScore: 77.0, voteCount: 6100, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "212",
@@ -732,7 +628,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "98%", normalizedScore: 98.0, voteCount: 250000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "71 / 100", normalizedScore: 71.0, voteCount: 60, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.0 / 10", normalizedScore: 80.0, voteCount: 19800, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "213",
@@ -754,7 +650,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "92%", normalizedScore: 92.0, voteCount: 100000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "68 / 100", normalizedScore: 68.0, voteCount: 54, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.2 / 10", normalizedScore: 82.0, voteCount: 29500, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "214",
@@ -776,7 +672,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "79%", normalizedScore: 79.0, voteCount: 100000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "88 / 100", normalizedScore: 88.0, voteCount: 55, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "7.4 / 10", normalizedScore: 74.0, voteCount: 22100, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "215",
@@ -798,7 +694,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "86%", normalizedScore: 86.0, voteCount: 250000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "81 / 100", normalizedScore: 81.0, voteCount: 20, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "7.1 / 10", normalizedScore: 71.0, voteCount: 3800, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "216",
@@ -820,8 +716,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "83%", normalizedScore: 83.0, voteCount: 10000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "55 / 100", normalizedScore: 55.0, voteCount: 55, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "6.7 / 10", normalizedScore: 67.0, voteCount: 4200, defaultWeight: 1.0, accentColor: "#01b4e4" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "7.4 / 10", normalizedScore: 74.0, voteCount: 8400, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "217",
@@ -842,9 +737,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_critics", sourceName: "Rotten Tomatoes (Critics)", category: "Critic", rawScoreDisplay: "100%", normalizedScore: 100.0, voteCount: 5, defaultWeight: 1.2, accentColor: "#fa320a" },
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "93%", normalizedScore: 93.0, voteCount: 10000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "letterboxd", sourceName: "Letterboxd", category: "Audience", rawScoreDisplay: "3.9 / 5", normalizedScore: 78.0, voteCount: 38000, defaultWeight: 1.05, accentColor: "#00e054" },
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.8 / 5", normalizedScore: 96.0, voteCount: 8900, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.2 / 10", normalizedScore: 92.0, voteCount: 6900, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "218",
@@ -866,8 +759,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "86%", normalizedScore: 86.0, voteCount: 250000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "63 / 100", normalizedScore: 63.0, voteCount: 40, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "7.8 / 10", normalizedScore: 78.0, voteCount: 20100, defaultWeight: 1.0, accentColor: "#01b4e4" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.1 / 10", normalizedScore: 91.0, voteCount: 14200, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "219",
@@ -889,8 +781,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "72%", normalizedScore: 72.0, voteCount: 250000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "53 / 100", normalizedScore: 53.0, voteCount: 37, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "7.3 / 10", normalizedScore: 73.0, voteCount: 15300, defaultWeight: 1.0, accentColor: "#01b4e4" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "8.4 / 10", normalizedScore: 84.0, voteCount: 8900, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "220",
@@ -912,9 +803,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "93%", normalizedScore: 93.0, voteCount: 100000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "54 / 100", normalizedScore: 54.0, voteCount: 46, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.1 / 10", normalizedScore: 81.0, voteCount: 9600, defaultWeight: 1.0, accentColor: "#01b4e4" },
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.7 / 5", normalizedScore: 94.0, voteCount: 12500, defaultWeight: 1.25, accentColor: "#e62429" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.2 / 10", normalizedScore: 92.0, voteCount: 14800, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "221",
@@ -936,9 +825,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "91%", normalizedScore: 91.0, voteCount: 250000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "69 / 100", normalizedScore: 69.0, voteCount: 43, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "7.7 / 10", normalizedScore: 77.0, voteCount: 29800, defaultWeight: 1.0, accentColor: "#01b4e4" },
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.8 / 5", normalizedScore: 96.0, voteCount: 18200, defaultWeight: 1.2, accentColor: "#e62429" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.2 / 10", normalizedScore: 92.0, voteCount: 12100, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "222",
@@ -960,9 +847,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "92%", normalizedScore: 92.0, voteCount: 100000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "68 / 100", normalizedScore: 68.0, voteCount: 54, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.2 / 10", normalizedScore: 82.0, voteCount: 28900, defaultWeight: 1.0, accentColor: "#01b4e4" },
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.9 / 5", normalizedScore: 98.0, voteCount: 21900, defaultWeight: 1.2, accentColor: "#e62429" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.5 / 10", normalizedScore: 95.0, voteCount: 13600, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
 
   // ==========================================
@@ -986,11 +871,9 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "imdb", sourceName: "IMDb (OMDb)", category: "Audience", rawScoreDisplay: "8.7 / 10", normalizedScore: 87.0, voteCount: 215000, defaultWeight: 1.25, accentColor: "#f5c518" },
       { sourceId: "rotten_tomatoes_critics", sourceName: "Rotten Tomatoes (Critics)", category: "Critic", rawScoreDisplay: "99%", normalizedScore: 99.0, voteCount: 142, defaultWeight: 1.2, accentColor: "#fa320a" },
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "92%", normalizedScore: 92.0, voteCount: 5000, defaultWeight: 1.1, accentColor: "#ff6b35" },
-      { sourceId: "tvmaze", sourceName: "TVMaze Public API", category: "Audience", rawScoreDisplay: "8.8 / 10", normalizedScore: 88.0, voteCount: 1420, defaultWeight: 1.1, accentColor: "#3c948b" },
+      { sourceId: "tvmaze", sourceName: "TVMaze API", category: "Audience", rawScoreDisplay: "8.8 / 10", normalizedScore: 88.0, voteCount: 1420, defaultWeight: 1.1, accentColor: "#3c948b" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.6 / 10", normalizedScore: 86.0, voteCount: 4500, defaultWeight: 1.0, accentColor: "#01b4e4" },
-      { sourceId: "comicvine", sourceName: "ComicVine Adaptation Score", category: "ComicCommunity", rawScoreDisplay: "4.8 / 5", normalizedScore: 96.0, voteCount: 9200, defaultWeight: 1.15, accentColor: "#e62429" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "9.3 / 10", normalizedScore: 93.0, voteCount: 3820, defaultWeight: 1.1, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "302",
@@ -1010,9 +893,9 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "imdb", sourceName: "IMDb (OMDb)", category: "Audience", rawScoreDisplay: "8.7 / 10", normalizedScore: 87.0, voteCount: 710000, defaultWeight: 1.25, accentColor: "#f5c518" },
       { sourceId: "rotten_tomatoes_critics", sourceName: "Rotten Tomatoes (Critics)", category: "Critic", rawScoreDisplay: "93%", normalizedScore: 93.0, voteCount: 410, defaultWeight: 1.2, accentColor: "#fa320a" },
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "76%", normalizedScore: 76.0, voteCount: 34500, defaultWeight: 1.1, accentColor: "#ff6b35" },
-      { sourceId: "tvmaze", sourceName: "TVMaze Public API", category: "Audience", rawScoreDisplay: "8.4 / 10", normalizedScore: 84.0, voteCount: 4200, defaultWeight: 1.1, accentColor: "#3c948b" },
+      { sourceId: "tvmaze", sourceName: "TVMaze API", category: "Audience", rawScoreDisplay: "8.4 / 10", normalizedScore: 84.0, voteCount: 4200, defaultWeight: 1.1, accentColor: "#3c948b" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.5 / 10", normalizedScore: 85.0, voteCount: 10400, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "303",
@@ -1032,9 +915,9 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "imdb", sourceName: "IMDb (OMDb)", category: "Audience", rawScoreDisplay: "8.6 / 10", normalizedScore: 86.0, voteCount: 470000, defaultWeight: 1.25, accentColor: "#f5c518" },
       { sourceId: "rotten_tomatoes_critics", sourceName: "Rotten Tomatoes (Critics)", category: "Critic", rawScoreDisplay: "92%", normalizedScore: 92.0, voteCount: 180, defaultWeight: 1.2, accentColor: "#fa320a" },
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "89%", normalizedScore: 89.0, voteCount: 20000, defaultWeight: 1.1, accentColor: "#ff6b35" },
-      { sourceId: "tvmaze", sourceName: "TVMaze Public API", category: "Audience", rawScoreDisplay: "8.5 / 10", normalizedScore: 85.0, voteCount: 3100, defaultWeight: 1.1, accentColor: "#3c948b" },
+      { sourceId: "tvmaze", sourceName: "TVMaze API", category: "Audience", rawScoreDisplay: "8.5 / 10", normalizedScore: 85.0, voteCount: 3100, defaultWeight: 1.1, accentColor: "#3c948b" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.3 / 10", normalizedScore: 83.0, voteCount: 4600, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "304",
@@ -1054,9 +937,9 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "imdb", sourceName: "IMDb (OMDb)", category: "Audience", rawScoreDisplay: "9.0 / 10", normalizedScore: 90.0, voteCount: 125000, defaultWeight: 1.25, accentColor: "#f5c518" },
       { sourceId: "rotten_tomatoes_critics", sourceName: "Rotten Tomatoes (Critics)", category: "Critic", rawScoreDisplay: "98%", normalizedScore: 98.0, voteCount: 45, defaultWeight: 1.2, accentColor: "#fa320a" },
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "96%", normalizedScore: 96.0, voteCount: 8500, defaultWeight: 1.1, accentColor: "#ff6b35" },
-      { sourceId: "tvmaze", sourceName: "TVMaze Public API", category: "Audience", rawScoreDisplay: "8.9 / 10", normalizedScore: 89.0, voteCount: 890, defaultWeight: 1.1, accentColor: "#3c948b" },
+      { sourceId: "tvmaze", sourceName: "TVMaze API", category: "Audience", rawScoreDisplay: "8.9 / 10", normalizedScore: 89.0, voteCount: 890, defaultWeight: 1.1, accentColor: "#3c948b" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.5 / 10", normalizedScore: 85.0, voteCount: 1900, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "305",
@@ -1076,9 +959,9 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "imdb", sourceName: "IMDb (OMDb)", category: "Audience", rawScoreDisplay: "9.0 / 10", normalizedScore: 90.0, voteCount: 310000, defaultWeight: 1.25, accentColor: "#f5c518" },
       { sourceId: "rotten_tomatoes_critics", sourceName: "Rotten Tomatoes (Critics)", category: "Critic", rawScoreDisplay: "100%", normalizedScore: 100.0, voteCount: 52, defaultWeight: 1.2, accentColor: "#fa320a" },
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "96%", normalizedScore: 96.0, voteCount: 15000, defaultWeight: 1.1, accentColor: "#ff6b35" },
-      { sourceId: "tvmaze", sourceName: "TVMaze Public API", category: "Audience", rawScoreDisplay: "9.2 / 10", normalizedScore: 92.0, voteCount: 1200, defaultWeight: 1.1, accentColor: "#3c948b" },
+      { sourceId: "tvmaze", sourceName: "TVMaze API", category: "Audience", rawScoreDisplay: "9.2 / 10", normalizedScore: 92.0, voteCount: 1200, defaultWeight: 1.1, accentColor: "#3c948b" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.7 / 10", normalizedScore: 87.0, voteCount: 4100, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "306",
@@ -1100,7 +983,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "91%", normalizedScore: 91.0, voteCount: 8000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "75 / 100", normalizedScore: 75.0, voteCount: 38, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.5 / 10", normalizedScore: 85.0, voteCount: 1100, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "307",
@@ -1120,9 +1003,9 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "imdb", sourceName: "IMDb (OMDb)", category: "Audience", rawScoreDisplay: "7.7 / 10", normalizedScore: 77.0, voteCount: 175000, defaultWeight: 1.25, accentColor: "#f5c518" },
       { sourceId: "rotten_tomatoes_critics", sourceName: "Rotten Tomatoes (Critics)", category: "Critic", rawScoreDisplay: "88%", normalizedScore: 88.0, voteCount: 104, defaultWeight: 1.2, accentColor: "#fa320a" },
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "80%", normalizedScore: 80.0, voteCount: 5000, defaultWeight: 1.1, accentColor: "#ff6b35" },
-      { sourceId: "tvmaze", sourceName: "TVMaze Public API", category: "Audience", rawScoreDisplay: "8.0 / 10", normalizedScore: 80.0, voteCount: 1100, defaultWeight: 1.1, accentColor: "#3c948b" },
+      { sourceId: "tvmaze", sourceName: "TVMaze API", category: "Audience", rawScoreDisplay: "8.0 / 10", normalizedScore: 80.0, voteCount: 1100, defaultWeight: 1.1, accentColor: "#3c948b" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.0 / 10", normalizedScore: 80.0, voteCount: 1950, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "308",
@@ -1144,8 +1027,8 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "92%", normalizedScore: 92.0, voteCount: 6200, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "82 / 100", normalizedScore: 82.0, voteCount: 24, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.6 / 10", normalizedScore: 86.0, voteCount: 1280, defaultWeight: 1.0, accentColor: "#01b4e4" },
-      { sourceId: "tvmaze", sourceName: "TVMaze Public API", category: "Audience", rawScoreDisplay: "8.7 / 10", normalizedScore: 87.0, voteCount: 1900, defaultWeight: 0.95, accentColor: "#3c948b" },
-    ],
+      { sourceId: "tvmaze", sourceName: "TVMaze API", category: "Audience", rawScoreDisplay: "8.7 / 10", normalizedScore: 87.0, voteCount: 1900, defaultWeight: 0.95, accentColor: "#3c948b" },
+    ]
   }),
   createItem({
     id: "309",
@@ -1167,8 +1050,8 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "98%", normalizedScore: 98.0, voteCount: 42500, defaultWeight: 1.15, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "90 / 100", normalizedScore: 90.0, voteCount: 28, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.7 / 10", normalizedScore: 87.0, voteCount: 4120, defaultWeight: 1.0, accentColor: "#01b4e4" },
-      { sourceId: "tvmaze", sourceName: "TVMaze Public API", category: "Audience", rawScoreDisplay: "9.0 / 10", normalizedScore: 90.0, voteCount: 8400, defaultWeight: 1.0, accentColor: "#3c948b" },
-    ],
+      { sourceId: "tvmaze", sourceName: "TVMaze API", category: "Audience", rawScoreDisplay: "9.0 / 10", normalizedScore: 90.0, voteCount: 8400, defaultWeight: 1.0, accentColor: "#3c948b" },
+    ]
   }),
   createItem({
     id: "310",
@@ -1190,7 +1073,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "56%", normalizedScore: 56.0, voteCount: 19500, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "85 / 100", normalizedScore: 85.0, voteCount: 44, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "7.9 / 10", normalizedScore: 79.0, voteCount: 2150, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "311",
@@ -1212,7 +1095,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "89%", normalizedScore: 89.0, voteCount: 5000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "70 / 100", normalizedScore: 70.0, voteCount: 26, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.2 / 10", normalizedScore: 82.0, voteCount: 2900, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "312",
@@ -1234,7 +1117,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "90%", normalizedScore: 90.0, voteCount: 25000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "metacritic", sourceName: "Metacritic", category: "Critic", rawScoreDisplay: "74 / 100", normalizedScore: 74.0, voteCount: 32, defaultWeight: 1.2, accentColor: "#ffcc33" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.1 / 10", normalizedScore: 81.0, voteCount: 11400, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "313",
@@ -1255,8 +1138,8 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_critics", sourceName: "Rotten Tomatoes (Critics)", category: "Critic", rawScoreDisplay: "79%", normalizedScore: 79.0, voteCount: 380, defaultWeight: 1.2, accentColor: "#fa320a" },
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "78%", normalizedScore: 78.0, voteCount: 50000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.1 / 10", normalizedScore: 81.0, voteCount: 16100, defaultWeight: 1.0, accentColor: "#01b4e4" },
-      { sourceId: "tvmaze", sourceName: "TVMaze Public API", category: "Audience", rawScoreDisplay: "8.0 / 10", normalizedScore: 80.0, voteCount: 7800, defaultWeight: 1.1, accentColor: "#3c948b" },
-    ],
+      { sourceId: "tvmaze", sourceName: "TVMaze API", category: "Audience", rawScoreDisplay: "8.0 / 10", normalizedScore: 80.0, voteCount: 7800, defaultWeight: 1.1, accentColor: "#3c948b" },
+    ]
   }),
   createItem({
     id: "314",
@@ -1276,9 +1159,9 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "imdb", sourceName: "IMDb (OMDb)", category: "Audience", rawScoreDisplay: "7.8 / 10", normalizedScore: 78.0, voteCount: 65000, defaultWeight: 1.25, accentColor: "#f5c518" },
       { sourceId: "rotten_tomatoes_critics", sourceName: "Rotten Tomatoes (Critics)", category: "Critic", rawScoreDisplay: "98%", normalizedScore: 98.0, voteCount: 95, defaultWeight: 1.2, accentColor: "#fa320a" },
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "81%", normalizedScore: 81.0, voteCount: 4200, defaultWeight: 1.1, accentColor: "#ff6b35" },
-      { sourceId: "tvmaze", sourceName: "TVMaze Public API", category: "Audience", rawScoreDisplay: "7.9 / 10", normalizedScore: 79.0, voteCount: 1100, defaultWeight: 1.1, accentColor: "#3c948b" },
+      { sourceId: "tvmaze", sourceName: "TVMaze API", category: "Audience", rawScoreDisplay: "7.9 / 10", normalizedScore: 79.0, voteCount: 1100, defaultWeight: 1.1, accentColor: "#3c948b" },
       { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "7.6 / 10", normalizedScore: 76.0, voteCount: 1400, defaultWeight: 1.0, accentColor: "#01b4e4" },
-    ],
+    ]
   }),
   createItem({
     id: "315",
@@ -1299,9 +1182,7 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_critics", sourceName: "Rotten Tomatoes (Critics)", category: "Critic", rawScoreDisplay: "89%", normalizedScore: 89.0, voteCount: 42, defaultWeight: 1.2, accentColor: "#fa320a" },
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "76%", normalizedScore: 76.0, voteCount: 25000, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "tvmaze", sourceName: "TVMaze API", category: "Audience", rawScoreDisplay: "8.3 / 10", normalizedScore: 83.0, voteCount: 14200, defaultWeight: 1.0, accentColor: "#3c948b" },
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.5 / 5", normalizedScore: 90.0, voteCount: 15400, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "8.6 / 10", normalizedScore: 86.0, voteCount: 9400, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
   createItem({
     id: "316",
@@ -1322,8 +1203,6 @@ export const INITIAL_CUMULATIVE_CATALOG: AggregatedMediaItem[] = [
       { sourceId: "rotten_tomatoes_critics", sourceName: "Rotten Tomatoes (Critics)", category: "Critic", rawScoreDisplay: "88%", normalizedScore: 88.0, voteCount: 16, defaultWeight: 1.2, accentColor: "#fa320a" },
       { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "73%", normalizedScore: 73.0, voteCount: 2500, defaultWeight: 1.1, accentColor: "#ff6b35" },
       { sourceId: "tvmaze", sourceName: "TVMaze API", category: "Audience", rawScoreDisplay: "7.8 / 10", normalizedScore: 78.0, voteCount: 2200, defaultWeight: 1.0, accentColor: "#3c948b" },
-      { sourceId: "comicvine", sourceName: "ComicVine", category: "ComicCommunity", rawScoreDisplay: "4.3 / 5", normalizedScore: 86.0, voteCount: 3100, defaultWeight: 1.3, accentColor: "#e62429" },
-      { sourceId: "comictraffic_community", sourceName: "ComicTraffic Community", category: "ComicCommunity", rawScoreDisplay: "8.2 / 10", normalizedScore: 82.0, voteCount: 2800, defaultWeight: 1.15, accentColor: "#a855f7" },
-    ],
+    ]
   }),
 ];

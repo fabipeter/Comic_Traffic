@@ -14,12 +14,28 @@ public class CumulativeRatingCalculator : ICumulativeRatingCalculator
     private const double GlobalBayesianPrior = 74.0;
     private const double BayesianMinimumVoteThreshold = 2500.0;
 
+    /// <summary>
+    /// Legacy seeded-only sources that have no live external rating API; stripped from all calculations.
+    /// </summary>
+    public static readonly HashSet<string> RemovedSeededSourceIds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "comicvine",
+        "league_of_comic_geeks",
+        "goodreads",
+        "comicbookroundup_critics",
+        "comicbookroundup_users",
+        "marvel_dc_index"
+    };
+
     public CumulativeRatingSummary CalculateCumulativeRating(
         IEnumerable<ExternalRatingSource> sources,
         IDictionary<string, double>? customWeights = null)
     {
         var activeSources = (sources ?? Enumerable.Empty<ExternalRatingSource>())
-            .Where(s => s.NormalizedScore >= 0 && s.NormalizedScore <= 100)
+            .Where(s =>
+                s.NormalizedScore >= 0 &&
+                s.NormalizedScore <= 100 &&
+                !RemovedSeededSourceIds.Contains(s.SourceId ?? string.Empty))
             .ToList();
 
         if (activeSources.Count == 0)

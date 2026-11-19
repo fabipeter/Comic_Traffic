@@ -367,7 +367,7 @@ function applyMdbListEntry(item, entry) {
  */
 async function enrichWithMdbList(candidates, env) {
   const apiKey = String(env.MDBLIST_API_KEY || "").trim();
-  if (!apiKey || !candidates.length) return 0;
+  if (!apiKey || !candidates.length) return { count: 0, error: null };
 
   const tmdbMovieMap = new Map();
   const tmdbShowMap = new Map();
@@ -388,12 +388,12 @@ async function enrichWithMdbList(candidates, env) {
 
   const encodedKey = encodeURIComponent(apiKey);
   const postBatch = (url, ids, matchByTmdb, itemMap) => {
-    if (!ids.length) return Promise.resolve(0);
+    if (!ids.length) return Promise.resolve({ count: 0, error: null });
     return getJson(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids }),
-      timeoutMs: 4500,
+      timeoutMs: 8500,
     })
       .then((res) => {
         const entries = Array.isArray(res) ? res : res && typeof res === "object" ? [res] : [];
@@ -409,39 +409,44 @@ async function enrichWithMdbList(candidates, env) {
             enriched++;
           }
         }
-        return enriched;
+        return { count: enriched, error: null };
       })
-      .catch(() => 0);
+      .catch((err) => ({
+        count: 0,
+        error: String((err && err.message) || "provider_error").slice(0, 120),
+      }));
   };
 
-  const counts = await Promise.all([
+  const results = await Promise.all([
     postBatch(
-      `https://api.mdblist.com/tmdb/movie?apikey=${encodedKey}`,
+      `https://api.mdblist.com/tmdb/movie/?apikey=${encodedKey}`,
       Array.from(tmdbMovieMap.keys()).map((id) => Number(id)),
       true,
       tmdbMovieMap
     ),
     postBatch(
-      `https://api.mdblist.com/tmdb/show?apikey=${encodedKey}`,
+      `https://api.mdblist.com/tmdb/show/?apikey=${encodedKey}`,
       Array.from(tmdbShowMap.keys()).map((id) => Number(id)),
       true,
       tmdbShowMap
     ),
     postBatch(
-      `https://api.mdblist.com/imdb/movie?apikey=${encodedKey}`,
+      `https://api.mdblist.com/imdb/movie/?apikey=${encodedKey}`,
       Array.from(imdbMovieMap.keys()),
       false,
       imdbMovieMap
     ),
     postBatch(
-      `https://api.mdblist.com/imdb/show?apikey=${encodedKey}`,
+      `https://api.mdblist.com/imdb/show/?apikey=${encodedKey}`,
       Array.from(imdbShowMap.keys()),
       false,
       imdbShowMap
     ),
   ]);
 
-  return counts.reduce((sum, n) => sum + n, 0);
+  const count = results.reduce((sum, r) => sum + r.count, 0);
+  const firstError = results.find((r) => r.error)?.error || null;
+  return { count, error: count > 0 ? null : firstError };
 }
 
 async function searchTvMaze(q) {
@@ -995,10 +1000,12 @@ async function executeLiveSearch(query, { env = process.env, calculateCumulative
   if (env.MDBLIST_API_KEY) {
     const mdbCandidates = merged
       .filter((i) => (i.mediaType === "Movie" || i.mediaType === "TvSeries") && (i.tmdbId || i.imdbId))
-      .slice(0, 15);
+      .slice(0, 10);
     try {
-      const enrichedCount = await enrichWithMdbList(mdbCandidates, env);
-      diagnostics.mdblist = { configured: true, count: enrichedCount };
+      const mdbRes = await enrichWithMdbList(mdbCandidates, env);
+      diagnostics.mdblist = mdbRes.error
+        ? { configured: true, count: mdbRes.count, error: mdbRes.error }
+        : { configured: true, count: mdbRes.count };
     } catch (err) {
       diagnostics.mdblist = {
         configured: true,
@@ -1041,7 +1048,8 @@ async function executeLiveSearch(query, { env = process.env, calculateCumulative
   }
 
   const result = { items, providers: diagnostics, fallback };
-  if (items.length > 0 && !fallback) cacheSet(lowerQuery, result);
+  const mdbDegraded = Boolean(diagnostics.mdblist && diagnostics.mdblist.configured && diagnostics.mdblist.error);
+  if (items.length > 0 && !fallback && !mdbDegraded) cacheSet(lowerQuery, result);
   return result;
 }
 

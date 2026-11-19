@@ -48,15 +48,13 @@ public static class DatabaseSeeder
                 PasswordHash = jwtTokenService.HashPassword(demoAdminPass),
                 PreferredWeightsJson = JsonSerializer.Serialize(new Dictionary<string, double>
                 {
-                    ["imdb"] = 1.2,
-                    ["rotten_tomatoes_critics"] = 1.1,
+                    ["imdb"] = 1.25,
+                    ["rotten_tomatoes_critics"] = 1.2,
                     ["rotten_tomatoes_audience"] = 1.1,
-                    ["metacritic"] = 1.15,
+                    ["metacritic"] = 1.2,
                     ["tmdb"] = 1.0,
                     ["trakt"] = 0.95,
-                    ["comicvine"] = 1.25,
-                    ["league_of_comic_geeks"] = 1.2,
-                    ["anilist"] = 1.0,
+                    ["anilist"] = 1.2,
                     ["comictraffic_community"] = 1.15
                 }, JsonOptions)
             };
@@ -114,9 +112,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "86 / 100", NormalizedScore = 86.0, VoteCount = 60, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
                     new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.4 / 10", NormalizedScore = 84.0, VoteCount = 6720, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
                     new() { SourceId = "trakt", SourceName = "Trakt.tv", Category = "Audience", RawScoreDisplay = "87%", NormalizedScore = 87.0, VoteCount = 41200, DefaultWeight = 0.95, AccentColor = "#ed1c24" },
-                    new() { SourceId = "letterboxd", SourceName = "Letterboxd", Category = "Audience", RawScoreDisplay = "4.4 / 5", NormalizedScore = 88.0, VoteCount = 1420000, DefaultWeight = 1.1, AccentColor = "#00e054" },
-                    new() { SourceId = "comicvine", SourceName = "ComicVine Adaptation Score", Category = "ComicCommunity", RawScoreDisplay = "4.7 / 5", NormalizedScore = 94.0, VoteCount = 8900, DefaultWeight = 1.15, AccentColor = "#e62429" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.2 / 10", NormalizedScore = 92.0, VoteCount = 4250, DefaultWeight = 1.1, AccentColor = "#a855f7" }
+                    new() { SourceId = "letterboxd", SourceName = "Letterboxd", Category = "Audience", RawScoreDisplay = "4.4 / 5", NormalizedScore = 88.0, VoteCount = 1420000, DefaultWeight = 1.1, AccentColor = "#00e054" }
                 }),
 
             CreateSeededItem(calculator,
@@ -140,9 +136,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "84 / 100", NormalizedScore = 84.0, VoteCount = 40, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
                     new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.5 / 10", NormalizedScore = 85.0, VoteCount = 32400, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
                     new() { SourceId = "trakt", SourceName = "Trakt.tv", Category = "Audience", RawScoreDisplay = "91%", NormalizedScore = 91.0, VoteCount = 162000, DefaultWeight = 0.95, AccentColor = "#ed1c24" },
-                    new() { SourceId = "letterboxd", SourceName = "Letterboxd", Category = "Audience", RawScoreDisplay = "4.5 / 5", NormalizedScore = 90.0, VoteCount = 2900000, DefaultWeight = 1.1, AccentColor = "#00e054" },
-                    new() { SourceId = "comicvine", SourceName = "ComicVine Adaptation Score", Category = "ComicCommunity", RawScoreDisplay = "4.9 / 5", NormalizedScore = 98.0, VoteCount = 21400, DefaultWeight = 1.15, AccentColor = "#e62429" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.5 / 10", NormalizedScore = 95.0, VoteCount = 9180, DefaultWeight = 1.1, AccentColor = "#a855f7" }
+                    new() { SourceId = "letterboxd", SourceName = "Letterboxd", Category = "Audience", RawScoreDisplay = "4.5 / 5", NormalizedScore = 90.0, VoteCount = 2900000, DefaultWeight = 1.1, AccentColor = "#00e054" }
                 }),
 
             CreateSeededItem(calculator,
@@ -165,9 +159,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "87%", NormalizedScore = 87.0, VoteCount = 50000, DefaultWeight = 1.1, AccentColor = "#ff6b35" },
                     new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "72 / 100", NormalizedScore = 72.0, VoteCount = 68, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
                     new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "7.7 / 10", NormalizedScore = 77.0, VoteCount = 9950, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
-                    new() { SourceId = "trakt", SourceName = "Trakt.tv", Category = "Audience", RawScoreDisplay = "82%", NormalizedScore = 82.0, VoteCount = 68400, DefaultWeight = 0.95, AccentColor = "#ed1c24" },
-                    new() { SourceId = "comicvine", SourceName = "ComicVine Adaptation Score", Category = "ComicCommunity", RawScoreDisplay = "4.6 / 5", NormalizedScore = 92.0, VoteCount = 11200, DefaultWeight = 1.15, AccentColor = "#e62429" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "8.8 / 10", NormalizedScore = 88.0, VoteCount = 3810, DefaultWeight = 1.1, AccentColor = "#a855f7" }
+                    new() { SourceId = "trakt", SourceName = "Trakt.tv", Category = "Audience", RawScoreDisplay = "82%", NormalizedScore = 82.0, VoteCount = 68400, DefaultWeight = 0.95, AccentColor = "#ed1c24" }
                 }),
 
             CreateSeededItem(calculator,
@@ -189,9 +181,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "93%", NormalizedScore = 93.0, VoteCount = 431, DefaultWeight = 1.2, AccentColor = "#fa320a" },
                     new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "90%", NormalizedScore = 90.0, VoteCount = 92000, DefaultWeight = 1.1, AccentColor = "#ff6b35" },
                     new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "77 / 100", NormalizedScore = 77.0, VoteCount = 51, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
-                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "7.8 / 10", NormalizedScore = 78.0, VoteCount = 19100, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
-                    new() { SourceId = "comicvine", SourceName = "ComicVine Adaptation Score", Category = "ComicCommunity", RawScoreDisplay = "4.7 / 5", NormalizedScore = 94.0, VoteCount = 9600, DefaultWeight = 1.15, AccentColor = "#e62429" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.0 / 10", NormalizedScore = 90.0, VoteCount = 3190, DefaultWeight = 1.1, AccentColor = "#a855f7" }
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "7.8 / 10", NormalizedScore = 78.0, VoteCount = 19100, DefaultWeight = 1.0, AccentColor = "#01b4e4" }
                 }),
 
             CreateSeededItem(calculator,
@@ -213,8 +203,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "80%", NormalizedScore = 80.0, VoteCount = 220, DefaultWeight = 1.2, AccentColor = "#fa320a" },
                     new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "86%", NormalizedScore = 86.0, VoteCount = 250000, DefaultWeight = 1.1, AccentColor = "#ff6b35" },
                     new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "63 / 100", NormalizedScore = 63.0, VoteCount = 40, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
-                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "7.8 / 10", NormalizedScore = 78.0, VoteCount = 20100, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.1 / 10", NormalizedScore = 91.0, VoteCount = 14200, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "7.8 / 10", NormalizedScore = 78.0, VoteCount = 20100, DefaultWeight = 1.0, AccentColor = "#01b4e4" }
                 }),
 
             CreateSeededItem(calculator,
@@ -236,8 +225,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "53%", NormalizedScore = 53.0, VoteCount = 228, DefaultWeight = 1.2, AccentColor = "#fa320a" },
                     new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "72%", NormalizedScore = 72.0, VoteCount = 250000, DefaultWeight = 1.1, AccentColor = "#ff6b35" },
                     new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "53 / 100", NormalizedScore = 53.0, VoteCount = 37, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
-                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "7.3 / 10", NormalizedScore = 73.0, VoteCount = 15300, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "8.4 / 10", NormalizedScore = 84.0, VoteCount = 8900, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "7.3 / 10", NormalizedScore = 73.0, VoteCount = 15300, DefaultWeight = 1.0, AccentColor = "#01b4e4" }
                 }),
 
             CreateSeededItem(calculator,
@@ -259,9 +247,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "71%", NormalizedScore = 71.0, VoteCount = 312, DefaultWeight = 1.2, AccentColor = "#fa320a" },
                     new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "93%", NormalizedScore = 93.0, VoteCount = 100000, DefaultWeight = 1.1, AccentColor = "#ff6b35" },
                     new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "54 / 100", NormalizedScore = 54.0, VoteCount = 46, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
-                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.1 / 10", NormalizedScore = 81.0, VoteCount = 9600, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
-                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.7 / 5", NormalizedScore = 94.0, VoteCount = 12500, DefaultWeight = 1.25, AccentColor = "#e62429" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.2 / 10", NormalizedScore = 92.0, VoteCount = 14800, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.1 / 10", NormalizedScore = 81.0, VoteCount = 9600, DefaultWeight = 1.0, AccentColor = "#01b4e4" }
                 }),
 
             CreateSeededItem(calculator,
@@ -283,9 +269,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "91%", NormalizedScore = 91.0, VoteCount = 368, DefaultWeight = 1.2, AccentColor = "#fa320a" },
                     new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "91%", NormalizedScore = 91.0, VoteCount = 250000, DefaultWeight = 1.1, AccentColor = "#ff6b35" },
                     new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "69 / 100", NormalizedScore = 69.0, VoteCount = 43, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
-                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "7.7 / 10", NormalizedScore = 77.0, VoteCount = 29800, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
-                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.8 / 5", NormalizedScore = 96.0, VoteCount = 18200, DefaultWeight = 1.2, AccentColor = "#e62429" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.2 / 10", NormalizedScore = 92.0, VoteCount = 12100, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "7.7 / 10", NormalizedScore = 77.0, VoteCount = 29800, DefaultWeight = 1.0, AccentColor = "#01b4e4" }
                 }),
 
             CreateSeededItem(calculator,
@@ -307,9 +291,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "85%", NormalizedScore = 85.0, VoteCount = 492, DefaultWeight = 1.2, AccentColor = "#fa320a" },
                     new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "92%", NormalizedScore = 92.0, VoteCount = 100000, DefaultWeight = 1.1, AccentColor = "#ff6b35" },
                     new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "68 / 100", NormalizedScore = 68.0, VoteCount = 54, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
-                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.2 / 10", NormalizedScore = 82.0, VoteCount = 28900, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
-                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.9 / 5", NormalizedScore = 98.0, VoteCount = 21900, DefaultWeight = 1.2, AccentColor = "#e62429" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.5 / 10", NormalizedScore = 95.0, VoteCount = 13600, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.2 / 10", NormalizedScore = 82.0, VoteCount = 28900, DefaultWeight = 1.0, AccentColor = "#01b4e4" }
                 }),
 
             // TV SERIES
@@ -334,9 +316,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "81 / 100", NormalizedScore = 81.0, VoteCount = 34, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
                     new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.7 / 10", NormalizedScore = 87.0, VoteCount = 4450, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
                     new() { SourceId = "tvmaze", SourceName = "TVMaze API", Category = "Audience", RawScoreDisplay = "8.6 / 10", NormalizedScore = 86.0, VoteCount = 3100, DefaultWeight = 0.95, AccentColor = "#3c948b" },
-                    new() { SourceId = "trakt", SourceName = "Trakt.tv", Category = "Audience", RawScoreDisplay = "88%", NormalizedScore = 88.0, VoteCount = 39800, DefaultWeight = 0.95, AccentColor = "#ed1c24" },
-                    new() { SourceId = "comicvine", SourceName = "ComicVine Adaptation Score", Category = "ComicCommunity", RawScoreDisplay = "4.8 / 5", NormalizedScore = 96.0, VoteCount = 7400, DefaultWeight = 1.15, AccentColor = "#e62429" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.3 / 10", NormalizedScore = 93.0, VoteCount = 5120, DefaultWeight = 1.1, AccentColor = "#a855f7" }
+                    new() { SourceId = "trakt", SourceName = "Trakt.tv", Category = "Audience", RawScoreDisplay = "88%", NormalizedScore = 88.0, VoteCount = 39800, DefaultWeight = 0.95, AccentColor = "#ed1c24" }
                 }),
 
             CreateSeededItem(calculator,
@@ -360,9 +340,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "77 / 100", NormalizedScore = 77.0, VoteCount = 58, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
                     new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.5 / 10", NormalizedScore = 85.0, VoteCount = 10400, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
                     new() { SourceId = "tvmaze", SourceName = "TVMaze API", Category = "Audience", RawScoreDisplay = "8.4 / 10", NormalizedScore = 84.0, VoteCount = 6900, DefaultWeight = 0.95, AccentColor = "#3c948b" },
-                    new() { SourceId = "trakt", SourceName = "Trakt.tv", Category = "Audience", RawScoreDisplay = "85%", NormalizedScore = 85.0, VoteCount = 89000, DefaultWeight = 0.95, AccentColor = "#ed1c24" },
-                    new() { SourceId = "comicvine", SourceName = "ComicVine Adaptation Score", Category = "ComicCommunity", RawScoreDisplay = "4.6 / 5", NormalizedScore = 92.0, VoteCount = 9100, DefaultWeight = 1.15, AccentColor = "#e62429" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "8.8 / 10", NormalizedScore = 88.0, VoteCount = 6300, DefaultWeight = 1.1, AccentColor = "#a855f7" }
+                    new() { SourceId = "trakt", SourceName = "Trakt.tv", Category = "Audience", RawScoreDisplay = "85%", NormalizedScore = 85.0, VoteCount = 89000, DefaultWeight = 0.95, AccentColor = "#ed1c24" }
                 }),
 
             CreateSeededItem(calculator,
@@ -385,9 +363,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "92%", NormalizedScore = 92.0, VoteCount = 6200, DefaultWeight = 1.1, AccentColor = "#ff6b35" },
                     new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "82 / 100", NormalizedScore = 82.0, VoteCount = 24, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
                     new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.6 / 10", NormalizedScore = 86.0, VoteCount = 1280, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
-                    new() { SourceId = "tvmaze", SourceName = "TVMaze API", Category = "Audience", RawScoreDisplay = "8.7 / 10", NormalizedScore = 87.0, VoteCount = 1900, DefaultWeight = 0.95, AccentColor = "#3c948b" },
-                    new() { SourceId = "comicvine", SourceName = "ComicVine Adaptation Score", Category = "ComicCommunity", RawScoreDisplay = "4.9 / 5", NormalizedScore = 98.0, VoteCount = 6700, DefaultWeight = 1.15, AccentColor = "#e62429" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.4 / 10", NormalizedScore = 94.0, VoteCount = 3420, DefaultWeight = 1.1, AccentColor = "#a855f7" }
+                    new() { SourceId = "tvmaze", SourceName = "TVMaze API", Category = "Audience", RawScoreDisplay = "8.7 / 10", NormalizedScore = 87.0, VoteCount = 1900, DefaultWeight = 0.95, AccentColor = "#3c948b" }
                 }),
 
             CreateSeededItem(calculator,
@@ -410,9 +386,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "56%", NormalizedScore = 56.0, VoteCount = 19500, DefaultWeight = 1.1, AccentColor = "#ff6b35" },
                     new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "85 / 100", NormalizedScore = 85.0, VoteCount = 44, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
                     new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "7.9 / 10", NormalizedScore = 79.0, VoteCount = 2150, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
-                    new() { SourceId = "tvmaze", SourceName = "TVMaze API", Category = "Audience", RawScoreDisplay = "8.1 / 10", NormalizedScore = 81.0, VoteCount = 2400, DefaultWeight = 0.95, AccentColor = "#3c948b" },
-                    new() { SourceId = "comicvine", SourceName = "ComicVine Adaptation Score", Category = "ComicCommunity", RawScoreDisplay = "4.2 / 5", NormalizedScore = 84.0, VoteCount = 4900, DefaultWeight = 1.15, AccentColor = "#e62429" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "8.4 / 10", NormalizedScore = 84.0, VoteCount = 2950, DefaultWeight = 1.1, AccentColor = "#a855f7" }
+                    new() { SourceId = "tvmaze", SourceName = "TVMaze API", Category = "Audience", RawScoreDisplay = "8.1 / 10", NormalizedScore = 81.0, VoteCount = 2400, DefaultWeight = 0.95, AccentColor = "#3c948b" }
                 }),
 
             CreateSeededItem(calculator,
@@ -436,9 +410,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "90 / 100", NormalizedScore = 90.0, VoteCount = 28, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
                     new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.7 / 10", NormalizedScore = 87.0, VoteCount = 4120, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
                     new() { SourceId = "tvmaze", SourceName = "TVMaze API", Category = "Audience", RawScoreDisplay = "9.0 / 10", NormalizedScore = 90.0, VoteCount = 8400, DefaultWeight = 1.0, AccentColor = "#3c948b" },
-                    new() { SourceId = "trakt", SourceName = "Trakt.tv", Category = "Audience", RawScoreDisplay = "92%", NormalizedScore = 92.0, VoteCount = 54000, DefaultWeight = 0.95, AccentColor = "#ed1c24" },
-                    new() { SourceId = "comicvine", SourceName = "ComicVine Lore & Tie-In Index", Category = "ComicCommunity", RawScoreDisplay = "4.9 / 5", NormalizedScore = 98.0, VoteCount = 14200, DefaultWeight = 1.2, AccentColor = "#e62429" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.7 / 10", NormalizedScore = 97.0, VoteCount = 12900, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                    new() { SourceId = "trakt", SourceName = "Trakt.tv", Category = "Audience", RawScoreDisplay = "92%", NormalizedScore = 92.0, VoteCount = 54000, DefaultWeight = 0.95, AccentColor = "#ed1c24" }
                 }),
 
             // COMIC BOOKS & GRAPHIC NOVELS
@@ -457,13 +429,6 @@ public static class DatabaseSeeder
                 overview: "In an alternate 1985 where costumed vigilantes have shaped history, the murder of The Comedian draws Rorschach, Nite Owl, Silk Spectre, Ozymandias, and Doctor Manhattan into a conspiracy with nuclear stakes.",
                 sources: new List<ExternalRatingSource>
                 {
-                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.92 / 5", NormalizedScore = 98.4, VoteCount = 34200, DefaultWeight = 1.3, AccentColor = "#e62429" },
-                    new() { SourceId = "league_of_comic_geeks", SourceName = "League of Comic Geeks", Category = "ComicCommunity", RawScoreDisplay = "97 / 100", NormalizedScore = 97.0, VoteCount = 28500, DefaultWeight = 1.25, AccentColor = "#00d1b2" },
-                    new() { SourceId = "goodreads", SourceName = "Goodreads Graphic Novels", Category = "Audience", RawScoreDisplay = "4.38 / 5", NormalizedScore = 87.6, VoteCount = 598000, DefaultWeight = 1.15, AccentColor = "#8b5e34" },
-                    new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookWire / CBR Critics", Category = "Critic", RawScoreDisplay = "9.8 / 10", NormalizedScore = 98.0, VoteCount = 112, DefaultWeight = 1.25, AccentColor = "#fa320a" },
-                    new() { SourceId = "comicbookroundup_users", SourceName = "ComicBookRoundup Users", Category = "Audience", RawScoreDisplay = "9.6 / 10", NormalizedScore = 96.0, VoteCount = 19400, DefaultWeight = 1.15, AccentColor = "#ff6b35" },
-                    new() { SourceId = "marvel_dc_index", SourceName = "Grand Comics Database (GCD)", Category = "Critic", RawScoreDisplay = "96 / 100", NormalizedScore = 96.0, VoteCount = 4200, DefaultWeight = 1.1, AccentColor = "#3b82f6" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.7 / 10", NormalizedScore = 97.0, VoteCount = 11200, DefaultWeight = 1.15, AccentColor = "#a855f7" }
                 }),
 
             CreateSeededItem(calculator,
@@ -481,12 +446,6 @@ public static class DatabaseSeeder
                 overview: "Dream of the Endless—Lord Morpheus—escapes after 70 years of occult imprisonment and sets out to rebuild his fallen kingdom of the Dreaming across time, myth, and human consciousness.",
                 sources: new List<ExternalRatingSource>
                 {
-                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.88 / 5", NormalizedScore = 97.6, VoteCount = 29100, DefaultWeight = 1.3, AccentColor = "#e62429" },
-                    new() { SourceId = "league_of_comic_geeks", SourceName = "League of Comic Geeks", Category = "ComicCommunity", RawScoreDisplay = "96 / 100", NormalizedScore = 96.0, VoteCount = 24600, DefaultWeight = 1.25, AccentColor = "#00d1b2" },
-                    new() { SourceId = "goodreads", SourceName = "Goodreads Graphic Novels", Category = "Audience", RawScoreDisplay = "4.55 / 5", NormalizedScore = 91.0, VoteCount = 342000, DefaultWeight = 1.15, AccentColor = "#8b5e34" },
-                    new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookRoundup Critics", Category = "Critic", RawScoreDisplay = "9.5 / 10", NormalizedScore = 95.0, VoteCount = 96, DefaultWeight = 1.25, AccentColor = "#fa320a" },
-                    new() { SourceId = "comicbookroundup_users", SourceName = "ComicBookRoundup Users", Category = "Audience", RawScoreDisplay = "9.4 / 10", NormalizedScore = 94.0, VoteCount = 15800, DefaultWeight = 1.15, AccentColor = "#ff6b35" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.6 / 10", NormalizedScore = 96.0, VoteCount = 8750, DefaultWeight = 1.15, AccentColor = "#a855f7" }
                 }),
 
             CreateSeededItem(calculator,
@@ -504,12 +463,6 @@ public static class DatabaseSeeder
                 overview: "Two soldiers from opposite sides of a never-ending galactic war fall in love and risk everything to bring a fragile new life—their daughter Hazel—into a dangerous universe.",
                 sources: new List<ExternalRatingSource>
                 {
-                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.82 / 5", NormalizedScore = 96.4, VoteCount = 26400, DefaultWeight = 1.3, AccentColor = "#e62429" },
-                    new() { SourceId = "league_of_comic_geeks", SourceName = "League of Comic Geeks", Category = "ComicCommunity", RawScoreDisplay = "95 / 100", NormalizedScore = 95.0, VoteCount = 31900, DefaultWeight = 1.25, AccentColor = "#00d1b2" },
-                    new() { SourceId = "goodreads", SourceName = "Goodreads Graphic Novels", Category = "Audience", RawScoreDisplay = "4.46 / 5", NormalizedScore = 89.2, VoteCount = 415000, DefaultWeight = 1.15, AccentColor = "#8b5e34" },
-                    new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookRoundup Critics", Category = "Critic", RawScoreDisplay = "9.2 / 10", NormalizedScore = 92.0, VoteCount = 610, DefaultWeight = 1.25, AccentColor = "#fa320a" },
-                    new() { SourceId = "comicbookroundup_users", SourceName = "ComicBookRoundup Users", Category = "Audience", RawScoreDisplay = "9.3 / 10", NormalizedScore = 93.0, VoteCount = 22400, DefaultWeight = 1.15, AccentColor = "#ff6b35" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.4 / 10", NormalizedScore = 94.0, VoteCount = 7400, DefaultWeight = 1.15, AccentColor = "#a855f7" }
                 }),
 
             CreateSeededItem(calculator,
@@ -527,11 +480,6 @@ public static class DatabaseSeeder
                 overview: "Bruce Wayne returns to Gotham City after twelve years abroad to begin his war on crime, while newly transferred Lieutenant James Gordon fights corruption inside the Gotham City Police Department.",
                 sources: new List<ExternalRatingSource>
                 {
-                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.89 / 5", NormalizedScore = 97.8, VoteCount = 31000, DefaultWeight = 1.3, AccentColor = "#e62429" },
-                    new() { SourceId = "league_of_comic_geeks", SourceName = "League of Comic Geeks", Category = "ComicCommunity", RawScoreDisplay = "96 / 100", NormalizedScore = 96.0, VoteCount = 29400, DefaultWeight = 1.25, AccentColor = "#00d1b2" },
-                    new() { SourceId = "goodreads", SourceName = "Goodreads Graphic Novels", Category = "Audience", RawScoreDisplay = "4.27 / 5", NormalizedScore = 85.4, VoteCount = 264000, DefaultWeight = 1.15, AccentColor = "#8b5e34" },
-                    new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookRoundup Critics", Category = "Critic", RawScoreDisplay = "9.6 / 10", NormalizedScore = 96.0, VoteCount = 74, DefaultWeight = 1.25, AccentColor = "#fa320a" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.5 / 10", NormalizedScore = 95.0, VoteCount = 9320, DefaultWeight = 1.15, AccentColor = "#a855f7" }
                 }),
 
             CreateSeededItem(calculator,
@@ -549,11 +497,6 @@ public static class DatabaseSeeder
                 overview: "After saving a solar mission from Lex Luthor's sabotage, Superman is overexposed to solar radiation and given one final year to complete twelve mythic labors for humanity.",
                 sources: new List<ExternalRatingSource>
                 {
-                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.85 / 5", NormalizedScore = 97.0, VoteCount = 24900, DefaultWeight = 1.3, AccentColor = "#e62429" },
-                    new() { SourceId = "league_of_comic_geeks", SourceName = "League of Comic Geeks", Category = "ComicCommunity", RawScoreDisplay = "95 / 100", NormalizedScore = 95.0, VoteCount = 22800, DefaultWeight = 1.25, AccentColor = "#00d1b2" },
-                    new() { SourceId = "goodreads", SourceName = "Goodreads Graphic Novels", Category = "Audience", RawScoreDisplay = "4.29 / 5", NormalizedScore = 85.8, VoteCount = 112000, DefaultWeight = 1.15, AccentColor = "#8b5e34" },
-                    new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookRoundup Critics", Category = "Critic", RawScoreDisplay = "9.4 / 10", NormalizedScore = 94.0, VoteCount = 148, DefaultWeight = 1.25, AccentColor = "#fa320a" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.5 / 10", NormalizedScore = 95.0, VoteCount = 6840, DefaultWeight = 1.15, AccentColor = "#a855f7" }
                 }),
 
             CreateSeededItem(calculator,
@@ -571,12 +514,6 @@ public static class DatabaseSeeder
                 overview: "Bruce Banner walks the backroads of America by day—and even if he dies, when night falls the Green Door opens and the Immortal Hulk rises to enact existential judgment.",
                 sources: new List<ExternalRatingSource>
                 {
-                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.78 / 5", NormalizedScore = 95.6, VoteCount = 18700, DefaultWeight = 1.3, AccentColor = "#e62429" },
-                    new() { SourceId = "league_of_comic_geeks", SourceName = "League of Comic Geeks", Category = "ComicCommunity", RawScoreDisplay = "94 / 100", NormalizedScore = 94.0, VoteCount = 26400, DefaultWeight = 1.25, AccentColor = "#00d1b2" },
-                    new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookRoundup Critics", Category = "Critic", RawScoreDisplay = "9.1 / 10", NormalizedScore = 91.0, VoteCount = 580, DefaultWeight = 1.25, AccentColor = "#fa320a" },
-                    new() { SourceId = "comicbookroundup_users", SourceName = "ComicBookRoundup Users", Category = "Audience", RawScoreDisplay = "9.2 / 10", NormalizedScore = 92.0, VoteCount = 19100, DefaultWeight = 1.15, AccentColor = "#ff6b35" },
-                    new() { SourceId = "marvel_dc_index", SourceName = "Marvel Unlimited Community", Category = "ComicCommunity", RawScoreDisplay = "9.3 / 10", NormalizedScore = 93.0, VoteCount = 14200, DefaultWeight = 1.1, AccentColor = "#3b82f6" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.3 / 10", NormalizedScore = 93.0, VoteCount = 5240, DefaultWeight = 1.15, AccentColor = "#a855f7" }
                 }),
 
             CreateSeededItem(calculator,
@@ -594,11 +531,6 @@ public static class DatabaseSeeder
                 overview: "Picking up directly after the finale of the animated series, Avatar Aang and Fire Lord Zuko clash over the Harmony Restoration Movement and the fate of Fire Nation colonies in the Earth Kingdom.",
                 sources: new List<ExternalRatingSource>
                 {
-                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.75 / 5", NormalizedScore = 95.0, VoteCount = 11200, DefaultWeight = 1.3, AccentColor = "#e62429" },
-                    new() { SourceId = "league_of_comic_geeks", SourceName = "League of Comic Geeks", Category = "ComicCommunity", RawScoreDisplay = "93 / 100", NormalizedScore = 93.0, VoteCount = 14800, DefaultWeight = 1.25, AccentColor = "#00d1b2" },
-                    new() { SourceId = "goodreads", SourceName = "Goodreads Graphic Novels", Category = "Audience", RawScoreDisplay = "4.36 / 5", NormalizedScore = 87.2, VoteCount = 94000, DefaultWeight = 1.15, AccentColor = "#a16207" },
-                    new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookRoundup Critics", Category = "Critic", RawScoreDisplay = "9.0 / 10", NormalizedScore = 90.0, VoteCount = 42, DefaultWeight = 1.2, AccentColor = "#fa320a" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.3 / 10", NormalizedScore = 93.0, VoteCount = 4600, DefaultWeight = 1.15, AccentColor = "#a855f7" }
                 }),
 
             CreateSeededItem(calculator,
@@ -616,11 +548,6 @@ public static class DatabaseSeeder
                 overview: "Ra's al Ghul steals Batman's confidential contingency dossiers designed to neutralize every member of the Justice League, methodically taking down Superman, Wonder Woman, the Flash, Green Lantern, and Martian Manhunter.",
                 sources: new List<ExternalRatingSource>
                 {
-                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.86 / 5", NormalizedScore = 97.2, VoteCount = 24100, DefaultWeight = 1.3, AccentColor = "#e62429" },
-                    new() { SourceId = "league_of_comic_geeks", SourceName = "League of Comic Geeks", Category = "ComicCommunity", RawScoreDisplay = "95 / 100", NormalizedScore = 95.0, VoteCount = 22800, DefaultWeight = 1.25, AccentColor = "#00d1b2" },
-                    new() { SourceId = "goodreads", SourceName = "Goodreads Graphic Novels", Category = "Audience", RawScoreDisplay = "4.26 / 5", NormalizedScore = 85.2, VoteCount = 84000, DefaultWeight = 1.15, AccentColor = "#a16207" },
-                    new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookRoundup Critics", Category = "Critic", RawScoreDisplay = "9.3 / 10", NormalizedScore = 93.0, VoteCount = 52, DefaultWeight = 1.25, AccentColor = "#fa320a" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.5 / 10", NormalizedScore = 95.0, VoteCount = 7800, DefaultWeight = 1.15, AccentColor = "#a855f7" }
                 }),
 
             CreateSeededItem(calculator,
@@ -638,11 +565,6 @@ public static class DatabaseSeeder
                 overview: "The seminal Marvel cosmic epic. The Mad Titan Thanos seizes the six Infinity Gems to form the Infinity Gauntlet, eradicating half of all life in the universe with a snap of his fingers to woo Mistress Death.",
                 sources: new List<ExternalRatingSource>
                 {
-                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.89 / 5", NormalizedScore = 97.8, VoteCount = 31200, DefaultWeight = 1.3, AccentColor = "#e62429" },
-                    new() { SourceId = "league_of_comic_geeks", SourceName = "League of Comic Geeks", Category = "ComicCommunity", RawScoreDisplay = "96 / 100", NormalizedScore = 96.0, VoteCount = 29500, DefaultWeight = 1.25, AccentColor = "#00d1b2" },
-                    new() { SourceId = "goodreads", SourceName = "Goodreads Graphic Novels", Category = "Audience", RawScoreDisplay = "4.29 / 5", NormalizedScore = 85.8, VoteCount = 115000, DefaultWeight = 1.15, AccentColor = "#a16207" },
-                    new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookRoundup Critics", Category = "Critic", RawScoreDisplay = "9.4 / 10", NormalizedScore = 94.0, VoteCount = 68, DefaultWeight = 1.25, AccentColor = "#fa320a" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.6 / 10", NormalizedScore = 96.0, VoteCount = 9200, DefaultWeight = 1.15, AccentColor = "#a855f7" }
                 }),
 
             CreateSeededItem(calculator,
@@ -660,11 +582,6 @@ public static class DatabaseSeeder
                 overview: "A tragedy in Stamford sparks the Superhuman Registration Act, fracturing the Marvel Universe as Iron Man leads the pro-registration faction while Captain America leads an underground resistance.",
                 sources: new List<ExternalRatingSource>
                 {
-                    new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", RawScoreDisplay = "4.82 / 5", NormalizedScore = 96.4, VoteCount = 38400, DefaultWeight = 1.3, AccentColor = "#e62429" },
-                    new() { SourceId = "league_of_comic_geeks", SourceName = "League of Comic Geeks", Category = "ComicCommunity", RawScoreDisplay = "93 / 100", NormalizedScore = 93.0, VoteCount = 35100, DefaultWeight = 1.25, AccentColor = "#00d1b2" },
-                    new() { SourceId = "goodreads", SourceName = "Goodreads Graphic Novels", Category = "Audience", RawScoreDisplay = "4.21 / 5", NormalizedScore = 84.2, VoteCount = 160000, DefaultWeight = 1.15, AccentColor = "#a16207" },
-                    new() { SourceId = "comicbookroundup_critics", SourceName = "ComicBookRoundup Critics", Category = "Critic", RawScoreDisplay = "8.9 / 10", NormalizedScore = 89.0, VoteCount = 104, DefaultWeight = 1.25, AccentColor = "#fa320a" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.3 / 10", NormalizedScore = 93.0, VoteCount = 10800, DefaultWeight = 1.15, AccentColor = "#a855f7" }
                 }),
 
             CreateSeededItem(calculator,
@@ -686,8 +603,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "100%", NormalizedScore = 100.0, VoteCount = 92, DefaultWeight = 1.2, AccentColor = "#fa320a" },
                     new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "96%", NormalizedScore = 96.0, VoteCount = 18400, DefaultWeight = 1.15, AccentColor = "#ff6b35" },
                     new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.8 / 10", NormalizedScore = 88.0, VoteCount = 4520, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
-                    new() { SourceId = "trakt", SourceName = "Trakt.tv", Category = "Audience", RawScoreDisplay = "91%", NormalizedScore = 91.0, VoteCount = 41000, DefaultWeight = 0.95, AccentColor = "#ed1c24" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.5 / 10", NormalizedScore = 95.0, VoteCount = 6800, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                    new() { SourceId = "trakt", SourceName = "Trakt.tv", Category = "Audience", RawScoreDisplay = "91%", NormalizedScore = 91.0, VoteCount = 41000, DefaultWeight = 0.95, AccentColor = "#ed1c24" }
                 }),
 
             CreateSeededItem(calculator,
@@ -708,9 +624,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "imdb", SourceName = "IMDb (OMDb)", Category = "Audience", RawScoreDisplay = "8.6 / 10", NormalizedScore = 86.0, VoteCount = 482000, DefaultWeight = 1.25, AccentColor = "#f5c518" },
                     new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "92%", NormalizedScore = 92.0, VoteCount = 245, DefaultWeight = 1.2, AccentColor = "#fa320a" },
                     new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "93%", NormalizedScore = 93.0, VoteCount = 38000, DefaultWeight = 1.15, AccentColor = "#ff6b35" },
-                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.2 / 10", NormalizedScore = 82.0, VoteCount = 4680, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
-                    new() { SourceId = "comicvine", SourceName = "ComicVine Adaptation Score", Category = "ComicCommunity", RawScoreDisplay = "4.85 / 5", NormalizedScore = 97.0, VoteCount = 15400, DefaultWeight = 1.2, AccentColor = "#e62429" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.4 / 10", NormalizedScore = 94.0, VoteCount = 7900, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.2 / 10", NormalizedScore = 82.0, VoteCount = 4680, DefaultWeight = 1.0, AccentColor = "#01b4e4" }
                 }),
 
             CreateSeededItem(calculator,
@@ -731,9 +645,7 @@ public static class DatabaseSeeder
                     new() { SourceId = "imdb", SourceName = "IMDb (OMDb)", Category = "Audience", RawScoreDisplay = "9.0 / 10", NormalizedScore = 90.0, VoteCount = 121000, DefaultWeight = 1.25, AccentColor = "#f5c518" },
                     new() { SourceId = "rotten_tomatoes_critics", SourceName = "Rotten Tomatoes (Critics)", Category = "Critic", RawScoreDisplay = "100%", NormalizedScore = 100.0, VoteCount = 54, DefaultWeight = 1.2, AccentColor = "#fa320a" },
                     new() { SourceId = "rotten_tomatoes_audience", SourceName = "Rotten Tomatoes (Audience)", Category = "Audience", RawScoreDisplay = "96%", NormalizedScore = 96.0, VoteCount = 25000, DefaultWeight = 1.15, AccentColor = "#ff6b35" },
-                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.5 / 10", NormalizedScore = 85.0, VoteCount = 1620, DefaultWeight = 1.0, AccentColor = "#01b4e4" },
-                    new() { SourceId = "comicvine", SourceName = "ComicVine Adaptation Score", Category = "ComicCommunity", RawScoreDisplay = "4.95 / 5", NormalizedScore = 99.0, VoteCount = 22000, DefaultWeight = 1.25, AccentColor = "#e62429" },
-                    new() { SourceId = "comictraffic_community", SourceName = "ComicTraffic Community", Category = "ComicCommunity", RawScoreDisplay = "9.7 / 10", NormalizedScore = 97.0, VoteCount = 8400, DefaultWeight = 1.15, AccentColor = "#a855f7" }
+                    new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", RawScoreDisplay = "8.5 / 10", NormalizedScore = 85.0, VoteCount = 1620, DefaultWeight = 1.0, AccentColor = "#01b4e4" }
                 })
         };
 
@@ -750,66 +662,7 @@ public static class DatabaseSeeder
             }
         }
 
-        // 3. Seed Reviews
-        if (!await db.Reviews.AnyAsync())
-        {
-            db.Reviews.AddRange(
-                new UserReview
-                {
-                    UserId = demoUser.Id,
-                    Username = demoUser.Username,
-                    UserAvatarUrl = demoUser.AvatarUrl,
-                    ExternalMediaId = "comic-watchmen-1986",
-                    MediaTitle = "Watchmen #1–12 (Absolute Edition)",
-                    MediaType = MediaCategory.ComicBook,
-                    Score = 98,
-                    Headline = "The gold standard of sequential art and nine-panel symmetry",
-                    ReviewText = "Issue #4 (Watchmaker) and Issue #5 (Fearful Symmetry) remain unmatched in how they use the physical medium of comic books. Every rating API agrees: a structural masterpiece.",
-                    ContainsSpoilers = false,
-                    HelpfulVotes = 48,
-                    CreatedAt = DateTime.UtcNow.AddDays(-6)
-                },
-                new UserReview
-                {
-                    UserId = secondUser.Id,
-                    Username = secondUser.Username,
-                    UserAvatarUrl = secondUser.AvatarUrl,
-                    ExternalMediaId = "movie-spiderverse-2023",
-                    MediaTitle = "Spider-Man: Across the Spider-Verse",
-                    MediaType = MediaCategory.Movie,
-                    Score = 95,
-                    Headline = "Every frame looks like a hand-inked comic cover come to life",
-                    ReviewText = "Gwen's watercolor Earth-65 palette reacting to her emotional state and Hobie Brown's collage punk animation push theatrical animation into uncharted territory.",
-                    ContainsSpoilers = false,
-                    HelpfulVotes = 34,
-                    CreatedAt = DateTime.UtcNow.AddDays(-3)
-                },
-                new UserReview
-                {
-                    UserId = demoUser.Id,
-                    Username = demoUser.Username,
-                    UserAvatarUrl = demoUser.AvatarUrl,
-                    ExternalMediaId = "tv-invincible-2021",
-                    MediaTitle = "Invincible",
-                    MediaType = MediaCategory.TvSeries,
-                    Score = 93,
-                    Headline = "Faithful to Kirkman's Image Comics run while sharpening the pacing",
-                    ReviewText = "Seeing Omni-Man and Invincible's arc adapted with full dramatic weight makes this one of the highest-rated comic book television adaptations across IMDb, RT, and TVMaze.",
-                    ContainsSpoilers = false,
-                    HelpfulVotes = 29,
-                    CreatedAt = DateTime.UtcNow.AddDays(-1)
-                }
-            );
-
-            try
-            {
-                await db.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[DatabaseSeeder] Reviews sync note: {ex.Message}");
-            }
-        }
+        // 3. Community reviews are strictly user-submitted (no pre-seeded demo reviews).
 
         // 4. Seed Demo User's Watchlist & Reading List
         if (!await db.WatchlistItems.AnyAsync())
@@ -918,6 +771,116 @@ public static class DatabaseSeeder
             catch (Exception ex)
             {
                 Console.WriteLine($"[DatabaseSeeder] CustomLists sync note: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Idempotent startup cleanup for existing databases: removes deprecated seeded-only rating sources
+    /// and rebuilds comictraffic_community strictly from real rows in UserReviews (never pre-seeded values).
+    /// </summary>
+    public static async Task SanitizeSeededSourcesAsync(
+        ComicTrafficDbContext db,
+        ICumulativeRatingCalculator calculator)
+    {
+        var readOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true
+        };
+
+        var reviewsByMedia = (await db.Reviews.AsNoTracking().ToListAsync())
+            .GroupBy(r => r.ExternalMediaId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+
+        var mediaItems = await db.MediaItems.ToListAsync();
+        bool changed = false;
+
+        foreach (var item in mediaItems)
+        {
+            List<ExternalRatingSource> current;
+            try
+            {
+                current = JsonSerializer.Deserialize<List<ExternalRatingSource>>(item.ExternalRatingsJson, readOptions) ?? new();
+            }
+            catch
+            {
+                current = new();
+            }
+
+            var cleaned = current
+                .Where(s =>
+                    !CumulativeRatingCalculator.RemovedSeededSourceIds.Contains(s.SourceId ?? string.Empty) &&
+                    !string.Equals(s.SourceId, "comictraffic_community", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (reviewsByMedia.TryGetValue(item.ExternalId, out var realReviews) && realReviews.Count > 0)
+            {
+                double avg = Math.Round(realReviews.Average(r => r.Score), 1);
+                cleaned.Add(new ExternalRatingSource
+                {
+                    SourceId = "comictraffic_community",
+                    SourceName = "ComicTraffic Community",
+                    Category = "ComicCommunity",
+                    NormalizedScore = avg,
+                    RawScoreDisplay = $"{Math.Round(avg / 10.0, 1)} / 10",
+                    VoteCount = realReviews.Count,
+                    DefaultWeight = 1.15,
+                    AccentColor = "#a855f7"
+                });
+            }
+
+            string nextJson = JsonSerializer.Serialize(cleaned, JsonOptions);
+            if (!string.Equals(nextJson, item.ExternalRatingsJson, StringComparison.Ordinal))
+            {
+                var summary = calculator.CalculateCumulativeRating(cleaned);
+                item.ExternalRatingsJson = nextJson;
+                item.FinalCumulativeAverage = summary.FinalCumulativeAverage;
+                item.BayesianWeightedScore = summary.BayesianWeightedScore;
+                item.CriticConsensusScore = summary.CriticConsensusScore;
+                item.AudienceConsensusScore = summary.AudienceConsensusScore;
+                item.PolarizationIndex = summary.PolarizationIndex;
+                item.ConsensusTier = summary.ConsensusTier;
+                item.TotalVoteCount = summary.TotalAggregatedVotes;
+                item.LastUpdated = DateTime.UtcNow;
+                changed = true;
+            }
+        }
+
+        var users = await db.Users.ToListAsync();
+        foreach (var user in users)
+        {
+            if (string.IsNullOrWhiteSpace(user.PreferredWeightsJson)) continue;
+            try
+            {
+                var weights = JsonSerializer.Deserialize<Dictionary<string, double>>(user.PreferredWeightsJson, readOptions);
+                if (weights == null) continue;
+                int before = weights.Count;
+                foreach (var deprecated in CumulativeRatingCalculator.RemovedSeededSourceIds)
+                {
+                    weights.Remove(deprecated);
+                }
+                if (weights.Count != before)
+                {
+                    user.PreferredWeightsJson = JsonSerializer.Serialize(weights, JsonOptions);
+                    changed = true;
+                }
+            }
+            catch
+            {
+                // Ignore malformed user weight JSON
+            }
+        }
+
+        if (changed)
+        {
+            try
+            {
+                await db.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DatabaseSeeder] SanitizeSeededSources note: {ex.Message}");
             }
         }
     }

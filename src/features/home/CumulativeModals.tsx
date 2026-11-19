@@ -355,7 +355,7 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
 export const CumulativeDetailModal: React.FC = observer(() => {
   const { ratingStore, userStore } = useStore();
   const navigate = useNavigate();
-  const item = ratingStore.selectedItem;
+  const item = ratingStore.activeSelectedItem;
 
   const [reviewScore, setReviewScore] = useState<number>(92);
   const [reviewHeadline, setReviewHeadline] = useState<string>("");
@@ -605,6 +605,18 @@ export const CumulativeDetailModal: React.FC = observer(() => {
             <h3>
               🌐 Multi-Platform API Rating Breakdown (
               {cumulativeRating.sources.length} Sources)
+              {ratingStore.hydratingExternalId === item.externalId && (
+                <span
+                  style={{
+                    marginLeft: "10px",
+                    fontSize: "0.78rem",
+                    fontWeight: 500,
+                    color: "#60a5fa",
+                  }}
+                >
+                  ⏳ Syncing live API ratings...
+                </span>
+              )}
             </h3>
             <button
               type="button"
@@ -615,51 +627,59 @@ export const CumulativeDetailModal: React.FC = observer(() => {
             </button>
           </div>
 
-          <div className="ct-sources-grid">
-            {cumulativeRating.sources.map((src) => (
-              <div key={src.sourceId} className="ct-source-card">
-                <div className="ct-source-card-top">
-                  <span
-                    className="ct-source-dot"
-                    style={{ backgroundColor: src.accentColor }}
-                  />
-                  <div className="ct-source-title-wrap">
-                    <strong>{src.sourceName}</strong>
-                    <span className="ct-source-cat-tag">{src.category}</span>
-                  </div>
-                  <div className="ct-source-score-badge">
-                    <span className="ct-raw-score">{src.rawScoreDisplay}</span>
+          {cumulativeRating.sources.length === 0 ? (
+            <p className="ct-muted-text">
+              {ratingStore.hydratingExternalId === item.externalId
+                ? "Fetching live ratings across connected APIs..."
+                : "No live external API ratings are published for this title yet. Submit a ComicTraffic Community review below to add the first score."}
+            </p>
+          ) : (
+            <div className="ct-sources-grid">
+              {cumulativeRating.sources.map((src) => (
+                <div key={src.sourceId} className="ct-source-card">
+                  <div className="ct-source-card-top">
                     <span
-                      className="ct-norm-score"
-                      style={{ color: getScoreColor(src.normalizedScore) }}
-                    >
-                      ({src.normalizedScore.toFixed(1)}%)
+                      className="ct-source-dot"
+                      style={{ backgroundColor: src.accentColor }}
+                    />
+                    <div className="ct-source-title-wrap">
+                      <strong>{src.sourceName}</strong>
+                      <span className="ct-source-cat-tag">{src.category}</span>
+                    </div>
+                    <div className="ct-source-score-badge">
+                      <span className="ct-raw-score">{src.rawScoreDisplay}</span>
+                      <span
+                        className="ct-norm-score"
+                        style={{ color: getScoreColor(src.normalizedScore) }}
+                      >
+                        ({src.normalizedScore.toFixed(1)}%)
+                      </span>
+                    </div>
+                  </div>
+                  <div className="ct-progress-track">
+                    <div
+                      className="ct-progress-fill"
+                      style={{
+                        width: `${Math.min(100, src.normalizedScore)}%`,
+                        backgroundColor: src.accentColor,
+                      }}
+                    />
+                  </div>
+                  <div className="ct-source-card-foot">
+                    <span>{src.voteCount.toLocaleString()} verified votes</span>
+                    <span>
+                      Weight:{" "}
+                      {(
+                        ratingStore.customWeights[src.sourceId] ??
+                        src.defaultWeight
+                      ).toFixed(2)}
+                      x
                     </span>
                   </div>
                 </div>
-                <div className="ct-progress-track">
-                  <div
-                    className="ct-progress-fill"
-                    style={{
-                      width: `${Math.min(100, src.normalizedScore)}%`,
-                      backgroundColor: src.accentColor,
-                    }}
-                  />
-                </div>
-                <div className="ct-source-card-foot">
-                  <span>{src.voteCount.toLocaleString()} verified votes</span>
-                  <span>
-                    Weight:{" "}
-                    {(
-                      ratingStore.customWeights[src.sourceId] ??
-                      src.defaultWeight
-                    ).toFixed(2)}
-                    x
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Community Reviews & Submit Review Form */}
@@ -846,7 +866,12 @@ export const CompareModal: React.FC = observer(() => {
           <div className="ct-compare-grid">
             {items.map((item) => (
               <div key={item.externalId} className="ct-compare-column">
-                <div className="ct-compare-card-top">
+                <div
+                  className="ct-compare-card-top"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => ratingStore.openDetailModal(item)}
+                  title="Open full Multi-Platform API Rating Breakdown"
+                >
                   <img
                     src={sanitizeImageUrl(item.posterUrl)}
                     alt={item.title}
@@ -908,15 +933,21 @@ export const CompareModal: React.FC = observer(() => {
                 </div>
 
                 <div className="ct-compare-sources-sublist">
-                  <h4>Individual API Scores</h4>
-                  {item.cumulativeRating.sources.map((s) => (
-                    <div key={s.sourceId} className="ct-compare-source-row">
-                      <span>{s.sourceName}</span>
-                      <strong>
-                        {s.rawScoreDisplay} ({s.normalizedScore.toFixed(0)}%)
-                      </strong>
-                    </div>
-                  ))}
+                  <h4>Individual API Scores ({item.cumulativeRating.sources.length})</h4>
+                  {item.cumulativeRating.sources.length === 0 ? (
+                    <p className="ct-muted-text" style={{ fontSize: "0.82rem", margin: 0 }}>
+                      No live ratings published yet.
+                    </p>
+                  ) : (
+                    item.cumulativeRating.sources.map((s) => (
+                      <div key={s.sourceId} className="ct-compare-source-row">
+                        <span>{s.sourceName}</span>
+                        <strong>
+                          {s.rawScoreDisplay} ({s.normalizedScore.toFixed(1)}%)
+                        </strong>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             ))}

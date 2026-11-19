@@ -9,6 +9,7 @@ import {
   calculateCumulativeRating,
   encryptedBackendClient,
   ExternalRatingSource,
+  RATING_SOURCE_DEFINITIONS,
 } from "./app/api/ratingApis";
 import {
   encryptPayload,
@@ -53,14 +54,14 @@ const MOCK_BACKEND_CATALOG: AggregatedMediaItem[] = [
     overview: "A landmark graphic novel.",
     cumulativeRating: calculateCumulativeRating([
       {
-        sourceId: "comicvine",
-        sourceName: "ComicVine",
+        sourceId: "anilist",
+        sourceName: "AniList",
         category: "ComicCommunity",
-        rawScoreDisplay: "4.9/5",
+        rawScoreDisplay: "98 / 100",
         normalizedScore: 98,
         voteCount: 34000,
-        defaultWeight: 1.3,
-        accentColor: "#e62429",
+        defaultWeight: 1.2,
+        accentColor: "#02a9ff",
       },
     ]),
   },
@@ -127,13 +128,24 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
         accentColor: "#ffcc33",
       },
       {
+        sourceId: "anilist",
+        sourceName: "AniList",
+        category: "ComicCommunity",
+        rawScoreDisplay: "96 / 100",
+        normalizedScore: 96,
+        voteCount: 18000,
+        defaultWeight: 1.2,
+        accentColor: "#02a9ff",
+      },
+      // Legacy seeded-only sources must be stripped from cumulative calculation
+      {
         sourceId: "comicvine",
         sourceName: "ComicVine",
         category: "ComicCommunity",
-        rawScoreDisplay: "4.8 / 5",
-        normalizedScore: 96,
-        voteCount: 18000,
-        defaultWeight: 1.25,
+        rawScoreDisplay: "1.0 / 5",
+        normalizedScore: 20,
+        voteCount: 999999,
+        defaultWeight: 2.0,
         accentColor: "#e62429",
       },
     ];
@@ -141,6 +153,7 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
     const summary = calculateCumulativeRating(sampleSources);
 
     expect(summary.activeSourceCount).toBe(4);
+    expect(summary.sources.some((s) => s.sourceId === "comicvine")).toBe(false);
     expect(summary.totalAggregatedVotes).toBe(468375);
     expect(summary.criticConsensusScore).toBe(92);
     expect(summary.audienceConsensusScore).toBe(90);
@@ -148,6 +161,15 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
     expect(summary.finalCumulativeAverage).toBeGreaterThanOrEqual(89);
     expect(summary.finalCumulativeAverage).toBeLessThanOrEqual(95);
     expect(summary.consensusTier).toBe("Universal Acclaim");
+
+    const weightIds = RATING_SOURCE_DEFINITIONS.map((d) => d.sourceId);
+    expect(weightIds).not.toContain("comicvine");
+    expect(weightIds).not.toContain("league_of_comic_geeks");
+    expect(weightIds).not.toContain("goodreads");
+    expect(weightIds).not.toContain("comicbookroundup_critics");
+    expect(weightIds).toContain("comictraffic_community");
+    expect(weightIds).toContain("rotten_tomatoes_audience");
+    expect(weightIds).toContain("metacritic");
   });
 
   test("2. calculateCumulativeRating responds to custom user source weights", () => {
@@ -1037,5 +1059,44 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
       postSpy.mockRestore();
       clearRuntimeDerivedKeys();
     }
+  });
+
+  test("20. Reconciling live search results syncs matching catalog items so details, rows, compare, and search share the exact same rating breakdown", () => {
+    const testStore = new RatingStore();
+    const catalogAvatar = testStore.catalog.find(
+      (c) => c.externalId === "tv-avatar-last-airbender-2005"
+    );
+    expect(catalogAvatar).toBeDefined();
+
+    const liveSources: ExternalRatingSource[] = [
+      { sourceId: "tmdb", sourceName: "TMDB", category: "Audience", rawScoreDisplay: "8.8 / 10", normalizedScore: 88, voteCount: 5238, defaultWeight: 1.0, accentColor: "#01b4e4" },
+      { sourceId: "tvmaze", sourceName: "TVMaze API", category: "Audience", rawScoreDisplay: "8.8 / 10", normalizedScore: 88, voteCount: 0, defaultWeight: 0.95, accentColor: "#3c948b" },
+      { sourceId: "imdb", sourceName: "IMDb (OMDb)", category: "Audience", rawScoreDisplay: "9.3 / 10", normalizedScore: 93, voteCount: 457457, defaultWeight: 1.25, accentColor: "#f5c518" },
+      { sourceId: "trakt", sourceName: "Trakt.tv", category: "Audience", rawScoreDisplay: "91%", normalizedScore: 91, voteCount: 54000, defaultWeight: 0.95, accentColor: "#ed1c24" },
+      { sourceId: "rotten_tomatoes_critics", sourceName: "Rotten Tomatoes (Critics)", category: "Critic", rawScoreDisplay: "100%", normalizedScore: 100, voteCount: 68, defaultWeight: 1.2, accentColor: "#fa320a" },
+      { sourceId: "rotten_tomatoes_audience", sourceName: "Rotten Tomatoes (Audience)", category: "Audience", rawScoreDisplay: "98%", normalizedScore: 98, voteCount: 42500, defaultWeight: 1.1, accentColor: "#ff6b35" },
+    ];
+    const liveAvatar: AggregatedMediaItem = {
+      ...catalogAvatar!,
+      id: "tmdb-tvseries-246",
+      externalId: "tmdb-tvseries-246",
+      cumulativeRating: calculateCumulativeRating(liveSources),
+    };
+
+    testStore.openDetailModal(catalogAvatar!);
+    testStore.reconcileCatalogWithLiveItems([liveAvatar]);
+
+    const syncedCatalog = testStore.catalog.find(
+      (c) => c.externalId === "tv-avatar-last-airbender-2005"
+    )!;
+    expect(syncedCatalog.cumulativeRating.finalCumulativeAverage).toBe(
+      liveAvatar.cumulativeRating.finalCumulativeAverage
+    );
+    expect(syncedCatalog.cumulativeRating.sources.map((s) => s.sourceId)).toEqual(
+      liveAvatar.cumulativeRating.sources.map((s) => s.sourceId)
+    );
+    expect(testStore.activeSelectedItem?.cumulativeRating.finalCumulativeAverage).toBe(
+      liveAvatar.cumulativeRating.finalCumulativeAverage
+    );
   });
 });

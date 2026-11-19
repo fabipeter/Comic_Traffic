@@ -5,6 +5,8 @@ import {
   calculateCumulativeRating,
   CustomListEntry,
   encryptedBackendClient,
+  ExternalRatingSource,
+  fetchLiveMediaSnapshot,
   MediaCategoryType,
   RATING_SOURCE_DEFINITIONS,
   searchLiveMultiApisDetailed,
@@ -14,53 +16,7 @@ import {
 import { EncryptionInspectionLog } from "../security/payloadCrypto";
 import { sanitizeUserText } from "../security/inputSanitizer";
 
-const DEFAULT_REVIEWS: UserReviewItem[] = [
-  {
-    id: "rev-1",
-    userId: "11111111-1111-1111-1111-111111111111",
-    username: "comicwarden",
-    externalMediaId: "comic-watchmen-1986",
-    mediaTitle: "Watchmen #1–12 (Absolute Edition)",
-    mediaType: "ComicBook",
-    score: 98,
-    headline: "The gold standard of sequential art and nine-panel symmetry",
-    reviewText:
-      "Issue #4 (Watchmaker) and Issue #5 (Fearful Symmetry) remain unmatched in how they use the physical medium of comic books. Every rating API agrees: a structural masterpiece.",
-    containsSpoilers: false,
-    helpfulVotes: 48,
-    createdAt: "2026-11-10T14:20:00Z",
-  },
-  {
-    id: "rev-2",
-    userId: "22222222-2222-2222-2222-222222222222",
-    username: "gotham_oracle",
-    externalMediaId: "movie-spiderverse-2023",
-    mediaTitle: "Spider-Man: Across the Spider-Verse",
-    mediaType: "Movie",
-    score: 95,
-    headline: "Every frame looks like a hand-inked comic cover come to life",
-    reviewText:
-      "Gwen's watercolor Earth-65 palette reacting to her emotional state and Hobie Brown's collage punk animation push theatrical animation into uncharted territory.",
-    containsSpoilers: false,
-    helpfulVotes: 34,
-    createdAt: "2026-11-12T18:10:00Z",
-  },
-  {
-    id: "rev-3",
-    userId: "11111111-1111-1111-1111-111111111111",
-    username: "comicwarden",
-    externalMediaId: "tv-invincible-2021",
-    mediaTitle: "Invincible",
-    mediaType: "TvSeries",
-    score: 93,
-    headline: "Faithful to Kirkman's Image Comics run while sharpening the pacing",
-    reviewText:
-      "Seeing Omni-Man and Invincible's arc adapted with full dramatic weight makes this one of the highest-rated comic book television adaptations across IMDb, RT, and TVMaze.",
-    containsSpoilers: false,
-    helpfulVotes: 29,
-    createdAt: "2026-11-14T09:45:00Z",
-  },
-];
+const DEFAULT_REVIEWS: UserReviewItem[] = [];
 
 const DEFAULT_WATCHLIST: WatchlistEntry[] = [
   {
@@ -370,6 +326,60 @@ export function matchesSearchItem(
   return scoreSearchMatch(item, rawQuery) > 0;
 }
 
+const LIVE_EXTERNAL_ID_PREFIXES = [
+  "tmdb-",
+  "omdb-",
+  "tvmaze-",
+  "movie-itunes-",
+  "anilist-",
+  "comic-jikan-",
+  "comicvine-",
+  "hardcover-",
+  "googlebooks-",
+  "applebooks-",
+  "book-ol-",
+];
+
+export function isLiveExternalId(externalId: string): boolean {
+  const lower = String(externalId || "").toLowerCase();
+  return LIVE_EXTERNAL_ID_PREFIXES.some((prefix) => lower.startsWith(prefix));
+}
+
+export function cleanTitleForLiveLookup(title: string): string {
+  return String(title || "")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/#\d+(?:\s*[–-]\s*\d+)?/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function canonicalTitleKey(title: string): string {
+  const cleaned = cleanTitleForLiveLookup(title)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  if (cleaned.startsWith("the ")) return cleaned.slice(4);
+  if (cleaned.startsWith("an ")) return cleaned.slice(3);
+  if (cleaned.startsWith("a ")) return cleaned.slice(2);
+  return cleaned;
+}
+
+function itemsMatchCanonical(
+  a: AggregatedMediaItem,
+  b: AggregatedMediaItem
+): boolean {
+  if (a.mediaType !== b.mediaType) return false;
+  const ka = canonicalTitleKey(a.title);
+  const kb = canonicalTitleKey(b.title);
+  if (!ka || ka !== kb) return false;
+  if (a.mediaType === "ComicBook") return true;
+  if (!a.releaseYear || !b.releaseYear) return true;
+  return Math.abs(a.releaseYear - b.releaseYear) <= 1;
+}
+
 export default class RatingStore {
   catalog: AggregatedMediaItem[] = [...INITIAL_CUMULATIVE_CATALOG];
   isLoadingCatalog: boolean = false;
@@ -416,6 +426,9 @@ export default class RatingStore {
   liveSearchResultsByQuery: Record<string, AggregatedMediaItem[]> = {};
   liveItemsByExternalId: Record<string, AggregatedMediaItem> = {};
   lastSearchUsedFallback: boolean = false;
+  hydratingExternalId: string | null = null;
+  private liveHydratedExternalIds = new Set<string>();
+  private hydratingInFlight = new Set<string>();
 
   constructor() {
     makeAutoObservable(this);
@@ -431,19 +444,45 @@ export default class RatingStore {
       const res = await encryptedBackendClient.sendEncryptedGet<AggregatedMediaItem[]>("/media");
       if (res.fromBackend && Array.isArray(res.data) && res.data.length > 0) {
         runInAction(() => {
-          // Merge incoming backend items with rich client catalog so no curated media is lost
+          const weightsToApply = this.useCustomWeights
+            ? this.customWeights
+            : undefined;
+          const normalizeItem = (item: AggregatedMediaItem): AggregatedMediaItem => ({
+            ...item,
+            cumulativeRating: calculateCumulativeRating(
+              item.cumulativeRating.sources,
+              weightsToApply
+            ),
+          });
+          // Merge incoming backend items with client catalog while never clobbering already live-hydrated items
           const backendMap = new Map(res.data!.map((item) => [item.externalId, item]));
           const merged = this.catalog.map((clientItem) => {
+            if (this.liveHydratedExternalIds.has(clientItem.externalId)) {
+              return clientItem;
+            }
             const serverItem = backendMap.get(clientItem.externalId);
-            return serverItem ? { ...clientItem, ...serverItem } : clientItem;
+            return serverItem
+              ? normalizeItem({ ...clientItem, ...serverItem })
+              : normalizeItem(clientItem);
           });
           // Also include any items present on the server that weren't in the initial set
           for (const serverItem of res.data!) {
             if (!merged.some((m) => m.externalId === serverItem.externalId)) {
-              merged.push(serverItem);
+              merged.push(normalizeItem(serverItem));
             }
           }
           this.catalog = merged;
+          // Re-apply any already-fetched live items so catalog & search stay identical
+          const cachedLive = Object.values(this.liveItemsByExternalId);
+          if (cachedLive.length > 0) {
+            this.reconcileCatalogWithLiveItems(cachedLive);
+          }
+          if (this.selectedItem) {
+            const refreshed = this.getMediaByExternalId(this.selectedItem.externalId);
+            if (refreshed) {
+              this.selectedItem = refreshed;
+            }
+          }
           this.isLoadingCatalog = false;
         });
         return;
@@ -607,8 +646,180 @@ export default class RatingStore {
     this.sortBy = sort;
   };
 
+  get activeSelectedItem(): AggregatedMediaItem | null {
+    if (!this.selectedItem) return null;
+    return (
+      this.getMediaByExternalId(this.selectedItem.externalId) ||
+      this.selectedItem
+    );
+  }
+
+  private mergeLiveSourcesWithCommunity = (
+    existingSources: ExternalRatingSource[],
+    liveSources: ExternalRatingSource[]
+  ): ExternalRatingSource[] => {
+    const merged: ExternalRatingSource[] = liveSources.map((s) => ({ ...s }));
+    const existingCommunity = existingSources.find(
+      (s) => s.sourceId === "comictraffic_community"
+    );
+    if (
+      existingCommunity &&
+      !merged.some((s) => s.sourceId === "comictraffic_community")
+    ) {
+      merged.push({ ...existingCommunity });
+    }
+    return merged;
+  };
+
+  /**
+   * Reconciles static/catalog items with freshly fetched live API results by canonical
+   * title + mediaType + compatible release year so every section (rows, banner, explorer,
+   * details modal, compare arena, and search) displays the exact same Multi-Platform API
+   * Rating Breakdown and Final Cumulative Average.
+   */
+  reconcileCatalogWithLiveItems = (liveItems: AggregatedMediaItem[]) => {
+    if (!Array.isArray(liveItems) || liveItems.length === 0) return;
+    const weightsToApply = this.useCustomWeights ? this.customWeights : undefined;
+    let catalogChanged = false;
+
+    const nextCatalog = this.catalog.map((catItem) => {
+      const candidates = liveItems.filter((live) =>
+        itemsMatchCanonical(catItem, live)
+      );
+      if (candidates.length === 0) return catItem;
+
+      // Pick the richest live match (most verified rating sources, then highest vote count)
+      candidates.sort((a, b) => {
+        const srcDiff =
+          b.cumulativeRating.activeSourceCount -
+          a.cumulativeRating.activeSourceCount;
+        if (srcDiff !== 0) return srcDiff;
+        return (
+          b.cumulativeRating.totalAggregatedVotes -
+          a.cumulativeRating.totalAggregatedVotes
+        );
+      });
+      const bestLive = candidates[0];
+      const mergedSources = this.mergeLiveSourcesWithCommunity(
+        catItem.cumulativeRating.sources,
+        bestLive.cumulativeRating.sources
+      );
+      const recalculated = calculateCumulativeRating(
+        mergedSources,
+        weightsToApply
+      );
+      this.liveHydratedExternalIds.add(catItem.externalId);
+      catalogChanged = true;
+      return {
+        ...catItem,
+        cumulativeRating: recalculated,
+      };
+    });
+
+    if (catalogChanged) {
+      this.catalog = nextCatalog;
+      const catalogById = new Map(nextCatalog.map((c) => [c.externalId, c]));
+      this.watchlist = this.watchlist.map((w) => {
+        const synced = catalogById.get(w.externalMediaId);
+        return synced
+          ? {
+              ...w,
+              cumulativeAverage: synced.cumulativeRating.finalCumulativeAverage,
+            }
+          : w;
+      });
+      if (this.selectedItem) {
+        const updatedSelected = this.getMediaByExternalId(
+          this.selectedItem.externalId
+        );
+        if (updatedSelected) {
+          this.selectedItem = updatedSelected;
+        }
+      }
+    }
+  };
+
+  hydrateItemWithLiveRatings = async (
+    item: AggregatedMediaItem | null | undefined
+  ) => {
+    if (!item || isLiveExternalId(item.externalId)) return;
+    if (
+      this.liveHydratedExternalIds.has(item.externalId) ||
+      this.hydratingInFlight.has(item.externalId)
+    ) {
+      return;
+    }
+
+    // Fast path: reconcile synchronously if a live match is already in memory
+    const cachedLive = Object.values(this.liveItemsByExternalId);
+    if (cachedLive.some((live) => itemsMatchCanonical(item, live))) {
+      runInAction(() => {
+        this.reconcileCatalogWithLiveItems(cachedLive);
+      });
+      return;
+    }
+
+    const query = cleanTitleForLiveLookup(item.title);
+    if (query.length < 2) return;
+
+    this.hydratingInFlight.add(item.externalId);
+    runInAction(() => {
+      this.hydratingExternalId = item.externalId;
+    });
+
+    try {
+      const res = await fetchLiveMediaSnapshot(query);
+      runInAction(() => {
+        if (!res.failed && !res.fallback && res.items.length > 0) {
+          const weightsToApply = this.useCustomWeights
+            ? this.customWeights
+            : undefined;
+          const normalized = res.items.map((live) => ({
+            ...live,
+            cumulativeRating: calculateCumulativeRating(
+              live.cumulativeRating.sources,
+              weightsToApply
+            ),
+          }));
+          const nextById = { ...this.liveItemsByExternalId };
+          for (const live of normalized) {
+            nextById[live.externalId] = live;
+          }
+          this.liveItemsByExternalId = nextById;
+          this.reconcileCatalogWithLiveItems(normalized);
+          this.liveHydratedExternalIds.add(item.externalId);
+        }
+      });
+    } finally {
+      this.hydratingInFlight.delete(item.externalId);
+      runInAction(() => {
+        if (this.hydratingExternalId === item.externalId) {
+          this.hydratingExternalId = null;
+        }
+      });
+    }
+  };
+
+  private triggerAutoHydrate = (item: AggregatedMediaItem | null | undefined) => {
+    if (!item || isLiveExternalId(item.externalId)) return;
+    // Always perform synchronous reconciliation from in-memory live results first
+    const cachedLive = Object.values(this.liveItemsByExternalId);
+    if (cachedLive.some((live) => itemsMatchCanonical(item, live))) {
+      this.reconcileCatalogWithLiveItems(cachedLive);
+      return;
+    }
+    const isTestEnv =
+      typeof import.meta !== "undefined" &&
+      (import.meta as any).env?.MODE === "test";
+    if (!isTestEnv) {
+      void this.hydrateItemWithLiveRatings(item);
+    }
+  };
+
   openDetailModal = (item: AggregatedMediaItem) => {
-    this.selectedItem = item;
+    const resolved = this.getMediaByExternalId(item.externalId) || item;
+    this.selectedItem = resolved;
+    this.triggerAutoHydrate(resolved);
   };
 
   closeDetailModal = () => {
@@ -617,6 +828,11 @@ export default class RatingStore {
 
   setCompareModalOpen = (open: boolean) => {
     this.compareModalOpen = open;
+    if (open) {
+      for (const item of this.comparisonItems) {
+        this.triggerAutoHydrate(item);
+      }
+    }
   };
 
   setWeightsModalOpen = (open: boolean) => {
@@ -747,15 +963,24 @@ export default class RatingStore {
           const weightsToApply = this.useCustomWeights
             ? this.customWeights
             : undefined;
-          const items = weightsToApply
-            ? result.items.map((item) => ({
-                ...item,
-                cumulativeRating: calculateCumulativeRating(
-                  item.cumulativeRating.sources,
-                  weightsToApply
-                ),
-              }))
-            : result.items;
+          const items = result.items.map((item) => {
+            const matchedCatalog = this.catalog.find((c) =>
+              itemsMatchCanonical(c, item)
+            );
+            const sources = matchedCatalog
+              ? this.mergeLiveSourcesWithCommunity(
+                  matchedCatalog.cumulativeRating.sources,
+                  item.cumulativeRating.sources
+                )
+              : item.cumulativeRating.sources;
+            return {
+              ...item,
+              cumulativeRating: calculateCumulativeRating(
+                sources,
+                weightsToApply
+              ),
+            };
+          });
           this.liveSearchedTerms.add(cacheKey);
           this.liveSearchResultsByQuery = {
             ...this.liveSearchResultsByQuery,
@@ -767,6 +992,9 @@ export default class RatingStore {
           }
           this.liveItemsByExternalId = nextById;
           this.lastSearchUsedFallback = result.fallback;
+          if (!result.fallback) {
+            this.reconcileCatalogWithLiveItems(items);
+          }
         }
         if (requestSeq === this.liveSearchSeq) {
           this.isSearchingLiveApis = false;
@@ -977,6 +1205,9 @@ export default class RatingStore {
     }
     nextSlots[slotIndex] = externalId;
     this.comparisonSlots = nextSlots;
+    if (externalId) {
+      this.triggerAutoHydrate(this.getMediaByExternalId(externalId));
+    }
   };
 
   toggleComparisonItem = (externalId: string) => {
@@ -1001,6 +1232,7 @@ export default class RatingStore {
         externalId,
       ];
     }
+    this.triggerAutoHydrate(this.getMediaByExternalId(externalId));
   };
 
   reviewsForMedia = (externalMediaId: string): UserReviewItem[] => {
@@ -1080,35 +1312,61 @@ export default class RatingStore {
         const weightsToApply = this.useCustomWeights
           ? this.customWeights
           : undefined;
-        const recalculated = calculateCumulativeRating(
-          updatedSources,
-          weightsToApply
-        );
-        const updatedItem: AggregatedMediaItem = {
-          ...target,
-          cumulativeRating: recalculated,
-        };
-        const targetIndex = this.catalog.findIndex(
-          (c) => c.externalId === payload.externalMediaId
-        );
-        if (targetIndex >= 0) {
-          this.catalog[targetIndex] = updatedItem;
-        }
-        if (this.liveItemsByExternalId[updatedItem.externalId]) {
-          this.liveItemsByExternalId = {
-            ...this.liveItemsByExternalId,
-            [updatedItem.externalId]: updatedItem,
+        const applyReviewToItem = (
+          candidate: AggregatedMediaItem
+        ): AggregatedMediaItem => {
+          const candidateCommunity = updatedSources.find(
+            (s) => s.sourceId === "comictraffic_community"
+          );
+          const nextSources = candidateCommunity
+            ? [
+                ...candidate.cumulativeRating.sources.filter(
+                  (s) => s.sourceId !== "comictraffic_community"
+                ),
+                { ...candidateCommunity },
+              ]
+            : candidate.cumulativeRating.sources;
+          return {
+            ...candidate,
+            cumulativeRating: calculateCumulativeRating(
+              nextSources,
+              weightsToApply
+            ),
           };
-          const nextByQuery: Record<string, AggregatedMediaItem[]> = {};
-          for (const [k, list] of Object.entries(this.liveSearchResultsByQuery)) {
-            nextByQuery[k] = list.map((it) =>
-              it.externalId === updatedItem.externalId ? updatedItem : it
-            );
-          }
-          this.liveSearchResultsByQuery = nextByQuery;
+        };
+
+        this.catalog = this.catalog.map((c) =>
+          c.externalId === target.externalId || itemsMatchCanonical(c, target)
+            ? applyReviewToItem(c)
+            : c
+        );
+
+        const nextLiveById: Record<string, AggregatedMediaItem> = {};
+        for (const [id, liveItem] of Object.entries(this.liveItemsByExternalId)) {
+          nextLiveById[id] =
+            id === target.externalId || itemsMatchCanonical(liveItem, target)
+              ? applyReviewToItem(liveItem)
+              : liveItem;
         }
-        if (this.selectedItem?.externalId === updatedItem.externalId) {
-          this.selectedItem = updatedItem;
+        this.liveItemsByExternalId = nextLiveById;
+
+        const nextByQuery: Record<string, AggregatedMediaItem[]> = {};
+        for (const [k, list] of Object.entries(this.liveSearchResultsByQuery)) {
+          nextByQuery[k] = list.map((it) =>
+            it.externalId === target.externalId || itemsMatchCanonical(it, target)
+              ? applyReviewToItem(it)
+              : it
+          );
+        }
+        this.liveSearchResultsByQuery = nextByQuery;
+
+        if (this.selectedItem) {
+          const updatedSel = this.getMediaByExternalId(
+            this.selectedItem.externalId
+          );
+          if (updatedSel) {
+            this.selectedItem = updatedSel;
+          }
         }
       }
 

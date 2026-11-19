@@ -158,7 +158,7 @@ describe("executeLiveSearch", () => {
           ],
         ],
         [
-          "api.mdblist.com/tmdb/show?apikey=mdb",
+          "api.mdblist.com/tmdb/show/?apikey=mdb",
           [
             {
               title: "Avatar: The Last Airbender",

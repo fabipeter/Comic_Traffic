@@ -59,12 +59,15 @@ public class ComicTrafficBackendTests
             new() { SourceId = "rotten_tomatoes_critics", SourceName = "RT Critics", Category = "Critic", NormalizedScore = 96.0, VoteCount = 350, DefaultWeight = 1.2 },
             new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", NormalizedScore = 88.0, VoteCount = 60, DefaultWeight = 1.15 },
             new() { SourceId = "tmdb", SourceName = "TMDB", Category = "Audience", NormalizedScore = 86.0, VoteCount = 15000, DefaultWeight = 1.0 },
-            new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", NormalizedScore = 95.0, VoteCount = 12000, DefaultWeight = 1.25 }
+            new() { SourceId = "anilist", SourceName = "AniList", Category = "ComicCommunity", NormalizedScore = 95.0, VoteCount = 12000, DefaultWeight = 1.2 },
+            // Legacy seeded-only sources must be stripped from cumulative calculation
+            new() { SourceId = "comicvine", SourceName = "ComicVine", Category = "ComicCommunity", NormalizedScore = 10.0, VoteCount = 999999, DefaultWeight = 2.0 }
         };
 
         var result = calculator.CalculateCumulativeRating(sources);
 
         Assert.Equal(5, result.ActiveSourceCount);
+        Assert.DoesNotContain(result.Sources, s => s.SourceId == "comicvine");
         Assert.Equal(527410, result.TotalAggregatedVotes);
         Assert.Equal(92.0, result.CriticConsensusScore);
         Assert.Equal(88.0, result.AudienceConsensusScore);
@@ -363,13 +366,15 @@ public class ComicTrafficBackendTests
 
         await DatabaseSeeder.SeedAsync(db, calculator, jwtService);
 
-        // 1. Query Comic Books
+        // 1. Query Comic Books (no seeded-only sources or pre-seeded comictraffic_community)
         var catalogHandler = new GetMediaCatalogQueryHandler(db, calculator);
         var comics = await catalogHandler.Handle(new GetMediaCatalogQuery(MediaType: "ComicBook"), CancellationToken.None);
 
         Assert.NotEmpty(comics);
         Assert.All(comics, c => Assert.Equal("ComicBook", c.MediaType));
-        Assert.All(comics, c => Assert.True(c.CumulativeRating.FinalCumulativeAverage > 80));
+        Assert.All(comics, c => Assert.DoesNotContain(c.CumulativeRating.Sources, s =>
+            CumulativeRatingCalculator.RemovedSeededSourceIds.Contains(s.SourceId) ||
+            s.SourceId == "comictraffic_community"));
 
         // 2. Compare Watchmen vs. The Dark Knight
         var compareHandler = new CompareMediaItemsQueryHandler(db, calculator);
@@ -636,7 +641,7 @@ public class ComicTrafficBackendTests
         {
             ("themoviedb.org", """{"results":[{"id":246,"media_type":"tv","name":"Avatar: The Last Airbender","first_air_date":"2005-02-21","vote_average":8.7,"vote_count":4200,"genre_ids":[16,10759],"poster_path":"/atla.jpg"}]}"""),
             ("api.tvmaze.com/search/shows", """[{"show":{"id":555,"name":"Avatar: The Last Airbender","premiered":"2005-02-21","externals":{"imdb":"tt0417299"},"rating":{"average":8.9},"genres":["Animation"]}}]"""),
-            ("api.mdblist.com/tmdb/show?apikey=mdb", """[{"title":"Avatar: The Last Airbender","year":2005,"ids":{"tmdb":246,"imdb":"tt0417299"},"certification":"TV-Y7-FV","ratings":[{"source":"imdb","value":9.3,"score":93,"votes":390000},{"source":"tomatoes","value":100,"score":100,"votes":68},{"source":"popcorn","value":98,"score":98,"votes":42500},{"source":"metacritic","value":90,"score":90,"votes":28},{"source":"trakt","value":92,"score":92,"votes":54000}]}]""")
+            ("api.mdblist.com/tmdb/show/?apikey=mdb", """[{"title":"Avatar: The Last Airbender","year":2005,"ids":{"tmdb":246,"imdb":"tt0417299"},"certification":"TV-Y7-FV","ratings":[{"source":"imdb","value":9.3,"score":93,"votes":390000},{"source":"tomatoes","value":100,"score":100,"votes":68},{"source":"popcorn","value":98,"score":98,"votes":42500},{"source":"metacritic","value":90,"score":90,"votes":28},{"source":"trakt","value":92,"score":92,"votes":54000}]}]""")
         });
         using var http = new HttpClient(handler);
         var keys = new Dictionary<string, string?> { ["TMDB_API_KEY"] = "k", ["MDBLIST_API_KEY"] = "mdb" };

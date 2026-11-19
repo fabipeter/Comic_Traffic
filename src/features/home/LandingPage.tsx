@@ -800,8 +800,9 @@ const LandingPage = () => {
               COMIC<span>TRAFFIC</span>
             </strong>
             <p>
-              Unified Multi-API Rating Consensus • Powered by 12 Live Rating
-              Indices across Comic Books, Movies, and TV Series.
+              Unified Multi-API Rating Consensus • Powered by{" "}
+              {RATING_SOURCE_DEFINITIONS.length} Live Rating Sources &amp;
+              Community Indices across Comic Books, Movies, and TV Series.
             </p>
           </div>
           <div className="adx-footer-links">

@@ -237,7 +237,7 @@ builder.Services.AddSingleton(sp =>
         PooledConnectionLifetime = TimeSpan.FromMinutes(2)
     })
     {
-        Timeout = TimeSpan.FromSeconds(10)
+        Timeout = TimeSpan.FromSeconds(15)
     };
     string? ResolveKey(string envName)
     {
@@ -341,6 +341,7 @@ using (var scope = app.Services.CreateScope())
         }
 
         await DatabaseSeeder.SeedAsync(db, calculator, jwtService);
+        await DatabaseSeeder.SanitizeSeededSourcesAsync(db, calculator);
     }
     catch (Exception ex)
     {

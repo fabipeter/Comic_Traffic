@@ -195,7 +195,8 @@ const IndexProfilePage: React.FC = () => {
             <div className="ct-dash-panel">
               <h3>📈 Cumulative Score Comparison by Media Type</h3>
               <p className="ct-muted-text">
-                Aggregated average across all 12 rating APIs for Comic Books, Movies, and TV Series.
+                Aggregated average across all {RATING_SOURCE_DEFINITIONS.length}{" "}
+                live rating sources for Comic Books, Movies, and TV Series.
               </p>
 
               {(["ComicBook", "Movie", "TvSeries"] as const).map((type) => {

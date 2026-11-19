@@ -251,10 +251,10 @@ public sealed class LiveMediaSearchService
         ProviderEndpoint.TmdbNetflixOriginals => ("https://api.themoviedb.org/3/discover/tv", "api.themoviedb.org", "/3/discover/tv"),
         ProviderEndpoint.TmdbTrending => ("https://api.themoviedb.org/3/trending/all/week", "api.themoviedb.org", "/3/trending/all/week"),
         ProviderEndpoint.Omdb => ("https://www.omdbapi.com/", "www.omdbapi.com", "/"),
-        ProviderEndpoint.MdbListTmdbMovie => ("https://api.mdblist.com/tmdb/movie", "api.mdblist.com", "/tmdb/movie"),
-        ProviderEndpoint.MdbListTmdbShow => ("https://api.mdblist.com/tmdb/show", "api.mdblist.com", "/tmdb/show"),
-        ProviderEndpoint.MdbListImdbMovie => ("https://api.mdblist.com/imdb/movie", "api.mdblist.com", "/imdb/movie"),
-        ProviderEndpoint.MdbListImdbShow => ("https://api.mdblist.com/imdb/show", "api.mdblist.com", "/imdb/show"),
+        ProviderEndpoint.MdbListTmdbMovie => ("https://api.mdblist.com/tmdb/movie/", "api.mdblist.com", "/tmdb/movie/"),
+        ProviderEndpoint.MdbListTmdbShow => ("https://api.mdblist.com/tmdb/show/", "api.mdblist.com", "/tmdb/show/"),
+        ProviderEndpoint.MdbListImdbMovie => ("https://api.mdblist.com/imdb/movie/", "api.mdblist.com", "/imdb/movie/"),
+        ProviderEndpoint.MdbListImdbShow => ("https://api.mdblist.com/imdb/show/", "api.mdblist.com", "/imdb/show/"),
         ProviderEndpoint.TvMazeSearch => ("https://api.tvmaze.com/search/shows", "api.tvmaze.com", "/search/shows"),
         ProviderEndpoint.ItunesSearch => ("https://itunes.apple.com/search", "itunes.apple.com", "/search"),
         ProviderEndpoint.AniListGraphQl => ("https://graphql.anilist.co/", "graphql.anilist.co", "/"),
@@ -666,9 +666,9 @@ public sealed class LiveMediaSearchService
     /// Batch-enriches top Movie/TV matches via MDBList (IMDb, RT Critics, RT Audience / Popcornmeter,
     /// Metacritic, Trakt, Letterboxd, TMDB) using at most 1 POST per (provider, mediaType) bucket.
     /// </summary>
-    private async Task<int> EnrichWithMdbListAsync(List<LiveItem> candidates, string mdbListApiKey, CancellationToken ct)
+    private async Task<(int Count, string? Error)> EnrichWithMdbListAsync(List<LiveItem> candidates, string mdbListApiKey, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(mdbListApiKey) || candidates.Count == 0) return 0;
+        if (string.IsNullOrWhiteSpace(mdbListApiKey) || candidates.Count == 0) return (0, null);
 
         var tmdbMovieMap = new Dictionary<string, LiveItem>(StringComparer.Ordinal);
         var tmdbShowMap = new Dictionary<string, LiveItem>(StringComparer.Ordinal);
@@ -692,9 +692,9 @@ public sealed class LiveMediaSearchService
             }
         }
 
-        async Task<int> PostBatchAsync(ProviderEndpoint endpoint, object idsPayload, bool matchByTmdb, Dictionary<string, LiveItem> map)
+        async Task<(int Count, string? Error)> PostBatchAsync(ProviderEndpoint endpoint, object idsPayload, bool matchByTmdb, Dictionary<string, LiveItem> map)
         {
-            if (map.Count == 0) return 0;
+            if (map.Count == 0) return (0, null);
             try
             {
                 var queryParams = new KeyValuePair<string, string?>[]
@@ -708,7 +708,7 @@ public sealed class LiveMediaSearchService
                     queryParams: queryParams,
                     method: HttpMethod.Post,
                     jsonBody: body,
-                    timeout: TimeSpan.FromSeconds(4.5));
+                    timeout: TimeSpan.FromSeconds(8.5));
 
                 IEnumerable<JsonElement> entries = doc.RootElement.ValueKind switch
                 {
@@ -735,21 +735,29 @@ public sealed class LiveMediaSearchService
                         enriched++;
                     }
                 }
-                return enriched;
+                return (enriched, null);
             }
-            catch
+            catch (Exception ex)
             {
-                return 0;
+                string err = ex switch
+                {
+                    OperationCanceledException => "timeout",
+                    HttpRequestException { StatusCode: { } statusCode } => $"HTTP {(int)statusCode}",
+                    _ => "provider_error"
+                };
+                return (0, err);
             }
         }
 
-        int[] counts = await Task.WhenAll(
+        var results = await Task.WhenAll(
             PostBatchAsync(ProviderEndpoint.MdbListTmdbMovie, tmdbMovieMap.Keys.Select(int.Parse).ToArray(), true, tmdbMovieMap),
             PostBatchAsync(ProviderEndpoint.MdbListTmdbShow, tmdbShowMap.Keys.Select(int.Parse).ToArray(), true, tmdbShowMap),
             PostBatchAsync(ProviderEndpoint.MdbListImdbMovie, imdbMovieMap.Keys.ToArray(), false, imdbMovieMap),
             PostBatchAsync(ProviderEndpoint.MdbListImdbShow, imdbShowMap.Keys.ToArray(), false, imdbShowMap)
         );
-        return counts.Sum();
+        int total = results.Sum(r => r.Count);
+        string? firstError = results.Select(r => r.Error).FirstOrDefault(e => e != null);
+        return (total, total > 0 ? null : firstError);
     }
 
     private async Task<List<LiveItem>> SearchTvMazeAsync(string q, CancellationToken ct)
@@ -1334,11 +1342,11 @@ query ($search: String) {
         {
             var mdbCandidates = merged
                 .Where(i => (i.MediaType == "Movie" || i.MediaType == "TvSeries") && (i.TmdbId is > 0 || !string.IsNullOrEmpty(i.ImdbId)))
-                .Take(15).ToList();
+                .Take(10).ToList();
             try
             {
-                int enriched = await EnrichWithMdbListAsync(mdbCandidates, mdbList, ct);
-                diagnostics["mdblist"] = new ProviderDiagnostic(true, enriched, null);
+                var (enriched, mdbError) = await EnrichWithMdbListAsync(mdbCandidates, mdbList, ct);
+                diagnostics["mdblist"] = new ProviderDiagnostic(true, enriched, mdbError);
             }
             catch
             {
@@ -1369,7 +1377,9 @@ query ($search: String) {
 
         var dtos = merged.Take(MaxResults).Select(ToDto).ToList();
         var result = new SearchResult(dtos, diagnostics);
-        if (dtos.Count > 0)
+        bool mdbDegraded = diagnostics.TryGetValue("mdblist", out var mdbDiag) &&
+            mdbDiag.Configured && !string.IsNullOrEmpty(mdbDiag.Error);
+        if (dtos.Count > 0 && !mdbDegraded)
         {
             if (_cache.Count >= 200) _cache.Clear();
             _cache[cacheKey] = (DateTime.UtcNow, result);

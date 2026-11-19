@@ -177,38 +177,6 @@ export const RATING_SOURCE_DEFINITIONS: {
     badge: "Letterboxd",
   },
   {
-    sourceId: "comicvine",
-    name: "ComicVine API",
-    category: "ComicCommunity",
-    defaultWeight: 1.3,
-    color: "#e62429",
-    badge: "ComicVine",
-  },
-  {
-    sourceId: "league_of_comic_geeks",
-    name: "League of Comic Geeks",
-    category: "ComicCommunity",
-    defaultWeight: 1.25,
-    color: "#00d1b2",
-    badge: "LOCG",
-  },
-  {
-    sourceId: "goodreads",
-    name: "Goodreads Graphic Novels",
-    category: "Audience",
-    defaultWeight: 1.15,
-    color: "#a16207",
-    badge: "Goodreads",
-  },
-  {
-    sourceId: "comicbookroundup_critics",
-    name: "ComicBookRoundup Critics",
-    category: "Critic",
-    defaultWeight: 1.2,
-    color: "#3b82f6",
-    badge: "CBR Critics",
-  },
-  {
     sourceId: "anilist",
     name: "AniList",
     category: "ComicCommunity",
@@ -281,6 +249,15 @@ export function formatCumulativeScore(
 const GLOBAL_BAYESIAN_PRIOR = 74.0;
 const BAYESIAN_MIN_VOTES = 2500.0;
 
+export const REMOVED_SEEDED_SOURCE_IDS = new Set([
+  "comicvine",
+  "league_of_comic_geeks",
+  "goodreads",
+  "comicbookroundup_critics",
+  "comicbookroundup_users",
+  "marvel_dc_index",
+]);
+
 /**
  * Pure Cumulative Rating Engine used for real-time weight slider tuning & score recalculation.
  */
@@ -289,7 +266,10 @@ export function calculateCumulativeRating(
   customWeights?: Record<string, number>
 ): CumulativeRatingSummary {
   const active = (sources || []).filter(
-    (s) => s.normalizedScore >= 0 && s.normalizedScore <= 100
+    (s) =>
+      s.normalizedScore >= 0 &&
+      s.normalizedScore <= 100 &&
+      !REMOVED_SEEDED_SOURCE_IDS.has(String(s.sourceId || "").toLowerCase())
   );
 
   if (active.length === 0) {
@@ -344,7 +324,7 @@ export function calculateCumulativeRating(
     customWeights && Object.keys(customWeights).length > 0;
   const rawFinal = hasCustomOverride
     ? weightedAverage
-    : weightedAverage * 0.68 + bayesianScore * 0.32;
+    : weightedAverage * 0.65 + bayesianScore * 0.35;
 
   const finalCumulativeAverage =
     Math.round(Math.max(0, Math.min(100, rawFinal)) * 10) / 10;
@@ -929,7 +909,7 @@ export async function searchLiveMultiApisDetailed(
       { query: cleanQuery },
       undefined,
       false,
-      15000,
+      18000,
       signal
     );
     if (res.aborted) {
@@ -954,6 +934,36 @@ export async function searchLiveMultiApisDetailed(
     ) {
       return { items: [], aborted: true, failed: false, fallback: false };
     }
+    return { items: [], aborted: false, failed: true, fallback: true };
+  }
+}
+
+/**
+ * Non-aborting live lookup used to hydrate catalog items (e.g. when opening details
+ * or Compare Arena) without cancelling an active search bar query.
+ */
+export async function fetchLiveMediaSnapshot(
+  query: string
+): Promise<LiveSearchDetailedResult> {
+  if (!query || query.trim().length < 2) {
+    return { items: [], aborted: false, failed: false, fallback: false };
+  }
+  try {
+    const res = await encryptedBackendClient.sendEncryptedPost<
+      { query: string },
+      AggregatedMediaItem[]
+    >("/media/search-live", { query: query.trim() }, undefined, false, 18000);
+    if (!res.fromBackend) {
+      return { items: [], aborted: false, failed: true, fallback: true };
+    }
+    return {
+      items: Array.isArray(res.data) ? res.data : [],
+      aborted: false,
+      failed: false,
+      fallback: Boolean(res.fallback),
+      providers: res.providers,
+    };
+  } catch {
     return { items: [], aborted: false, failed: true, fallback: true };
   }
 }

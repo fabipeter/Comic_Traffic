@@ -338,6 +338,16 @@ using (var scope = app.Services.CreateScope())
             {
                 logger.LogWarning(ex, "Could not alter users table for PasswordReset columns.");
             }
+
+            try
+            {
+                await db.Database.ExecuteSqlAsync($"ALTER TABLE user_reviews ADD COLUMN IF NOT EXISTS \"UserAvatarUrl\" TEXT NOT NULL DEFAULT '';");
+                logger.LogInformation("PostgreSQL user_reviews table schema synchronized with UserAvatarUrl column.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Could not alter user_reviews table for UserAvatarUrl column.");
+            }
         }
 
         await DatabaseSeeder.SeedAsync(db, calculator, jwtService);

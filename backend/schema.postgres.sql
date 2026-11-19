@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS user_reviews (
     "Id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     "UserId" UUID NOT NULL REFERENCES users("Id") ON DELETE CASCADE,
     "Username" VARCHAR(60) NOT NULL,
+    "UserAvatarUrl" TEXT NOT NULL DEFAULT '',
     "ExternalMediaId" VARCHAR(128) NOT NULL,
     "MediaTitle" VARCHAR(240) NOT NULL,
     "MediaType" INTEGER NOT NULL,

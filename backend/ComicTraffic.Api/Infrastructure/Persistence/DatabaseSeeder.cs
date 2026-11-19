@@ -789,9 +789,18 @@ public static class DatabaseSeeder
             PropertyNameCaseInsensitive = true
         };
 
-        var reviewsByMedia = (await db.Reviews.AsNoTracking().ToListAsync())
-            .GroupBy(r => r.ExternalMediaId, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, List<UserReview>> reviewsByMedia;
+        try
+        {
+            reviewsByMedia = (await db.Reviews.AsNoTracking().ToListAsync())
+                .GroupBy(r => r.ExternalMediaId, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DatabaseSeeder] Notice: unable to pre-load reviews for synchronization: {ex.Message}");
+            reviewsByMedia = new Dictionary<string, List<UserReview>>(StringComparer.OrdinalIgnoreCase);
+        }
 
         var mediaItems = await db.MediaItems.ToListAsync();
         bool changed = false;

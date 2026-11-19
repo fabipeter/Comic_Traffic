@@ -716,4 +716,30 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
       postSpy.mockRestore();
     }
   });
+
+  test("16. Live Search UX: shows loading stasis while searching, preserves trailing space, and keeps curated rows visible", () => {
+    store.ratingStore.catalog = [...MOCK_BACKEND_CATALOG];
+    store.ratingStore.setSearchQuery("nonexistent title ");
+
+    // Trailing space is preserved while typing
+    expect(store.ratingStore.searchQuery).toBe("nonexistent title ");
+    expect(store.ratingStore.isSearchInProgress).toBe(true);
+
+    const { unmount } = render(
+      <MemoryRouter>
+        <LandingPage />
+      </MemoryRouter>
+    );
+
+    // Loading stasis is displayed instead of "No matching titles found"
+    expect(screen.getByRole("status", { name: /Searching live APIs/i })).toBeInTheDocument();
+    expect(screen.queryByText(/No matching titles found for/i)).not.toBeInTheDocument();
+
+    // Curated rows beneath search results remain visible
+    expect(screen.getByText(/All-Time Top Rated Cinema & Blockbusters/i)).toBeInTheDocument();
+    expect(screen.getByText(/Acclaimed Comic Books & Graphic Novels/i)).toBeInTheDocument();
+
+    unmount();
+    store.ratingStore.setSearchQuery("");
+  });
 });

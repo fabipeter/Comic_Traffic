@@ -7,7 +7,7 @@ import {
   encryptedBackendClient,
   MediaCategoryType,
   RATING_SOURCE_DEFINITIONS,
-  searchLiveMultiApis,
+  searchLiveMultiApisDetailed,
   UserReviewItem,
   WatchlistEntry,
 } from "../api/ratingApis";
@@ -412,6 +412,10 @@ export default class RatingStore {
   customLists: CustomListEntry[] = [...DEFAULT_LISTS];
   encryptionLogs: EncryptionInspectionLog[] = [];
   isSearchingLiveApis: boolean = false;
+  isSearchPending: boolean = false;
+  liveSearchResultsByQuery: Record<string, AggregatedMediaItem[]> = {};
+  liveItemsByExternalId: Record<string, AggregatedMediaItem> = {};
+  lastSearchUsedFallback: boolean = false;
 
   constructor() {
     makeAutoObservable(this);
@@ -560,17 +564,29 @@ export default class RatingStore {
     this.searchQuery = cleanQuery;
     if (this.searchDebounceTimer) {
       clearTimeout(this.searchDebounceTimer);
+      this.searchDebounceTimer = null;
     }
     const trimmed = cleanQuery.trim();
     if (trimmed.length > 0 && wasEmpty && this.selectedCategory !== "All") {
       this.selectedCategory = "All";
     }
     if (trimmed.length >= 2) {
-      this.searchDebounceTimer = setTimeout(() => {
-        // Do NOT sync back into searchQuery: the trimmed value would erase a trailing
-        // space the user just typed (the cause of the "weird" space-bar behaviour).
-        this.executeLiveMultiApiSearch(trimmed, false);
-      }, 350);
+      const cacheKey = trimmed.toLowerCase();
+      if (!this.liveSearchedTerms.has(cacheKey)) {
+        this.isSearchPending = true;
+        this.searchDebounceTimer = setTimeout(() => {
+          this.searchDebounceTimer = null;
+          // Do NOT sync back into searchQuery: the trimmed value would erase a trailing
+          // space the user just typed (the cause of the "weird" space-bar behaviour).
+          this.executeLiveMultiApiSearch(trimmed, false);
+        }, 350);
+      } else {
+        this.isSearchPending = false;
+      }
+    } else {
+      this.liveSearchSeq++;
+      this.isSearchPending = false;
+      this.isSearchingLiveApis = false;
     }
   };
 
@@ -624,17 +640,26 @@ export default class RatingStore {
 
   recalculateAllCatalogRatings = () => {
     const weightsToApply = this.useCustomWeights ? this.customWeights : undefined;
-    this.catalog = this.catalog.map((item) => ({
+    const recalc = (item: AggregatedMediaItem): AggregatedMediaItem => ({
       ...item,
       cumulativeRating: calculateCumulativeRating(
         item.cumulativeRating.sources,
         weightsToApply
       ),
-    }));
+    });
+    this.catalog = this.catalog.map(recalc);
+    const nextLiveById: Record<string, AggregatedMediaItem> = {};
+    for (const [id, item] of Object.entries(this.liveItemsByExternalId)) {
+      nextLiveById[id] = recalc(item);
+    }
+    this.liveItemsByExternalId = nextLiveById;
+    const nextLiveByQuery: Record<string, AggregatedMediaItem[]> = {};
+    for (const [qKey, list] of Object.entries(this.liveSearchResultsByQuery)) {
+      nextLiveByQuery[qKey] = list.map(recalc);
+    }
+    this.liveSearchResultsByQuery = nextLiveByQuery;
     if (this.selectedItem) {
-      const updated = this.catalog.find(
-        (c) => c.externalId === this.selectedItem!.externalId
-      );
+      const updated = this.getMediaByExternalId(this.selectedItem.externalId);
       if (updated) {
         this.selectedItem = updated;
       }
@@ -651,6 +676,30 @@ export default class RatingStore {
     });
   };
 
+  get isSearchInProgress(): boolean {
+    return this.isSearchingLiveApis || this.isSearchPending;
+  }
+
+  get activeLiveResults(): AggregatedMediaItem[] | null {
+    const key = this.searchQuery.trim().toLowerCase();
+    if (key.length < 2) return null;
+    return Object.prototype.hasOwnProperty.call(this.liveSearchResultsByQuery, key)
+      ? this.liveSearchResultsByQuery[key]
+      : null;
+  }
+
+  get activeSearchMatches(): AggregatedMediaItem[] {
+    const activeQuery = this.searchQuery.trim();
+    if (!activeQuery) {
+      return [...this.catalog];
+    }
+    const live = this.activeLiveResults;
+    if (live !== null) {
+      return [...live];
+    }
+    return this.catalog.filter((item) => scoreSearchMatch(item, activeQuery) > 0);
+  }
+
   executeLiveMultiApiSearch = async (
     queryText?: string,
     syncToSearchQuery: boolean = true,
@@ -660,46 +709,69 @@ export default class RatingStore {
     if (syncToSearchQuery && queryText !== undefined && q !== this.searchQuery) {
       this.searchQuery = q;
     }
-    if (q.length < 2) return;
+    if (q.length < 2) {
+      runInAction(() => {
+        this.isSearchPending = false;
+        this.isSearchingLiveApis = false;
+      });
+      return;
+    }
 
     const cacheKey = q.toLowerCase();
     if (!forceRefresh && this.liveSearchedTerms.has(cacheKey)) {
+      runInAction(() => {
+        this.isSearchPending = false;
+        this.isSearchingLiveApis = false;
+      });
       return;
     }
 
     const requestSeq = ++this.liveSearchSeq;
-    this.isSearchingLiveApis = true;
+    runInAction(() => {
+      this.isSearchPending = false;
+      this.isSearchingLiveApis = true;
+    });
     try {
-      const discovered = await searchLiveMultiApis(q);
+      const result = await searchLiveMultiApisDetailed(q);
+      if (result.aborted) {
+        return;
+      }
       runInAction(() => {
-        if (discovered.length > 0) {
+        if (!result.failed) {
+          const weightsToApply = this.useCustomWeights
+            ? this.customWeights
+            : undefined;
+          const items = weightsToApply
+            ? result.items.map((item) => ({
+                ...item,
+                cumulativeRating: calculateCumulativeRating(
+                  item.cumulativeRating.sources,
+                  weightsToApply
+                ),
+              }))
+            : result.items;
           this.liveSearchedTerms.add(cacheKey);
-        }
-        const existingKeys = new Set<string>();
-        for (const c of this.catalog) {
-          existingKeys.add(c.externalId);
-          existingKeys.add(`${c.title.toLowerCase()}::${c.mediaType}`);
-        }
-        const fresh: AggregatedMediaItem[] = [];
-        for (const item of discovered) {
-          const titleKey = `${item.title.toLowerCase()}::${item.mediaType}`;
-          if (!existingKeys.has(item.externalId) && !existingKeys.has(titleKey)) {
-            existingKeys.add(item.externalId);
-            existingKeys.add(titleKey);
-            fresh.push(item);
+          this.liveSearchResultsByQuery = {
+            ...this.liveSearchResultsByQuery,
+            [cacheKey]: items,
+          };
+          const nextById = { ...this.liveItemsByExternalId };
+          for (const item of items) {
+            nextById[item.externalId] = item;
           }
-        }
-        if (fresh.length > 0) {
-          this.catalog = [...fresh, ...this.catalog];
+          this.liveItemsByExternalId = nextById;
+          this.lastSearchUsedFallback = result.fallback;
         }
         if (requestSeq === this.liveSearchSeq) {
           this.isSearchingLiveApis = false;
+          this.isSearchPending = false;
         }
       });
     } catch {
       runInAction(() => {
         if (requestSeq === this.liveSearchSeq) {
           this.isSearchingLiveApis = false;
+          this.isSearchPending = false;
         }
       });
     }
@@ -710,7 +782,30 @@ export default class RatingStore {
     if (!clean) {
       return this.catalog.slice(0, limit);
     }
-    const scored = this.catalog
+    const key = clean.toLowerCase();
+    if (
+      Object.prototype.hasOwnProperty.call(this.liveSearchResultsByQuery, key) &&
+      this.liveSearchResultsByQuery[key].length > 0
+    ) {
+      return this.liveSearchResultsByQuery[key].slice(0, limit);
+    }
+
+    const seen = new Set<string>();
+    const pool: AggregatedMediaItem[] = [];
+    for (const item of Object.values(this.liveItemsByExternalId)) {
+      if (!seen.has(item.externalId)) {
+        seen.add(item.externalId);
+        pool.push(item);
+      }
+    }
+    for (const item of this.catalog) {
+      if (!seen.has(item.externalId)) {
+        seen.add(item.externalId);
+        pool.push(item);
+      }
+    }
+
+    const scored = pool
       .map((item) => ({ item, score: scoreSearchMatch(item, clean) }))
       .filter((entry) => entry.score > 0);
 
@@ -726,6 +821,14 @@ export default class RatingStore {
 
   get availableGenres(): string[] {
     const set = new Set<string>(["All"]);
+    const live = this.activeLiveResults;
+    if (live) {
+      for (const item of live) {
+        for (const g of item.genres) {
+          set.add(g);
+        }
+      }
+    }
     for (const item of this.catalog) {
       for (const g of item.genres) {
         set.add(g);
@@ -735,7 +838,12 @@ export default class RatingStore {
   }
 
   get filteredCatalog(): AggregatedMediaItem[] {
-    let list = [...this.catalog];
+    const activeQuery = this.searchQuery.trim();
+    const hasLive = activeQuery.length >= 2 && this.activeLiveResults !== null;
+    let list =
+      activeQuery.length > 0
+        ? [...this.activeSearchMatches]
+        : [...this.catalog];
 
     if (this.selectedCategory !== "All") {
       list = list.filter((i) => i.mediaType === this.selectedCategory);
@@ -753,11 +861,6 @@ export default class RatingStore {
         (i) =>
           i.cumulativeRating.finalCumulativeAverage >= this.minCumulativeScore
       );
-    }
-
-    const activeQuery = this.searchQuery.trim();
-    if (activeQuery.length > 0) {
-      list = list.filter((item) => scoreSearchMatch(item, activeQuery) > 0);
     }
 
     switch (this.sortBy) {
@@ -806,6 +909,12 @@ export default class RatingStore {
             const relDiff =
               scoreSearchMatch(b, activeQuery) - scoreSearchMatch(a, activeQuery);
             if (relDiff !== 0) return relDiff;
+            if (hasLive) {
+              const voteDiff =
+                b.cumulativeRating.totalAggregatedVotes -
+                a.cumulativeRating.totalAggregatedVotes;
+              if (voteDiff !== 0) return voteDiff;
+            }
             return (
               b.cumulativeRating.finalCumulativeAverage -
               a.cumulativeRating.finalCumulativeAverage
@@ -824,13 +933,21 @@ export default class RatingStore {
     return list;
   }
 
+  getMediaByExternalId = (id: string): AggregatedMediaItem | null => {
+    return (
+      this.liveItemsByExternalId[id] ||
+      this.catalog.find((c) => c.externalId === id) ||
+      null
+    );
+  };
+
   get comparisonIds(): string[] {
     return this.comparisonSlots.filter((id): id is string => Boolean(id));
   }
 
   get comparisonItems(): AggregatedMediaItem[] {
     return this.comparisonIds
-      .map((id) => this.catalog.find((c) => c.externalId === id))
+      .map((id) => this.getMediaByExternalId(id))
       .filter((x): x is AggregatedMediaItem => Boolean(x));
   }
 
@@ -838,7 +955,7 @@ export default class RatingStore {
     if (slotIndex < 0 || slotIndex >= 3) return null;
     const id = this.comparisonSlots[slotIndex];
     if (!id) return null;
-    return this.catalog.find((c) => c.externalId === id) || null;
+    return this.getMediaByExternalId(id);
   };
 
   setComparisonSlot = (slotIndex: number, externalId: string | null) => {
@@ -916,29 +1033,43 @@ export default class RatingStore {
       this.reviews = [newReview, ...this.reviews];
       this.encryptionLogs = [...encryptedBackendClient.logs];
 
-      const targetIndex = this.catalog.findIndex(
-        (c) => c.externalId === payload.externalMediaId
-      );
-      if (targetIndex >= 0) {
-        const target = this.catalog[targetIndex];
-        const updatedSources = target.cumulativeRating.sources.map((src) => {
-          if (src.sourceId === "comictraffic_community") {
-            const prevVotes = Math.max(1, src.voteCount);
-            const nextScore =
-              Math.round(
-                ((src.normalizedScore * prevVotes + clampedScore) /
-                  (prevVotes + 1)) *
-                  10
-              ) / 10;
-            return {
-              ...src,
-              normalizedScore: nextScore,
-              voteCount: prevVotes + 1,
-              rawScoreDisplay: `${(nextScore / 10).toFixed(1)} / 10`,
-            };
-          }
-          return src;
-        });
+      const target = this.getMediaByExternalId(payload.externalMediaId);
+      if (target) {
+        const hasCommunitySource = target.cumulativeRating.sources.some(
+          (src) => src.sourceId === "comictraffic_community"
+        );
+        const updatedSources = hasCommunitySource
+          ? target.cumulativeRating.sources.map((src) => {
+              if (src.sourceId === "comictraffic_community") {
+                const prevVotes = Math.max(1, src.voteCount);
+                const nextScore =
+                  Math.round(
+                    ((src.normalizedScore * prevVotes + clampedScore) /
+                      (prevVotes + 1)) *
+                      10
+                  ) / 10;
+                return {
+                  ...src,
+                  normalizedScore: nextScore,
+                  voteCount: prevVotes + 1,
+                  rawScoreDisplay: `${(nextScore / 10).toFixed(1)} / 10`,
+                };
+              }
+              return src;
+            })
+          : [
+              ...target.cumulativeRating.sources,
+              {
+                sourceId: "comictraffic_community",
+                sourceName: "ComicTraffic Community",
+                category: "ComicCommunity" as const,
+                rawScoreDisplay: `${(clampedScore / 10).toFixed(1)} / 10`,
+                normalizedScore: clampedScore,
+                voteCount: 1,
+                defaultWeight: 1.15,
+                accentColor: "#a855f7",
+              },
+            ];
 
         const weightsToApply = this.useCustomWeights
           ? this.customWeights
@@ -951,7 +1082,25 @@ export default class RatingStore {
           ...target,
           cumulativeRating: recalculated,
         };
-        this.catalog[targetIndex] = updatedItem;
+        const targetIndex = this.catalog.findIndex(
+          (c) => c.externalId === payload.externalMediaId
+        );
+        if (targetIndex >= 0) {
+          this.catalog[targetIndex] = updatedItem;
+        }
+        if (this.liveItemsByExternalId[updatedItem.externalId]) {
+          this.liveItemsByExternalId = {
+            ...this.liveItemsByExternalId,
+            [updatedItem.externalId]: updatedItem,
+          };
+          const nextByQuery: Record<string, AggregatedMediaItem[]> = {};
+          for (const [k, list] of Object.entries(this.liveSearchResultsByQuery)) {
+            nextByQuery[k] = list.map((it) =>
+              it.externalId === updatedItem.externalId ? updatedItem : it
+            );
+          }
+          this.liveSearchResultsByQuery = nextByQuery;
+        }
         if (this.selectedItem?.externalId === updatedItem.externalId) {
           this.selectedItem = updatedItem;
         }

@@ -185,8 +185,15 @@ public class MediaController : ControllerBase
         [FromBody] LiveSearchRequestDto request,
         CancellationToken ct)
     {
-        var items = await _mediator.Send(new SearchLiveExternalApisCommand(request.Query), ct);
-        return Ok(new { isSuccessful = true, count = items.Count, data = items });
+        var result = await _mediator.Send(new SearchLiveExternalApisCommand(request.Query), ct);
+        return Ok(new
+        {
+            isSuccessful = true,
+            count = result.Items.Count,
+            data = result.Items,
+            providers = result.Providers,
+            fallback = result.Fallback
+        });
     }
 
     [HttpPost("tmdb-row")]

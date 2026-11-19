@@ -3,6 +3,7 @@ import "./Row.css";
 import { observer } from "mobx-react-lite";
 import {
   AggregatedMediaItem,
+  formatCumulativeScore,
   MediaCategoryType,
 } from "../../app/api/ratingApis";
 import { useStore } from "../../app/stores/store";
@@ -40,15 +41,17 @@ const Row: React.FC<RowProps> = ({
 
       <div className="row__posters">
         {displayList.map((item) => {
+          const isRated = item.cumulativeRating.activeSourceCount > 0;
           const avg = item.cumulativeRating.finalCumulativeAverage;
-          const badgeColor =
-            avg >= 88
-              ? "#10b981"
-              : avg >= 75
-              ? "#3b82f6"
-              : avg >= 60
-              ? "#f59e0b"
-              : "#ef4444";
+          const badgeColor = !isRated
+            ? "#475569"
+            : avg >= 88
+            ? "#10b981"
+            : avg >= 75
+            ? "#3b82f6"
+            : avg >= 60
+            ? "#f59e0b"
+            : "#ef4444";
 
           return (
             <div
@@ -74,7 +77,7 @@ const Row: React.FC<RowProps> = ({
                   style={{ backgroundColor: badgeColor }}
                   title="Final Cumulative Average across all rating APIs"
                 >
-                  ★ {avg.toFixed(1)}%
+                  ★ {formatCumulativeScore(item.cumulativeRating, 1)}
                 </div>
                 <div className="row__mediatype_tag">
                   {item.mediaType === "ComicBook"
@@ -88,7 +91,7 @@ const Row: React.FC<RowProps> = ({
               <div className="row__posters_info">
                 <h3 className="row__posters_movietitle">{item.title}</h3>
                 <div className="row__meta_line">
-                  <span>{item.releaseYear}</span>
+                  <span>{item.releaseYear > 0 ? item.releaseYear : "N/A"}</span>
                   <span>•</span>
                   <span>{item.cumulativeRating.consensusTier}</span>
                 </div>

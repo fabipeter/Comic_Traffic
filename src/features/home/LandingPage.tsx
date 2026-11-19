@@ -16,10 +16,10 @@ import {
 import {
   MediaCategoryType,
   RATING_SOURCE_DEFINITIONS,
+  formatCumulativeScore,
 } from "../../app/api/ratingApis";
 import {
   ExplorerViewMode,
-  matchesSearchItem,
 } from "../../app/stores/ratingStore";
 
 const LandingPage = () => {
@@ -36,11 +36,11 @@ const LandingPage = () => {
   ]);
 
   const isSearching = ratingStore.searchQuery.trim().length > 0;
-  const allMatchingSearch = isSearching
-    ? ratingStore.catalog.filter((item) =>
-        matchesSearchItem(item, ratingStore.searchQuery)
-      )
-    : [];
+  const isSearchLoading =
+    isSearching &&
+    ratingStore.isSearchInProgress &&
+    ratingStore.activeLiveResults === null;
+  const allMatchingSearch = isSearching ? ratingStore.activeSearchMatches : [];
   const totalSearchMatches = allMatchingSearch.length;
   const comicMatchesCount = allMatchingSearch.filter(
     (i) => i.mediaType === "ComicBook"
@@ -120,7 +120,7 @@ const LandingPage = () => {
       <section className="ct-api-sources-strip">
         <div className="ct-api-strip-header">
           <span>
-            ⚡ COMIC TRAFFIC TELEMETRY • AGGREGATING 12 RATING APIS & INDICES IN REAL TIME
+            ⚡ COMIC TRAFFIC TELEMETRY • AGGREGATING {RATING_SOURCE_DEFINITIONS.length} RATING APIS &amp; INDICES IN REAL TIME
           </span>
           <span className="ct-security-pill">
             ✓ Real-Time Multi-Source Consensus Verified
@@ -160,12 +160,20 @@ const LandingPage = () => {
                 <span>MULTI-SOURCE CONSENSUS ENGINE</span>
               </div>
               <h2>
-                {isSearching
+                {isSearchLoading
+                  ? "⏳ Searching Live APIs..."
+                  : isSearching
                   ? `🔍 Search Results (${filtered.length})`
                   : "🏆 Cumulative Rating Explorer & General Search"}
               </h2>
               <p>
-                {isSearching ? (
+                {isSearchLoading ? (
+                  <>
+                    Querying live cinema, TV, comic, manga &amp; literature APIs
+                    for &ldquo;<strong>{ratingStore.searchQuery.trim()}</strong>
+                    &rdquo;&hellip;
+                  </>
+                ) : isSearching ? (
                   <>
                     Showing titles matching &ldquo;
                     <strong>{ratingStore.searchQuery}</strong>
@@ -275,9 +283,9 @@ const LandingPage = () => {
               </button>
             )}
             <button type="submit" className="ct-primary-cta-btn">
-              {ratingStore.isSearchingLiveApis
+              {ratingStore.isSearchInProgress
                 ? "Searching APIs..."
-                : "🔍 Search Catalog & Live APIs"}
+                : "🔍 Search Live APIs"}
             </button>
           </form>
 
@@ -286,24 +294,30 @@ const LandingPage = () => {
             <div className="ct-search-active-banner">
               <div className="ct-search-active-info">
                 <span className="ct-search-active-pill">
-                  {ratingStore.isSearchingLiveApis
+                  {ratingStore.isSearchInProgress
                     ? "⏳ LIVE API SEARCHING..."
                     : "🔍 SEARCH ACTIVE"}
                 </span>
                 <span>
                   Query: <strong>&ldquo;{ratingStore.searchQuery}&rdquo;</strong> &bull;{" "}
-                  <strong>{filtered.length}</strong> matching {filtered.length === 1 ? "title" : "titles"}
-                  {filtered.length > visibleCount && (
-                    <> (showing top {visibleCount})</>
-                  )}
-                  {ratingStore.selectedCategory !== "All" && (
-                    <> in {ratingStore.selectedCategory === "ComicBook" ? "Comics" : ratingStore.selectedCategory === "Movie" ? "Movies" : "TV Series"}</>
-                  )}
-                  {ratingStore.selectedCategory !== "All" && totalSearchMatches > filtered.length && (
-                    <span className="ct-search-other-cat-hint">
-                      {" "}
-                      ({totalSearchMatches - filtered.length} more in other categories)
-                    </span>
+                  {isSearchLoading ? (
+                    <span>Fetching live results across connected APIs&hellip;</span>
+                  ) : (
+                    <>
+                      <strong>{filtered.length}</strong> matching {filtered.length === 1 ? "title" : "titles"}
+                      {filtered.length > visibleCount && (
+                        <> (showing top {visibleCount})</>
+                      )}
+                      {ratingStore.selectedCategory !== "All" && (
+                        <> in {ratingStore.selectedCategory === "ComicBook" ? "Comics" : ratingStore.selectedCategory === "Movie" ? "Movies" : "TV Series"}</>
+                      )}
+                      {ratingStore.selectedCategory !== "All" && totalSearchMatches > filtered.length && (
+                        <span className="ct-search-other-cat-hint">
+                          {" "}
+                          ({totalSearchMatches - filtered.length} more in other categories)
+                        </span>
+                      )}
+                    </>
                   )}
                 </span>
               </div>
@@ -400,8 +414,43 @@ const LandingPage = () => {
           </div>
         </div>
 
-        {/* Explorer Responsive Grid or No Results Message */}
-        {filtered.length === 0 ? (
+        {/* Explorer Responsive Grid, Loading Stasis, or No Results Message */}
+        {isSearchLoading ? (
+          <div
+            className="ct-search-loading-stasis"
+            role="status"
+            aria-live="polite"
+            aria-label="Searching live APIs"
+          >
+            <div className="ct-search-loading-header">
+              <span className="ct-loading-spinner" aria-hidden="true" />
+              <div>
+                <h3>
+                  Searching live APIs for &ldquo;{ratingStore.searchQuery.trim()}&rdquo;&hellip;
+                </h3>
+                <p>
+                  Aggregating real ratings across TMDB, OMDb, TVMaze, iTunes, AniList,
+                  MyAnimeList, ComicVine, Hardcover, Google Books, Apple Books &amp; Open Library.
+                </p>
+              </div>
+            </div>
+            <div
+              className="ct-explorer-grid adx-view-grid ct-skeleton-grid"
+              aria-hidden="true"
+            >
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <div key={n} className="ct-skeleton-card">
+                  <div className="ct-skeleton-poster" />
+                  <div className="ct-skeleton-body">
+                    <div className="ct-skeleton-line ct-skeleton-line-sm" />
+                    <div className="ct-skeleton-line ct-skeleton-line-lg" />
+                    <div className="ct-skeleton-line ct-skeleton-line-md" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="ct-search-no-results-card">
             <div className="ct-no-results-icon">🔍</div>
             <h3>
@@ -474,7 +523,7 @@ const LandingPage = () => {
             >
               {filtered.slice(0, visibleCount).map((item, idx) => {
               const { cumulativeRating } = item;
-              const avg = cumulativeRating.finalCumulativeAverage;
+              const isRated = cumulativeRating.activeSourceCount > 0;
               const inCompare = ratingStore.comparisonIds.includes(
                 item.externalId
               );
@@ -497,13 +546,15 @@ const LandingPage = () => {
                     <div className="adx-card-rank-pill">#{idx + 1}</div>
                     <div className="ct-card-type-chip">
                       {item.mediaType === "ComicBook"
-                        ? "📚 Comic Book"
+                        ? "📚 Comic / Book"
                         : item.mediaType === "TvSeries"
                         ? "📺 TV Series"
                         : "🎬 Movie"}
                     </div>
                     <div className="ct-card-cumulative-Orb">
-                      <span className="ct-orb-score">{avg.toFixed(1)}%</span>
+                      <span className="ct-orb-score">
+                        {formatCumulativeScore(cumulativeRating, 1)}
+                      </span>
                       <small className="ct-orb-sub">CUMULATIVE</small>
                     </div>
                   </div>
@@ -511,7 +562,8 @@ const LandingPage = () => {
                   <div className="ct-media-card-body">
                     <div className="ct-card-meta-top">
                       <span>
-                        {item.releaseYear} • {item.publisherOrStudio}
+                        {item.releaseYear > 0 ? item.releaseYear : "N/A"} •{" "}
+                        {item.publisherOrStudio}
                       </span>
                       <span className="ct-card-tier">
                         {cumulativeRating.consensusTier}
@@ -534,19 +586,25 @@ const LandingPage = () => {
                       <div>
                         <small>Critics</small>
                         <strong>
-                          {cumulativeRating.criticConsensusScore.toFixed(0)}%
+                          {isRated
+                            ? `${cumulativeRating.criticConsensusScore.toFixed(0)}%`
+                            : "—"}
                         </strong>
                       </div>
                       <div>
                         <small>Audience</small>
                         <strong>
-                          {cumulativeRating.audienceConsensusScore.toFixed(0)}%
+                          {isRated
+                            ? `${cumulativeRating.audienceConsensusScore.toFixed(0)}%`
+                            : "—"}
                         </strong>
                       </div>
                       <div>
                         <small>Comic DB</small>
                         <strong>
-                          {cumulativeRating.comicCommunityScore.toFixed(0)}%
+                          {isRated
+                            ? `${cumulativeRating.comicCommunityScore.toFixed(0)}%`
+                            : "—"}
                         </strong>
                       </div>
                       <div>
@@ -676,7 +734,7 @@ const LandingPage = () => {
                         ),
                       }}
                     >
-                      {item.cumulativeRating.finalCumulativeAverage.toFixed(1)}%
+                      {formatCumulativeScore(item.cumulativeRating, 1)}
                     </strong>
                   </div>
                   <div className="ct-compare-metrics-list">
@@ -709,38 +767,34 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Curated Category Rows (Hidden during active search so search results take center stage) */}
-      {!isSearching && (
-        <>
-          <Row
-            title="🌟 All-Time Top Rated Cinema & Blockbusters"
-            items={movieItems}
-            isLargeRow
-          />
-          <Row
-            title="📚 Acclaimed Comic Books & Graphic Novels"
-            items={comicItems}
-            isLargeRow
-          />
-          <Row
-            title="📺 Highest Rated TV Series & Streaming Originals"
-            items={tvItems}
-            isLargeRow
-          />
-          <Row
-            title="👑 Masterpiece Hall of Fame (Score 90%+)"
-            items={hallOfFameItems}
-          />
-          <Row
-            title="🔥 Trending Across Global APIs (Highest Vote Consensus)"
-            items={trendingItems}
-          />
-          <Row
-            title="⚡ Audience Favorites & Cult Acclaim"
-            items={audienceFavorites}
-          />
-        </>
-      )}
+      {/* Curated Category Rows (Always visible beneath search results & Compare Arena) */}
+      <Row
+        title="🌟 All-Time Top Rated Cinema & Blockbusters"
+        items={movieItems}
+        isLargeRow
+      />
+      <Row
+        title="📚 Acclaimed Comic Books & Graphic Novels"
+        items={comicItems}
+        isLargeRow
+      />
+      <Row
+        title="📺 Highest Rated TV Series & Streaming Originals"
+        items={tvItems}
+        isLargeRow
+      />
+      <Row
+        title="👑 Masterpiece Hall of Fame (Score 90%+)"
+        items={hallOfFameItems}
+      />
+      <Row
+        title="🔥 Trending Across Global APIs (Highest Vote Consensus)"
+        items={trendingItems}
+      />
+      <Row
+        title="⚡ Audience Favorites & Cult Acclaim"
+        items={audienceFavorites}
+      />
 
       {/* Comic Traffic Footer */}
       <footer className="adx-footer">

@@ -2921,3 +2921,116 @@ body,
   border-color: #2563eb;
 }
 
+/* Live Search Loading Stasis */
+.ct-search-loading-stasis {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 28px 24px;
+  background: var(--adx-bg-elevated, rgba(11, 18, 34, 0.92));
+  border: 1px solid rgba(59, 130, 246, 0.32);
+  border-radius: 18px;
+  margin: 20px 0;
+}
+
+.ct-search-loading-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ct-search-loading-header h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--adx-text-primary, #ffffff);
+  margin: 0 0 4px;
+}
+
+.ct-search-loading-header p {
+  font-size: 0.85rem;
+  color: var(--adx-text-muted, #94a3b8);
+  margin: 0;
+  line-height: 1.45;
+}
+
+.ct-loading-spinner {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(59, 130, 246, 0.25);
+  border-top-color: var(--adx-accent-bright, #3b82f6);
+  animation: ct-spin 0.8s linear infinite;
+}
+
+@keyframes ct-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ct-skeleton-grid {
+  pointer-events: none;
+}
+
+.ct-skeleton-card {
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.ct-skeleton-poster {
+  height: 190px;
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.7) 25%,
+    rgba(51, 65, 85, 0.85) 50%,
+    rgba(30, 41, 59, 0.7) 75%
+  );
+  background-size: 200% 100%;
+  animation: ct-shimmer 1.4s ease-in-out infinite;
+}
+
+.ct-skeleton-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ct-skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.75) 25%,
+    rgba(51, 65, 85, 0.9) 50%,
+    rgba(30, 41, 59, 0.75) 75%
+  );
+  background-size: 200% 100%;
+  animation: ct-shimmer 1.4s ease-in-out infinite;
+}
+
+.ct-skeleton-line-sm {
+  width: 45%;
+}
+
+.ct-skeleton-line-lg {
+  width: 85%;
+  height: 16px;
+}
+
+.ct-skeleton-line-md {
+  width: 65%;
+}
+
+@keyframes ct-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+

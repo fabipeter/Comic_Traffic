@@ -1,0 +1,141 @@
+import { createRequire } from "node:module";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const require = createRequire(import.meta.url);
+const { executeLiveSearch, _clearCacheForTests } = require("./_liveSearch.js");
+
+// Minimal stand-in for the gateway's calculator: average of normalised scores.
+const calc = (sources) => ({
+  finalCumulativeAverage: sources.length
+    ? sources.reduce((a, s) => a + s.normalizedScore, 0) / sources.length
+    : 0,
+  activeSourceCount: sources.length,
+  sources,
+});
+
+const json = (body, ok = true, status = 200) =>
+  Promise.resolve({ ok, status, json: () => Promise.resolve(body) });
+
+function routeFetch(routes) {
+  return vi.fn((url) => {
+    const u = String(url);
+    for (const [needle, handler] of routes) {
+      if (u.includes(needle)) return typeof handler === "function" ? handler(u) : json(handler);
+    }
+    return json({}, false, 404);
+  });
+}
+
+describe("executeLiveSearch", () => {
+  beforeEach(() => _clearCacheForTests());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("merges TMDB + OMDb data and only exposes real source scores", async () => {
+    vi.stubGlobal(
+      "fetch",
+      routeFetch([
+        [
+          "themoviedb.org",
+          {
+            results: [
+              { id: 155, media_type: "movie", title: "The Dark Knight", release_date: "2008-07-16", vote_average: 8.5, vote_count: 32000, genre_ids: [18, 28], poster_path: "/p.jpg" },
+              { id: 1, media_type: "person", name: "Someone" },
+            ],
+          },
+        ],
+        ["omdbapi.com/?apikey=k&s=", { Response: "True", Search: [{ Title: "The Dark Knight", Year: "2008", imdbID: "tt0468569", Type: "movie", Poster: "N/A" }] }],
+        [
+          "omdbapi.com/?apikey=k&i=tt0468569",
+          { Response: "True", Title: "The Dark Knight", Year: "2008", imdbID: "tt0468569", imdbRating: "9.0", imdbVotes: "2,900,000", Metascore: "84", Ratings: [{ Source: "Rotten Tomatoes", Value: "94%" }], Director: "Christopher Nolan" },
+        ],
+      ])
+    );
+    const { items, providers } = await executeLiveSearch("the dark knight", {
+      env: { TMDB_API_KEY: "k", OMDB_API_KEY: "k" },
+      calculateCumulativeSummary: calc,
+    });
+
+    const knight = items.filter((i) => i.title === "The Dark Knight");
+    expect(knight).toHaveLength(1);
+    const ids = knight[0].cumulativeRating.sources.map((s) => s.sourceId).sort();
+    expect(ids).toEqual(["imdb", "metacritic", "rotten_tomatoes_critics", "tmdb"]);
+    expect(knight[0].creatorOrDirector).toBe("Christopher Nolan");
+    expect(knight[0].genres).toContain("Action");
+    expect(providers.tmdb.count).toBe(2);
+    expect(providers.comicvine.configured).toBe(false);
+    // internal merge helpers must not leak
+    expect(knight[0].imdbId).toBeUndefined();
+    expect(knight[0].sources).toBeUndefined();
+  });
+
+  it("never synthesises ratings when keys are missing; unrated items stay unrated", async () => {
+    vi.stubGlobal(
+      "fetch",
+      routeFetch([
+        ["itunes.apple.com/search?term=pirates&media=movie", { results: [{ trackId: 9, trackName: "Pirates of the Caribbean", releaseDate: "2003-07-09T07:00:00Z", primaryGenreName: "Adventure", artworkUrl100: "http://x/100x100bb.jpg" }] }],
+      ])
+    );
+    const { items, providers } = await executeLiveSearch("pirates", {
+      env: {},
+      calculateCumulativeSummary: calc,
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0].cumulativeRating.activeSourceCount).toBe(0);
+    expect(items[0].posterUrl).toBe("https://x/600x600bb.jpg");
+    expect(providers.tmdb.configured).toBe(false);
+    expect(providers.tvmaze.error).toBeDefined(); // 404 from the stub is reported, not hidden
+  });
+
+  it("merges AniList and Jikan manga through the shared MAL id and keeps both real scores", async () => {
+    vi.stubGlobal(
+      "fetch",
+      routeFetch([
+        [
+          "graphql.anilist.co",
+          {
+            data: {
+              manga: { media: [{ id: 30002, idMal: 2, title: { romaji: "Berserk", english: "Berserk" }, startDate: { year: 1989 }, averageScore: 94, popularity: 200000, genres: ["Action"], coverImage: { large: "https://s4.anilist.co/c.jpg" } }] },
+              anime: { media: [] },
+            },
+          },
+        ],
+        ["api.jikan.moe", { data: [{ mal_id: 2, title: "Berserk", score: 9.47, scored_by: 330000, published: { prop: { from: { year: 1989 } } }, genres: [{ name: "Adventure" }], themes: [], authors: [{ name: "Miura, Kentarou" }] }] }],
+      ])
+    );
+    const { items } = await executeLiveSearch("berserk", { env: {}, calculateCumulativeSummary: calc });
+    const berserk = items.filter((i) => i.title === "Berserk");
+    expect(berserk).toHaveLength(1);
+    expect(berserk[0].mediaType).toBe("ComicBook");
+    expect(berserk[0].cumulativeRating.sources.map((s) => s.sourceId).sort()).toEqual(["anilist", "myanimelist"]);
+    expect(berserk[0].creatorOrDirector).toContain("Miura");
+  });
+
+  it("does not attach OMDb ratings to a different title", async () => {
+    vi.stubGlobal(
+      "fetch",
+      routeFetch([
+        ["itunes.apple.com/search?term=dune&media=movie", { results: [{ trackId: 1, trackName: "Dune", releaseDate: "2021-10-22T00:00:00Z" }] }],
+        ["omdbapi.com/?apikey=k&s=", { Response: "False" }],
+        ["omdbapi.com/?apikey=k&t=Dune", { Response: "True", Title: "Dune: Part Two", Year: "2024", imdbID: "tt15239678", imdbRating: "8.5", imdbVotes: "500,000" }],
+      ])
+    );
+    const { items } = await executeLiveSearch("dune", {
+      env: { OMDB_API_KEY: "k" },
+      calculateCumulativeSummary: calc,
+    });
+    const dune = items.find((i) => i.title === "Dune");
+    expect(dune.cumulativeRating.activeSourceCount).toBe(0);
+  });
+
+  it("uses the seeded catalog only when every live provider returns nothing", async () => {
+    vi.stubGlobal("fetch", routeFetch([]));
+    const seeded = [{ title: "Watchmen", publisherOrStudio: "DC", creatorOrDirector: "Alan Moore", overview: "", genres: [] }];
+    const { items, fallback } = await executeLiveSearch("watchmen", {
+      env: {},
+      calculateCumulativeSummary: calc,
+      seededCatalog: seeded,
+    });
+    expect(fallback).toBe(true);
+    expect(items[0].title).toBe("Watchmen");
+  });
+});

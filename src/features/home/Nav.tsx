@@ -3,7 +3,11 @@ import "./Nav.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import { observer } from "mobx-react-lite";
 import { useStore } from "../../app/stores/store";
-import { AggregatedMediaItem, MediaCategoryType } from "../../app/api/ratingApis";
+import {
+  AggregatedMediaItem,
+  formatCumulativeScore,
+  MediaCategoryType,
+} from "../../app/api/ratingApis";
 import { ANIMEDEX_SKINS, AnimeDexSkinId } from "../../app/stores/ratingStore";
 import { sanitizeImageUrl } from "../../app/security/inputSanitizer";
 import comicTrafficLogo from "../../assets/comicTrafficLogo.svg";
@@ -245,7 +249,11 @@ const Nav = () => {
                 </div>
                 {quickSuggestions.length === 0 ? (
                   <div className="nav__desktop_sugg_empty">
-                    <span>Searching catalog & live rating APIs...</span>
+                    <span>
+                      {ratingStore.isSearchInProgress
+                        ? "⏳ Searching live rating APIs..."
+                        : "No matching titles found."}
+                    </span>
                   </div>
                 ) : (
                   <>
@@ -280,7 +288,7 @@ const Nav = () => {
                         </div>
                         <div className="nav__desktop_sugg_score">
                           <strong>
-                            {item.cumulativeRating.finalCumulativeAverage.toFixed(1)}%
+                            {formatCumulativeScore(item.cumulativeRating, 1)}
                           </strong>
                           <small>SCORE</small>
                         </div>
@@ -441,7 +449,16 @@ const Nav = () => {
                   </button>
                 </form>
 
-                {quickSuggestions.length > 0 && (
+                {ratingStore.searchQuery.trim().length > 0 &&
+                quickSuggestions.length === 0 ? (
+                  <div className="nav__desktop_sugg_empty">
+                    <span>
+                      {ratingStore.isSearchInProgress
+                        ? "⏳ Searching live rating APIs..."
+                        : "No matching titles found."}
+                    </span>
+                  </div>
+                ) : quickSuggestions.length > 0 ? (
                   <div className="nav__panel_suggestions">
                     {quickSuggestions.map((item) => (
                       <button
@@ -454,20 +471,17 @@ const Nav = () => {
                         <div className="nav__search_opt_meta">
                           <strong>{item.title}</strong>
                           <small>
-                            {item.mediaType} • {item.releaseYear}
+                            {item.mediaType} • {item.releaseYear > 0 ? item.releaseYear : "N/A"}
                           </small>
                         </div>
                         <span className="nav__search_opt_score">
                           ★{" "}
-                          {item.cumulativeRating.finalCumulativeAverage.toFixed(
-                            1
-                          )}
-                          %
+                          {formatCumulativeScore(item.cumulativeRating, 1)}
                         </span>
                       </button>
                     ))}
                   </div>
-                )}
+                ) : null}
               </div>
 
               {/* Rating Tools & Utilities */}

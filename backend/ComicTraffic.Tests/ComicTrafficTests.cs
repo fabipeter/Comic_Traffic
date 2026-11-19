@@ -518,4 +518,114 @@ public class ComicTrafficBackendTests
 
         Assert.False(failedDispatch);
     }
+
+    private sealed class RouteStubHttpHandler : HttpMessageHandler
+    {
+        private readonly List<(string Needle, string Json)> _routes;
+
+        public RouteStubHttpHandler(List<(string Needle, string Json)> routes)
+        {
+            _routes = routes;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            string url = request.RequestUri?.ToString() ?? string.Empty;
+            foreach (var (needle, json) in _routes)
+            {
+                if (url.Contains(needle, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(json, Encoding.UTF8, "application/json")
+                    });
+                }
+            }
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                Content = new StringContent("{}", Encoding.UTF8, "application/json")
+            });
+        }
+    }
+
+    [Fact]
+    public async Task LiveMediaSearchService_MergesRealTmdbAndOmdbScoresWithoutSynthesizing()
+    {
+        var handler = new RouteStubHttpHandler(new List<(string, string)>
+        {
+            ("themoviedb.org", """{"results":[{"id":155,"media_type":"movie","title":"The Dark Knight","release_date":"2008-07-16","vote_average":8.5,"vote_count":32000,"genre_ids":[18,28],"poster_path":"/p.jpg"}]}"""),
+            ("omdbapi.com/?apikey=k&s=", """{"Response":"True","Search":[{"Title":"The Dark Knight","Year":"2008","imdbID":"tt0468569","Type":"movie","Poster":"N/A"}]}"""),
+            ("omdbapi.com/?apikey=k&i=tt0468569", """{"Response":"True","Title":"The Dark Knight","Year":"2008","imdbID":"tt0468569","imdbRating":"9.0","imdbVotes":"2,900,000","Metascore":"84","Ratings":[{"Source":"Rotten Tomatoes","Value":"94%"}],"Director":"Christopher Nolan"}""")
+        });
+        using var http = new HttpClient(handler);
+        var keys = new Dictionary<string, string?> { ["TMDB_API_KEY"] = "k", ["OMDB_API_KEY"] = "k" };
+        var service = new LiveMediaSearchService(http, k => keys.GetValueOrDefault(k), new CumulativeRatingCalculator());
+
+        var result = await service.SearchAsync("the dark knight", CancellationToken.None);
+
+        var knight = Assert.Single(result.Items, i => i.Title == "The Dark Knight");
+        var sourceIds = knight.CumulativeRating.Sources.Select(s => s.SourceId).OrderBy(s => s).ToArray();
+        Assert.Equal(new[] { "imdb", "metacritic", "rotten_tomatoes_critics", "tmdb" }, sourceIds);
+        Assert.Equal("Christopher Nolan", knight.CreatorOrDirector);
+        Assert.Contains("Action", knight.Genres);
+        Assert.False(result.Providers["comicvine"].Configured);
+    }
+
+    [Fact]
+    public async Task LiveMediaSearchService_NeverSynthesizesScoresAndMergesAniListWithJikan()
+    {
+        var handler = new RouteStubHttpHandler(new List<(string, string)>
+        {
+            ("itunes.apple.com/search?term=pirates&media=movie", """{"results":[{"trackId":9,"trackName":"Pirates of the Caribbean","releaseDate":"2003-07-09T07:00:00Z","primaryGenreName":"Adventure","artworkUrl100":"http://x/100x100bb.jpg"}]}"""),
+            ("graphql.anilist.co", """{"data":{"manga":{"media":[{"id":30002,"idMal":2,"title":{"romaji":"Berserk","english":"Berserk"},"startDate":{"year":1989},"averageScore":94,"popularity":200000,"genres":["Action"],"coverImage":{"large":"https://s4.anilist.co/c.jpg"}}]},"anime":{"media":[]}}}"""),
+            ("api.jikan.moe", """{"data":[{"mal_id":2,"title":"Berserk","score":9.47,"scored_by":330000,"published":{"prop":{"from":{"year":1989}}},"genres":[{"name":"Adventure"}],"themes":[],"authors":[{"name":"Miura, Kentarou"}]}]}""")
+        });
+        using var http = new HttpClient(handler);
+        var service = new LiveMediaSearchService(http, _ => null, new CumulativeRatingCalculator());
+
+        var piratesResult = await service.SearchAsync("pirates", CancellationToken.None);
+        var pirates = Assert.Single(piratesResult.Items, i => i.Title == "Pirates of the Caribbean");
+        Assert.Equal(0, pirates.CumulativeRating.ActiveSourceCount);
+        Assert.Equal("Unrated", pirates.CumulativeRating.ConsensusTier);
+        Assert.Equal("https://x/600x600bb.jpg", pirates.PosterUrl);
+
+        var berserkResult = await service.SearchAsync("berserk", CancellationToken.None);
+        var berserk = Assert.Single(berserkResult.Items, i => i.Title == "Berserk");
+        Assert.Equal("ComicBook", berserk.MediaType);
+        Assert.Equal(new[] { "anilist", "myanimelist" }, berserk.CumulativeRating.Sources.Select(s => s.SourceId).OrderBy(s => s).ToArray());
+    }
+
+    [Fact]
+    public async Task SearchLiveExternalApisCommandHandler_UsesSeededDatabaseStrictlyAsFallback()
+    {
+        await using var db = CreateInMemoryDbContext();
+        var calculator = new CumulativeRatingCalculator();
+        var jwt = new JwtTokenService(CreateTestConfiguration());
+        await DatabaseSeeder.SeedAsync(db, calculator, jwt);
+
+        // 1. When live providers return a hit, DB seeded items are NOT returned
+        var liveHitHandler = new RouteStubHttpHandler(new List<(string, string)>
+        {
+            ("itunes.apple.com/search?term=watchmen&media=movie", """{"results":[{"trackId":42,"trackName":"Watchmen","releaseDate":"2009-03-06T00:00:00Z","primaryGenreName":"Action"}]}""")
+        });
+        using var liveHttp = new HttpClient(liveHitHandler);
+        var liveService = new LiveMediaSearchService(liveHttp, _ => null, calculator);
+        var cmdHandler = new SearchLiveExternalApisCommandHandler(db, calculator, liveService);
+
+        var liveRes = await cmdHandler.Handle(new SearchLiveExternalApisCommand("watchmen"), CancellationToken.None);
+        Assert.False(liveRes.Fallback);
+        Assert.Single(liveRes.Items);
+        Assert.Equal("movie-itunes-42", liveRes.Items[0].ExternalId);
+
+        // 2. When every live provider returns nothing, seeded DB acts as fallback
+        var emptyHandler = new RouteStubHttpHandler(new List<(string, string)>());
+        using var emptyHttp = new HttpClient(emptyHandler);
+        var emptyService = new LiveMediaSearchService(emptyHttp, _ => null, calculator);
+        var fallbackHandler = new SearchLiveExternalApisCommandHandler(db, calculator, emptyService);
+
+        var fallbackRes = await fallbackHandler.Handle(new SearchLiveExternalApisCommand("watchmen"), CancellationToken.None);
+        Assert.True(fallbackRes.Fallback);
+        Assert.NotEmpty(fallbackRes.Items);
+        Assert.Contains(fallbackRes.Items, i => i.Title.Contains("Watchmen", StringComparison.OrdinalIgnoreCase));
+    }
 }

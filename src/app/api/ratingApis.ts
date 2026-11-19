@@ -201,6 +201,54 @@ export const RATING_SOURCE_DEFINITIONS: {
     badge: "CBR Critics",
   },
   {
+    sourceId: "anilist",
+    name: "AniList",
+    category: "ComicCommunity",
+    defaultWeight: 1.2,
+    color: "#02a9ff",
+    badge: "AniList",
+  },
+  {
+    sourceId: "myanimelist",
+    name: "MyAnimeList",
+    category: "ComicCommunity",
+    defaultWeight: 1.2,
+    color: "#2e51a2",
+    badge: "MAL",
+  },
+  {
+    sourceId: "hardcover",
+    name: "Hardcover",
+    category: "Audience",
+    defaultWeight: 1.25,
+    color: "#7c3aed",
+    badge: "Hardcover",
+  },
+  {
+    sourceId: "google_books",
+    name: "Google Books",
+    category: "Audience",
+    defaultWeight: 1.0,
+    color: "#4285f4",
+    badge: "Google Books",
+  },
+  {
+    sourceId: "openlibrary",
+    name: "Open Library",
+    category: "Audience",
+    defaultWeight: 1.0,
+    color: "#059669",
+    badge: "Open Library",
+  },
+  {
+    sourceId: "apple_books",
+    name: "Apple Books",
+    category: "Audience",
+    defaultWeight: 1.0,
+    color: "#9ca3af",
+    badge: "Apple Books",
+  },
+  {
     sourceId: "comictraffic_community",
     name: "ComicTraffic Community",
     category: "ComicCommunity",
@@ -209,6 +257,18 @@ export const RATING_SOURCE_DEFINITIONS: {
     badge: "CT Verified",
   },
 ];
+
+/**
+ * Display helper: items no provider has rated yet show "N/R" instead of a misleading 0%.
+ */
+export function formatCumulativeScore(
+  rating: { finalCumulativeAverage: number; activeSourceCount: number },
+  digits: number = 1
+): string {
+  return rating.activeSourceCount > 0
+    ? `${rating.finalCumulativeAverage.toFixed(digits)}%`
+    : "N/R";
+}
 
 const GLOBAL_BAYESIAN_PRIOR = 74.0;
 const BAYESIAN_MIN_VOTES = 2500.0;
@@ -487,7 +547,14 @@ export const encryptedBackendClient = {
     hasRetriedOnKeyMismatch: boolean = false,
     timeoutMs: number = 8000,
     signal?: AbortSignal
-  ): Promise<{ fromBackend: boolean; data?: TRes; envelope: EncryptedEnvelope }> {
+  ): Promise<{
+    fromBackend: boolean;
+    data?: TRes;
+    envelope: EncryptedEnvelope;
+    aborted?: boolean;
+    fallback?: boolean;
+    providers?: Record<string, any>;
+  }> {
     const canEncrypt = isWebCryptoAvailable();
     await this.ensureSessionKeys();
 
@@ -555,7 +622,9 @@ export const encryptedBackendClient = {
                 endpoint,
                 payload,
                 token,
-                true
+                true,
+                timeoutMs,
+                signal
               );
             }
           }
@@ -575,6 +644,8 @@ export const encryptedBackendClient = {
           fromBackend: true,
           data: (decrypted.data ?? decrypted) as TRes,
           envelope,
+          fallback: Boolean(decrypted?.fallback),
+          providers: decrypted?.providers,
         };
       }
 
@@ -582,8 +653,18 @@ export const encryptedBackendClient = {
         fromBackend: true,
         data: (res.data?.data ?? res.data) as TRes,
         envelope,
+        fallback: Boolean(res.data?.fallback),
+        providers: res.data?.providers,
       };
     } catch (err: any) {
+      if (
+        axios.isCancel(err) ||
+        err?.name === "CanceledError" ||
+        err?.name === "AbortError" ||
+        err?.code === "ERR_CANCELED"
+      ) {
+        return { fromBackend: false, envelope, aborted: true };
+      }
       if (
         canEncrypt &&
         err?.response?.data &&
@@ -664,13 +745,24 @@ export const encryptedBackendClient = {
  */
 let activeLiveSearchController: AbortController | null = null;
 
+export interface LiveSearchDetailedResult {
+  items: AggregatedMediaItem[];
+  aborted: boolean;
+  failed: boolean;
+  fallback: boolean;
+  providers?: Record<string, any>;
+}
+
 /**
- * Dispatches an encrypted search command to the Backend API (/api/media/search-live).
+ * Dispatches an encrypted search command to the Backend API (/api/media/search-live)
+ * and preserves abort / offline / fallback metadata.
  */
-export async function searchLiveMultiApis(
+export async function searchLiveMultiApisDetailed(
   query: string
-): Promise<AggregatedMediaItem[]> {
-  if (!query || query.trim().length < 2) return [];
+): Promise<LiveSearchDetailedResult> {
+  if (!query || query.trim().length < 2) {
+    return { items: [], aborted: false, failed: false, fallback: false };
+  }
   const cleanQuery = query.trim();
 
   // Abort any previous pending search before starting a fresh search
@@ -696,14 +788,38 @@ export async function searchLiveMultiApis(
       15000,
       signal
     );
-    if (Array.isArray(res.data)) {
-      return res.data;
+    if (res.aborted) {
+      return { items: [], aborted: true, failed: false, fallback: false };
     }
-    return [];
+    if (!res.fromBackend) {
+      return { items: [], aborted: false, failed: true, fallback: true };
+    }
+    return {
+      items: Array.isArray(res.data) ? res.data : [],
+      aborted: false,
+      failed: false,
+      fallback: Boolean(res.fallback),
+      providers: res.providers,
+    };
   } catch (err: any) {
-    if (axios.isCancel(err) || err?.name === "CanceledError" || err?.name === "AbortError") {
-      return [];
+    if (
+      axios.isCancel(err) ||
+      err?.name === "CanceledError" ||
+      err?.name === "AbortError" ||
+      err?.code === "ERR_CANCELED"
+    ) {
+      return { items: [], aborted: true, failed: false, fallback: false };
     }
-    return [];
+    return { items: [], aborted: false, failed: true, fallback: true };
   }
+}
+
+/**
+ * Dispatches an encrypted search command to the Backend API (/api/media/search-live).
+ */
+export async function searchLiveMultiApis(
+  query: string
+): Promise<AggregatedMediaItem[]> {
+  const res = await searchLiveMultiApisDetailed(query);
+  return res.items;
 }

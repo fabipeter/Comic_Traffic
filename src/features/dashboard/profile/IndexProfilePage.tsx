@@ -13,6 +13,7 @@ import {
 import {
   RATING_SOURCE_DEFINITIONS,
   WatchlistEntry,
+  formatCumulativeScore,
 } from "../../../app/api/ratingApis";
 import { sanitizeImageUrl } from "../../../app/security/inputSanitizer";
 
@@ -296,7 +297,7 @@ const IndexProfilePage: React.FC = () => {
                         </small>
                       </div>
                       <div className="ct-top5-score">
-                        {item.cumulativeRating.finalCumulativeAverage.toFixed(1)}%
+                        {formatCumulativeScore(item.cumulativeRating, 1)}
                       </div>
                     </div>
                   ))}
@@ -499,10 +500,7 @@ const IndexProfilePage: React.FC = () => {
                             style={{ cursor: "pointer" }}
                           >
                             {item.title} (
-                            {item.cumulativeRating.finalCumulativeAverage.toFixed(
-                              1
-                            )}
-                            %)
+                            {formatCumulativeScore(item.cumulativeRating, 1)})
                           </span>
                         ) : null
                       )}

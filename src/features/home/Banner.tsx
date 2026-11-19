@@ -3,7 +3,10 @@ import "./Banner.css";
 import { observer } from "mobx-react-lite";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../../app/stores/store";
-import { AggregatedMediaItem } from "../../app/api/ratingApis";
+import {
+  AggregatedMediaItem,
+  formatCumulativeScore,
+} from "../../app/api/ratingApis";
 import { sanitizeImageUrl } from "../../app/security/inputSanitizer";
 
 const Banner = () => {
@@ -111,7 +114,7 @@ const Banner = () => {
             <div className="ct-banner-rating-ribbon">
               <div className="ct-banner-final-score-box">
                 <div className="ct-banner-final-num">
-                  {cumulativeRating.finalCumulativeAverage.toFixed(1)}%
+                  {formatCumulativeScore(cumulativeRating, 1)}
                 </div>
                 <div className="ct-banner-final-meta">
                   <strong>FINAL CUMULATIVE AVERAGE</strong>
@@ -188,7 +191,7 @@ const Banner = () => {
                 className="ct-hero-search-input"
               />
               <button type="submit" className="ct-hero-search-btn">
-                {ratingStore.isSearchingLiveApis
+                {ratingStore.isSearchInProgress
                   ? "Aggregating APIs..."
                   : "Search All APIs"}
               </button>

@@ -6,6 +6,7 @@ import {
   AggregatedMediaItem,
   RATING_SOURCE_DEFINITIONS,
   WatchlistEntry,
+  formatCumulativeScore,
 } from "../../app/api/ratingApis";
 import { sanitizeImageUrl } from "../../app/security/inputSanitizer";
 
@@ -159,10 +160,7 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
                               ),
                             }}
                           >
-                            {sug.cumulativeRating.finalCumulativeAverage.toFixed(
-                              1
-                            )}
-                            %
+                            {formatCumulativeScore(sug.cumulativeRating, 1)}
                           </span>
                         </button>
                       ))
@@ -193,10 +191,7 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
                       ),
                     }}
                   >
-                    {selectedItem.cumulativeRating.finalCumulativeAverage.toFixed(
-                      1
-                    )}
-                    %
+                    {formatCumulativeScore(selectedItem.cumulativeRating, 1)}
                   </div>
                 </div>
               ) : (
@@ -354,7 +349,7 @@ export const CumulativeDetailModal: React.FC = observer(() => {
                 className="ct-cumulative-number"
                 style={{ color: scoreColor }}
               >
-                {cumulativeRating.finalCumulativeAverage.toFixed(1)}%
+                {formatCumulativeScore(cumulativeRating, 1)}
               </span>
               <span className="ct-cumulative-sub">
                 {cumulativeRating.finalStarScoreOutOfTen.toFixed(2)} / 10
@@ -668,10 +663,7 @@ export const CompareModal: React.FC = observer(() => {
               🏆 <strong>Cumulative Average Champion:</strong>{" "}
               {bestCumulative.title} with{" "}
               <strong>
-                {bestCumulative.cumulativeRating.finalCumulativeAverage.toFixed(
-                  1
-                )}
-                %
+                {formatCumulativeScore(bestCumulative.cumulativeRating, 1)}
               </strong>{" "}
               ({bestCumulative.cumulativeRating.consensusTier})
             </div>
@@ -695,7 +687,7 @@ export const CompareModal: React.FC = observer(() => {
                       ),
                     }}
                   >
-                    {item.cumulativeRating.finalCumulativeAverage.toFixed(1)}%
+                    {formatCumulativeScore(item.cumulativeRating, 1)}
                   </strong>
                   <small>
                     Critics {item.cumulativeRating.criticConsensusScore.toFixed(0)}% • Audience{" "}
@@ -732,7 +724,7 @@ export const CompareModal: React.FC = observer(() => {
                       ),
                     }}
                   >
-                    {item.cumulativeRating.finalCumulativeAverage.toFixed(1)}%
+                    {formatCumulativeScore(item.cumulativeRating, 1)}
                   </strong>
                   <small>{item.cumulativeRating.consensusTier}</small>
                 </div>

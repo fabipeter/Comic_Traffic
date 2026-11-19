@@ -223,11 +223,41 @@ builder.Services.AddDbContext<ComicTrafficDbContext>(options =>
     }
 });
 
-// Register CQRS (MediatR), Encryption, JWT, Email, and Cumulative Rating Services
+// Register CQRS (MediatR), Encryption, JWT, Email, Live Search, and Cumulative Rating Services
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddSingleton<IPayloadEncryptionService, PayloadEncryptionService>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<ICumulativeRatingCalculator, CumulativeRatingCalculator>();
+builder.Services.AddSingleton(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var calculator = sp.GetRequiredService<ICumulativeRatingCalculator>();
+    var http = new HttpClient(new SocketsHttpHandler
+    {
+        PooledConnectionLifetime = TimeSpan.FromMinutes(2)
+    })
+    {
+        Timeout = TimeSpan.FromSeconds(10)
+    };
+    string? ResolveKey(string envName)
+    {
+        string? fromEnv = Environment.GetEnvironmentVariable(envName);
+        if (!string.IsNullOrWhiteSpace(fromEnv)) return fromEnv.Trim();
+        string? configKey = envName switch
+        {
+            "TMDB_API_KEY" => "ExternalApis:TmdbApiKey",
+            "TMDB_API_URL" => "ExternalApis:TmdbApiUrl",
+            "OMDB_API_KEY" => "ExternalApis:OmdbApiKey",
+            "COMICVINE_API_KEY" => "ExternalApis:ComicVineApiKey",
+            "GOOGLE_BOOKS_API_KEY" => "ExternalApis:GoogleBooksApiKey",
+            "HARDCOVER_API_TOKEN" => "ExternalApis:HardcoverApiToken",
+            _ => null
+        };
+        string? fromCfg = configKey != null ? config[configKey] : null;
+        return string.IsNullOrWhiteSpace(fromCfg) ? null : fromCfg.Trim();
+    }
+    return new ComicTraffic.Api.Application.Features.Media.LiveMediaSearchService(http, ResolveKey, calculator);
+});
 builder.Services.AddHttpClient<IEmailService, EmailService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(10);

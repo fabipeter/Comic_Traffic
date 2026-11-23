@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useStore } from "../../../app/stores/store";
 import Nav from "../../home/Nav";
 import { CommunityBottomDrawer } from "../../home/CumulativeModals";
@@ -12,11 +12,17 @@ import {
 import { sanitizeImageUrl } from "../../../app/security/inputSanitizer";
 
 const IndexProfilePage: React.FC = () => {
-  const { ratingStore, userStore } = useStore();
+  const { ratingStore, userStore, commonStore } = useStore();
   const [activeTab, setActiveTab] = useState<
-    "overview" | "watchlist" | "lists" | "reviews"
+    "overview" | "watchlist" | "lists" | "reviews" | "privacy"
   >("overview");
   const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [privacyStatus, setPrivacyStatus] = useState<string>("");
+  const [privacyError, setPrivacyError] = useState<string>("");
+  const [exportingData, setExportingData] = useState<boolean>(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
+  const [deletePassword, setDeletePassword] = useState<string>("");
+  const [deletingAccount, setDeletingAccount] = useState<boolean>(false);
 
   // New Custom List state
   const [newListName, setNewListName] = useState("");
@@ -33,8 +39,7 @@ const IndexProfilePage: React.FC = () => {
     displayName: "Alex Mercer (ComicWarden)",
     email: "demo@comictraffic.io",
     bio: "Cumulative rating analyst, graphic novel collector, and sci-fi cinema critic.",
-    avatarUrl:
-      "https://i.pinimg.com/originals/95/8e/e6/958ee665c32ab3bbc9b3365f05c49c85.png",
+    avatarUrl: "/default-avatar.svg",
     role: "Admin",
     favoriteGenres: ["Superhero", "Sci-Fi", "Noir", "Graphic Novel", "Animation"],
   };
@@ -78,7 +83,7 @@ const IndexProfilePage: React.FC = () => {
               <div className="ct-dash-badges">
                 <span className="ct-role-badge">⚡ {profile.role} Analyst</span>
                 <span className="ct-enc-badge">
-                  ✓ Verified Multi-Source Sync Profile
+                  ⚡ Multi-Source Sync Profile
                 </span>
               </div>
               <h1>{profile.displayName}</h1>
@@ -186,6 +191,13 @@ const IndexProfilePage: React.FC = () => {
             onClick={() => setActiveTab("reviews")}
           >
             💬 Community Reviews ({ratingStore.reviews.length})
+          </button>
+          <button
+            type="button"
+            className={`ct-dash-tab ${activeTab === "privacy" ? "active" : ""}`}
+            onClick={() => setActiveTab("privacy")}
+          >
+            🔒 Privacy &amp; Data
           </button>
         </div>
 
@@ -510,27 +522,199 @@ const IndexProfilePage: React.FC = () => {
         {/* TAB 4: REVIEWS */}
         {activeTab === "reviews" && (
           <div className="ct-dash-panel">
-            <h3>💬 Community & Analyst Reviews</h3>
+            <h3>💬 Community &amp; Analyst Reviews</h3>
             <div className="ct-reviews-list">
-              {ratingStore.reviews.map((rev) => (
-                <div key={rev.id} className="ct-review-item">
-                  <div className="ct-review-item-head">
-                    <div>
-                      <strong>{rev.mediaTitle}</strong>{" "}
-                      <span className="ct-meta-pill">{rev.mediaType}</span>{" "}
-                      <span className="ct-review-date">
-                        by @{rev.username} •{" "}
-                        {new Date(rev.createdAt).toLocaleDateString()}
-                      </span>
+              {ratingStore.reviews.length === 0 ? (
+                <p className="ct-muted-text">
+                  You have not posted any community reviews yet.
+                </p>
+              ) : (
+                ratingStore.reviews.map((rev) => {
+                  const canDelete =
+                    profile.role === "Admin" ||
+                    profile.id === rev.userId ||
+                    profile.username.toLowerCase() ===
+                      rev.username.toLowerCase();
+                  return (
+                    <div key={rev.id} className="ct-review-item">
+                      <div className="ct-review-item-head">
+                        <div>
+                          <strong>{rev.mediaTitle}</strong>{" "}
+                          <span className="ct-meta-pill">{rev.mediaType}</span>{" "}
+                          <span className="ct-review-date">
+                            by @{rev.username} •{" "}
+                            {new Date(rev.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="ct-review-score-pill">
+                          ★ {rev.score}% ({(rev.score / 10).toFixed(1)}/10)
+                        </div>
+                      </div>
+                      <h4>{rev.headline}</h4>
+                      <p>{rev.reviewText}</p>
+                      {canDelete && (
+                        <div className="ct-review-item-foot">
+                          <button
+                            type="button"
+                            className="ct-review-delete-btn"
+                            onClick={() =>
+                              ratingStore.deleteReview(
+                                rev.id,
+                                commonStore.token || userStore.profile?.accessToken
+                              )
+                            }
+                          >
+                            🗑 Delete Review
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div className="ct-review-score-pill">
-                      ★ {rev.score}% ({(rev.score / 10).toFixed(1)}/10)
-                    </div>
-                  </div>
-                  <h4>{rev.headline}</h4>
-                  <p>{rev.reviewText}</p>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: PRIVACY & DATA RIGHTS */}
+        {activeTab === "privacy" && (
+          <div className="ct-dash-panel-grid">
+            <div className="ct-dash-panel">
+              <h3>📦 Export Your Personal Data (GDPR / CCPA)</h3>
+              <p className="ct-muted-text">
+                Download a portable JSON copy of your Comic Traffic profile,
+                custom source weights, watchlist, custom collections, and
+                community reviews.
+              </p>
+              {privacyStatus && (
+                <div className="ct-privacy-status" role="status">
+                  {privacyStatus}
                 </div>
-              ))}
+              )}
+              {privacyError && (
+                <div className="ct-auth-error" role="alert">
+                  {privacyError}
+                </div>
+              )}
+              <div className="ct-privacy-actions">
+                <button
+                  type="button"
+                  className="ct-primary-cta-btn"
+                  disabled={exportingData}
+                  onClick={async () => {
+                    setPrivacyError("");
+                    setPrivacyStatus("");
+                    setExportingData(true);
+                    try {
+                      const exported = await userStore.exportMyData();
+                      const blob = new Blob([JSON.stringify(exported, null, 2)], {
+                        type: "application/json",
+                      });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `comictraffic-data-${profile.username}.json`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                      setPrivacyStatus(
+                        "Your personal data export (JSON) has been downloaded."
+                      );
+                    } catch (err: any) {
+                      setPrivacyError(
+                        err?.message || "Unable to export personal data right now."
+                      );
+                    } finally {
+                      setExportingData(false);
+                    }
+                  }}
+                >
+                  {exportingData
+                    ? "Preparing Export..."
+                    : "⬇ Download My Data (JSON)"}
+                </button>
+              </div>
+              <div className="ct-privacy-legal-links">
+                <Link to="/privacy">Privacy Policy</Link>
+                <span>•</span>
+                <Link to="/terms">Terms of Service</Link>
+                <span>•</span>
+                <Link to="/legal/attributions">API Attributions &amp; DMCA</Link>
+              </div>
+            </div>
+
+            <div className="ct-dash-panel ct-danger-panel">
+              <h3>🗑️ Delete Account Permanently</h3>
+              <p className="ct-muted-text">
+                Permanently erase your account, profile details, watchlists,
+                custom lists, and all reviews you authored. This action cannot
+                be undone.
+              </p>
+              {!confirmDeleteOpen ? (
+                <button
+                  type="button"
+                  className="ct-danger-btn"
+                  onClick={() => {
+                    setPrivacyError("");
+                    setConfirmDeleteOpen(true);
+                  }}
+                >
+                  Delete My Account
+                </button>
+              ) : (
+                <form
+                  className="ct-delete-confirm-form"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setPrivacyError("");
+                    setDeletingAccount(true);
+                    try {
+                      await userStore.deleteMyAccount(deletePassword);
+                    } catch (err: any) {
+                      setPrivacyError(
+                        err?.message || "Could not delete account."
+                      );
+                      setDeletingAccount(false);
+                    }
+                  }}
+                >
+                  <div className="ct-form-field">
+                    <label htmlFor="ct-delete-confirm-pass">
+                      Confirm Password (optional for local sessions)
+                    </label>
+                    <input
+                      id="ct-delete-confirm-pass"
+                      type="password"
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      placeholder="Enter your password to confirm deletion"
+                      autoComplete="current-password"
+                    />
+                  </div>
+                  <div className="ct-delete-confirm-btns">
+                    <button
+                      type="submit"
+                      className="ct-danger-btn"
+                      disabled={deletingAccount}
+                    >
+                      {deletingAccount
+                        ? "Deleting Account..."
+                        : "Confirm Permanent Deletion"}
+                    </button>
+                    <button
+                      type="button"
+                      className="ct-secondary-cta-btn"
+                      onClick={() => {
+                        setConfirmDeleteOpen(false);
+                        setDeletePassword("");
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         )}

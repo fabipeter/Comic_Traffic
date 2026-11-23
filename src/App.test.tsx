@@ -36,6 +36,11 @@ import ForgotPasswordPage from "./features/authentication/forgot-password/Forgot
 import RegisterPage from "./features/authentication/register/RegisterPage";
 import { CompareModal } from "./features/home/CumulativeModals";
 import ScrollToTopButton from "./features/common/ScrollToTopButton";
+import {
+  PrivacyPolicyPage,
+  TermsOfServicePage,
+  AttributionsDmcaPage,
+} from "./features/legal/LegalPages";
 
 const MOCK_BACKEND_CATALOG: AggregatedMediaItem[] = [
   {
@@ -1098,5 +1103,81 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
     expect(testStore.activeSelectedItem?.cumulativeRating.finalCumulativeAverage).toBe(
       liveAvatar.cumulativeRating.finalCumulativeAverage
     );
+  });
+
+  test("21. Non-Commercial Legal Compliance: legal pages, TMDB/TVMaze attributions, Pinterest avatar rewrite, age/terms gate, and review report/delete", async () => {
+    // 1. Legacy Pinterest avatar URL is automatically rewritten to self-hosted avatar
+    expect(
+      sanitizeImageUrl("https://i.pinimg.com/originals/95/8e/e6/958ee665c32ab3bbc9b3365f05c49c85.png")
+    ).toBe("/default-avatar.svg");
+
+    // 2. Legal pages render mandatory TMDB notice, TVMaze CC BY-SA 4.0, Privacy & DMCA sections
+    const { unmount: unmountLegal } = render(
+      <MemoryRouter initialEntries={["/legal/attributions"]}>
+        <Routes>
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/legal/attributions" element={<AttributionsDmcaPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    expect(
+      screen.getByText(/This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB\./i)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/CC BY-SA 4\.0/i)).toBeInTheDocument();
+    expect(screen.getByText(/DMCA Takedown Procedure/i)).toBeInTheDocument();
+    unmountLegal();
+
+    // 3. Registration enforces age 13+/16+ & Terms/Privacy checkbox
+    const { container, unmount: unmountReg } = render(
+      <MemoryRouter>
+        <RegisterPage />
+      </MemoryRouter>
+    );
+    fireEvent.change(screen.getByLabelText(/Username/i), { target: { value: "legal_tester" } });
+    fireEvent.change(screen.getByLabelText(/Display Name/i), { target: { value: "Legal Tester" } });
+    fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: "legal@comictraffic.io" } });
+    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: "ValidPass123!" } });
+    fireEvent.submit(container.querySelector("form.ct-auth-form") as HTMLFormElement);
+    expect(
+      screen.getByText(/confirm you meet the minimum age requirement/i)
+    ).toBeInTheDocument();
+    unmountReg();
+
+    // 4. Review report & delete update local store and remove community source when last review is deleted
+    const postSpy = vi
+      .spyOn(encryptedBackendClient, "sendEncryptedPost")
+      .mockResolvedValue({
+        fromBackend: true,
+        data: { isSuccessful: true },
+        envelope: { encrypted: false, iv: "", payload: "", signature: "", timestamp: Date.now() },
+      });
+    try {
+      const modStore = new RatingStore();
+      const target = modStore.catalog[0];
+      await modStore.submitReview({
+        externalMediaId: target.externalId,
+        mediaTitle: target.title,
+        mediaType: target.mediaType,
+        score: 90,
+        headline: "Great read",
+        reviewText: "Fantastic pacing throughout.",
+        containsSpoilers: false,
+        username: "legal_tester",
+      });
+      const addedId = modStore.reviews[0].id;
+      await modStore.reportReview({
+        reviewId: addedId,
+        externalMediaId: target.externalId,
+        reason: "Spoilers",
+        details: "Unmarked ending spoiler",
+      });
+      expect(modStore.reportedReviewIds).toContain(addedId);
+
+      await modStore.deleteReview(addedId);
+      expect(modStore.reviews.find((r) => r.id === addedId)).toBeUndefined();
+    } finally {
+      postSpy.mockRestore();
+    }
   });
 });

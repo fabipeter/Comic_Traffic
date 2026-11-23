@@ -30,7 +30,12 @@ export default class UserStore {
     try {
       const saved = window.localStorage.getItem("ct_user_profile");
       if (saved) {
-        this.profile = JSON.parse(saved) as ComicTrafficUserProfile;
+        const parsed = JSON.parse(saved) as ComicTrafficUserProfile;
+        if (parsed.avatarUrl && parsed.avatarUrl.toLowerCase().includes("pinimg.com")) {
+          parsed.avatarUrl = "/default-avatar.svg";
+          window.localStorage.setItem("ct_user_profile", JSON.stringify(parsed));
+        }
+        this.profile = parsed;
       }
     } catch {
       // Ignore storage error
@@ -110,9 +115,16 @@ export default class UserStore {
     password: string;
     displayName?: string;
     favoriteGenres?: string[];
+    acceptedTerms?: boolean;
   }) => {
     this.loginStatus = "loading";
     try {
+      if (creds.acceptedTerms === false) {
+        throw new Error(
+          "You must confirm minimum age eligibility and accept the Terms of Service and Privacy Policy."
+        );
+      }
+
       const cleanEmail = (creds.email || "").trim();
       const atIdx = cleanEmail.indexOf("@");
       const dotIdx = atIdx > 0 ? cleanEmail.indexOf(".", atIdx + 1) : -1;
@@ -145,6 +157,7 @@ export default class UserStore {
           favoriteGenresCsv: (
             creds.favoriteGenres || ["Superhero", "Sci-Fi", "Comic Book"]
           ).join(","),
+          acceptedTerms: creds.acceptedTerms ?? true,
         },
         undefined,
         false,
@@ -173,7 +186,10 @@ export default class UserStore {
         email: rawProfile.email,
         displayName: rawProfile.displayName || cleanUsername,
         bio: rawProfile.bio || "Comic book, cinema & series enthusiast.",
-        avatarUrl: rawProfile.avatarUrl || "/comic-traffic-logo.svg",
+        avatarUrl:
+          rawProfile.avatarUrl && !rawProfile.avatarUrl.toLowerCase().includes("pinimg.com")
+            ? rawProfile.avatarUrl
+            : "/default-avatar.svg",
         role: rawProfile.role || "User",
         favoriteGenres: Array.isArray(rawProfile.favoriteGenres)
           ? rawProfile.favoriteGenres
@@ -325,9 +341,83 @@ export default class UserStore {
     }
   };
 
+  exportMyData = async (): Promise<Record<string, any>> => {
+    const token = store.commonStore.token || this.profile?.accessToken || null;
+    const res = await encryptedBackendClient.sendEncryptedPost<{}, any>(
+      "/auth/export-data",
+      {},
+      token
+    );
+
+    if (res.fromBackend && res.data && (res.data.profile || res.data.exportedAt)) {
+      return res.data;
+    }
+
+    const safeProfile = this.profile
+      ? {
+          id: this.profile.id,
+          username: this.profile.username,
+          email: this.profile.email,
+          displayName: this.profile.displayName,
+          bio: this.profile.bio,
+          avatarUrl: this.profile.avatarUrl,
+          role: this.profile.role,
+          favoriteGenres: this.profile.favoriteGenres,
+        }
+      : null;
+
+    return {
+      exportedAt: new Date().toISOString(),
+      source: "local-session",
+      profile: safeProfile,
+      customWeights: store.ratingStore.customWeights,
+      watchlist: store.ratingStore.watchlist,
+      customLists: store.ratingStore.customLists,
+      reviews: store.ratingStore.reviews,
+    };
+  };
+
+  deleteMyAccount = async (
+    password?: string
+  ): Promise<{ isSuccessful: boolean; message: string }> => {
+    const token = store.commonStore.token || this.profile?.accessToken || null;
+    const currentUsername = this.profile?.username;
+    const res = await encryptedBackendClient.sendEncryptedPost<
+      { password?: string },
+      { isSuccessful?: boolean; message?: string; responseMessage?: string }
+    >("/auth/delete-account", { password: password || undefined }, token);
+
+    if (!res.fromBackend && res.errorMessage && res.errorMessage.toLowerCase().includes("password")) {
+      throw new Error(res.errorMessage);
+    }
+
+    if (res.data && res.data.isSuccessful === false) {
+      throw new Error(
+        res.data.responseMessage ||
+          res.data.message ||
+          "Unable to delete account."
+      );
+    }
+
+    store.ratingStore.purgeAllPersonalLocalData(currentUsername);
+    this.logout();
+    navigateToAppRoute("/");
+
+    return {
+      isSuccessful: true,
+      message:
+        res.data?.message ||
+        "Your account and associated personal data have been permanently deleted.",
+    };
+  };
+
   logout = () => {
     this.profile = null;
-    window.localStorage.removeItem("ct_user_profile");
+    try {
+      window.localStorage.removeItem("ct_user_profile");
+    } catch {
+      // Ignore storage error
+    }
     store.commonStore.clearLocalStorage();
   };
 }

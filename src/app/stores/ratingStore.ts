@@ -418,6 +418,7 @@ export default class RatingStore {
   useCustomWeights: boolean = false;
 
   reviews: UserReviewItem[] = [...DEFAULT_REVIEWS];
+  reportedReviewIds: string[] = [];
   watchlist: WatchlistEntry[] = [...DEFAULT_WATCHLIST];
   customLists: CustomListEntry[] = [...DEFAULT_LISTS];
   encryptionLogs: EncryptionInspectionLog[] = [];
@@ -1379,6 +1380,139 @@ export default class RatingStore {
       r.id === reviewId ? { ...r, helpfulVotes: r.helpfulVotes + 1 } : r
     );
     this.persistToStorage();
+  };
+
+  deleteReview = async (reviewId: string, token?: string | null) => {
+    const targetReview = this.reviews.find((r) => r.id === reviewId);
+    if (!targetReview) return;
+
+    await encryptedBackendClient.sendEncryptedPost(
+      "/reviews/delete",
+      { reviewId },
+      token
+    );
+
+    runInAction(() => {
+      this.reviews = this.reviews.filter((r) => r.id !== reviewId);
+      const remainingForMedia = this.reviews.filter(
+        (r) => r.externalMediaId === targetReview.externalMediaId
+      );
+      const target = this.getMediaByExternalId(targetReview.externalMediaId);
+      if (target) {
+        const weightsToApply = this.useCustomWeights
+          ? this.customWeights
+          : undefined;
+        const rebuildWithoutOrWithRemaining = (
+          candidate: AggregatedMediaItem
+        ): AggregatedMediaItem => {
+          const baseSources = candidate.cumulativeRating.sources.filter(
+            (s) => s.sourceId !== "comictraffic_community"
+          );
+          if (remainingForMedia.length > 0) {
+            const avg =
+              Math.round(
+                (remainingForMedia.reduce((acc, r) => acc + r.score, 0) /
+                  remainingForMedia.length) *
+                  10
+              ) / 10;
+            baseSources.push({
+              sourceId: "comictraffic_community",
+              sourceName: "ComicTraffic Community",
+              category: "ComicCommunity",
+              rawScoreDisplay: `${(avg / 10).toFixed(1)} / 10`,
+              normalizedScore: avg,
+              voteCount: remainingForMedia.length,
+              defaultWeight: 1.15,
+              accentColor: "#a855f7",
+            });
+          }
+          return {
+            ...candidate,
+            cumulativeRating: calculateCumulativeRating(
+              baseSources,
+              weightsToApply
+            ),
+          };
+        };
+
+        this.catalog = this.catalog.map((c) =>
+          c.externalId === target.externalId || itemsMatchCanonical(c, target)
+            ? rebuildWithoutOrWithRemaining(c)
+            : c
+        );
+
+        const nextLiveById: Record<string, AggregatedMediaItem> = {};
+        for (const [id, liveItem] of Object.entries(this.liveItemsByExternalId)) {
+          nextLiveById[id] =
+            id === target.externalId || itemsMatchCanonical(liveItem, target)
+              ? rebuildWithoutOrWithRemaining(liveItem)
+              : liveItem;
+        }
+        this.liveItemsByExternalId = nextLiveById;
+
+        if (this.selectedItem) {
+          const updatedSel = this.getMediaByExternalId(
+            this.selectedItem.externalId
+          );
+          if (updatedSel) {
+            this.selectedItem = updatedSel;
+          }
+        }
+      }
+
+      this.persistToStorage();
+    });
+  };
+
+  reportReview = async (
+    params: {
+      reviewId: string;
+      externalMediaId: string;
+      reason: "Spam" | "Harassment" | "Spoilers" | "CopyrightDMCA" | "Other";
+      details?: string;
+    },
+    token?: string | null
+  ) => {
+    const cleanDetails = sanitizeUserText(params.details || "", 500);
+    await encryptedBackendClient.sendEncryptedPost(
+      "/reviews/report",
+      {
+        reviewId: params.reviewId,
+        externalMediaId: params.externalMediaId,
+        reason: params.reason,
+        details: cleanDetails,
+      },
+      token
+    );
+
+    runInAction(() => {
+      if (!this.reportedReviewIds.includes(params.reviewId)) {
+        this.reportedReviewIds = [...this.reportedReviewIds, params.reviewId];
+      }
+      this.encryptionLogs = [...encryptedBackendClient.logs];
+    });
+  };
+
+  purgeAllPersonalLocalData = (username?: string) => {
+    runInAction(() => {
+      this.reviews = username
+        ? this.reviews.filter(
+            (r) => r.username.toLowerCase() !== username.toLowerCase()
+          )
+        : [];
+      this.watchlist = [];
+      this.customLists = [];
+      this.reportedReviewIds = [];
+      this.useCustomWeights = false;
+      this.initDefaultWeights();
+      try {
+        localStorage.removeItem("ct_watchlist");
+        localStorage.removeItem("ct_reviews");
+        localStorage.removeItem("ct_lists");
+      } catch {
+        // Ignore storage errors
+      }
+    });
   };
 
   upsertWatchlistItem = async (

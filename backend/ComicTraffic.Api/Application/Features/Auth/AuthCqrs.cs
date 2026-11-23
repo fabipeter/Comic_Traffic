@@ -34,7 +34,8 @@ public record RegisterUserCommand(
     [Required] string Password,
     string? DisplayName = null,
     string? FavoriteGenresCsv = null,
-    string? RequestOrigin = null
+    string? RequestOrigin = null,
+    bool AcceptedTerms = true
 ) : IRequest<AuthUserResponseDto>;
 
 public record LoginUserCommand(
@@ -73,6 +74,30 @@ public record UpdateUserPreferencesCommand(
     Dictionary<string, double>? PreferredWeights
 ) : IRequest<AuthUserResponseDto>;
 
+public class UserDataExportDto
+{
+    public DateTime ExportedAt { get; set; } = DateTime.UtcNow;
+    public object Profile { get; set; } = new { };
+    public List<WatchlistItem> Watchlist { get; set; } = new();
+    public List<CustomMediaList> CustomLists { get; set; } = new();
+    public List<UserReview> Reviews { get; set; } = new();
+}
+
+public record ExportUserDataQuery(Guid UserId) : IRequest<UserDataExportDto?>;
+
+public record DeleteUserAccountCommand(
+    Guid UserId,
+    string? Password = null
+) : IRequest<DeleteAccountResultDto>;
+
+public record DeleteAccountResultDto(
+    bool IsSuccessful,
+    string Message,
+    int RemovedReviews,
+    int RemovedWatchlistItems,
+    int RemovedCustomLists
+);
+
 public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, AuthUserResponseDto>
 {
     private readonly ComicTrafficDbContext _db;
@@ -97,6 +122,8 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, A
 
     public async Task<AuthUserResponseDto> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
     {
+        if (!request.AcceptedTerms)
+            throw new InvalidOperationException("You must confirm minimum age eligibility and accept the Terms of Service and Privacy Policy.");
         if (string.IsNullOrWhiteSpace(request.Email))
             throw new InvalidOperationException("A valid email address is required for registration.");
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 6)
@@ -139,7 +166,8 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, A
             PasswordHash = _jwtService.HashPassword(request.Password),
             FavoriteGenresCsv = string.IsNullOrWhiteSpace(request.FavoriteGenresCsv)
                 ? "Action,Superhero,Sci-Fi,Graphic Novel"
-                : request.FavoriteGenresCsv
+                : request.FavoriteGenresCsv,
+            TermsAcceptedAt = DateTime.UtcNow
         };
 
         _db.Users.Add(newUser);
@@ -468,6 +496,163 @@ public class UpdateUserPreferencesCommandHandler : IRequestHandler<UpdateUserPre
 
         await _db.SaveChangesAsync(cancellationToken);
         return AuthMapper.ToDto(user, _jwtService.GenerateToken(user));
+    }
+}
+
+public class ExportUserDataQueryHandler : IRequestHandler<ExportUserDataQuery, UserDataExportDto?>
+{
+    private readonly ComicTrafficDbContext _db;
+
+    public ExportUserDataQueryHandler(ComicTrafficDbContext db)
+    {
+        _db = db;
+    }
+
+    public async Task<UserDataExportDto?> Handle(ExportUserDataQuery request, CancellationToken cancellationToken)
+    {
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
+        if (user == null)
+            return null;
+
+        var watchlist = await _db.WatchlistItems.AsNoTracking()
+            .Where(w => w.UserId == request.UserId)
+            .OrderByDescending(w => w.UpdatedAt)
+            .ToListAsync(cancellationToken);
+
+        var customLists = await _db.CustomLists.AsNoTracking()
+            .Where(l => l.UserId == request.UserId)
+            .OrderByDescending(l => l.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        var reviews = await _db.Reviews.AsNoTracking()
+            .Where(r => r.UserId == request.UserId)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return new UserDataExportDto
+        {
+            ExportedAt = DateTime.UtcNow,
+            Profile = new
+            {
+                user.Id,
+                user.Username,
+                user.Email,
+                user.DisplayName,
+                user.Bio,
+                user.AvatarUrl,
+                user.Role,
+                user.FavoriteGenresCsv,
+                user.PreferredWeightsJson,
+                user.TermsAcceptedAt,
+                user.CreatedAt
+            },
+            Watchlist = watchlist,
+            CustomLists = customLists,
+            Reviews = reviews
+        };
+    }
+}
+
+public class DeleteUserAccountCommandHandler : IRequestHandler<DeleteUserAccountCommand, DeleteAccountResultDto>
+{
+    private readonly ComicTrafficDbContext _db;
+    private readonly IJwtTokenService _jwtService;
+    private readonly ICumulativeRatingCalculator _calculator;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
+
+    public DeleteUserAccountCommandHandler(
+        ComicTrafficDbContext db,
+        IJwtTokenService jwtService,
+        ICumulativeRatingCalculator calculator)
+    {
+        _db = db;
+        _jwtService = jwtService;
+        _calculator = calculator;
+    }
+
+    public async Task<DeleteAccountResultDto> Handle(DeleteUserAccountCommand request, CancellationToken cancellationToken)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
+        if (user == null)
+            throw new KeyNotFoundException("Account not found.");
+
+        if (!string.IsNullOrWhiteSpace(request.Password) &&
+            !_jwtService.VerifyPassword(request.Password, user.PasswordHash))
+        {
+            throw new UnauthorizedAccessException("Password confirmation failed. Account was not deleted.");
+        }
+
+        var userReviews = await _db.Reviews.Where(r => r.UserId == user.Id).ToListAsync(cancellationToken);
+        var affectedMediaIds = userReviews
+            .Select(r => r.ExternalMediaId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var watchlist = await _db.WatchlistItems.Where(w => w.UserId == user.Id).ToListAsync(cancellationToken);
+        var customLists = await _db.CustomLists.Where(l => l.UserId == user.Id).ToListAsync(cancellationToken);
+
+        _db.Reviews.RemoveRange(userReviews);
+        _db.WatchlistItems.RemoveRange(watchlist);
+        _db.CustomLists.RemoveRange(customLists);
+        _db.Users.Remove(user);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        foreach (var mediaId in affectedMediaIds)
+        {
+            var mediaItem = await _db.MediaItems.FirstOrDefaultAsync(m => m.ExternalId == mediaId, cancellationToken);
+            if (mediaItem == null) continue;
+
+            var remainingReviews = await _db.Reviews.AsNoTracking()
+                .Where(r => r.ExternalMediaId == mediaId)
+                .ToListAsync(cancellationToken);
+
+            var sources = JsonSerializer.Deserialize<List<ExternalRatingSource>>(mediaItem.ExternalRatingsJson, JsonOptions) ?? new();
+            sources.RemoveAll(s => string.Equals(s.SourceId, "comictraffic_community", StringComparison.OrdinalIgnoreCase));
+
+            if (remainingReviews.Count > 0)
+            {
+                double avg = Math.Round(remainingReviews.Average(r => r.Score), 1);
+                sources.Add(new ExternalRatingSource
+                {
+                    SourceId = "comictraffic_community",
+                    SourceName = "ComicTraffic Community",
+                    Category = "ComicCommunity",
+                    NormalizedScore = avg,
+                    RawScoreDisplay = $"{Math.Round(avg / 10.0, 1)} / 10",
+                    VoteCount = remainingReviews.Count,
+                    DefaultWeight = 1.15,
+                    AccentColor = "#a855f7"
+                });
+            }
+
+            var summary = _calculator.CalculateCumulativeRating(sources);
+            mediaItem.ExternalRatingsJson = JsonSerializer.Serialize(sources, JsonOptions);
+            mediaItem.FinalCumulativeAverage = summary.FinalCumulativeAverage;
+            mediaItem.BayesianWeightedScore = summary.BayesianWeightedScore;
+            mediaItem.CriticConsensusScore = summary.CriticConsensusScore;
+            mediaItem.AudienceConsensusScore = summary.AudienceConsensusScore;
+            mediaItem.PolarizationIndex = summary.PolarizationIndex;
+            mediaItem.ConsensusTier = summary.ConsensusTier;
+            mediaItem.TotalVoteCount = summary.TotalAggregatedVotes;
+            mediaItem.LastUpdated = DateTime.UtcNow;
+        }
+
+        if (affectedMediaIds.Count > 0)
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        return new DeleteAccountResultDto(
+            true,
+            "Your Comic Traffic account and all associated personal data have been permanently deleted.",
+            userReviews.Count,
+            watchlist.Count,
+            customLists.Count);
     }
 }
 

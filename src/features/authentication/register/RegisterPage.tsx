@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { observer } from "mobx-react-lite";
 import { useStore } from "../../../app/stores/store";
 import Nav from "../../home/Nav";
@@ -27,6 +27,7 @@ const RegisterPage = () => {
     "Graphic Novel",
     "Sci-Fi",
   ]);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const toggleGenre = (genre: string) => {
@@ -58,6 +59,13 @@ const RegisterPage = () => {
       return;
     }
 
+    if (!acceptedTerms) {
+      setErrorMessage(
+        "Please confirm you meet the minimum age requirement (13+, or 16+ in the EEA/UK) and accept the Terms of Service and Privacy Policy."
+      );
+      return;
+    }
+
     try {
       await userStore.registerWithComicTraffic({
         username: username.trim(),
@@ -65,6 +73,7 @@ const RegisterPage = () => {
         password,
         displayName: (displayName || username).trim(),
         favoriteGenres: selectedGenres,
+        acceptedTerms,
       });
     } catch (err: any) {
       setErrorMessage(err?.message || "Registration failed.");
@@ -160,6 +169,28 @@ const RegisterPage = () => {
                 ))}
               </div>
             </div>
+
+            <label className="ct-legal-consent-label" htmlFor="ct-reg-consent">
+              <input
+                id="ct-reg-consent"
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                required
+              />
+              <span>
+                I confirm I am at least <strong>13 years old</strong> (or{" "}
+                <strong>16+</strong> in the EEA/UK) and agree to the{" "}
+                <Link to="/terms" target="_blank" rel="noopener noreferrer">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link to="/privacy" target="_blank" rel="noopener noreferrer">
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </label>
 
             <button
               type="submit"

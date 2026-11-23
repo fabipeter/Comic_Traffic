@@ -1693,8 +1693,16 @@ function resolveAllowedProxyPath(endpoint) {
       return "/api/auth/me";
     case "/auth/preferences":
       return "/api/auth/preferences";
+    case "/auth/export-data":
+      return "/api/auth/export-data";
+    case "/auth/delete-account":
+      return "/api/auth/delete-account";
     case "/reviews":
       return "/api/reviews";
+    case "/reviews/delete":
+      return "/api/reviews/delete";
+    case "/reviews/report":
+      return "/api/reviews/report";
     case "/dashboard":
       return "/api/dashboard";
     case "/dashboard/watchlist":
@@ -2023,6 +2031,14 @@ module.exports = async function handler(req, res) {
         });
       }
 
+      if (decryptedRequest?.acceptedTerms === false) {
+        return res.status(400).json({
+          isSuccessful: false,
+          message:
+            "You must confirm minimum age eligibility and accept the Terms of Service and Privacy Policy.",
+        });
+      }
+
       if (typeof rawPassword !== "string" || rawPassword.length < 6) {
         return res.status(400).json({
           isSuccessful: false,
@@ -2079,7 +2095,7 @@ module.exports = async function handler(req, res) {
           email: cleanEmail,
           displayName: cleanDisplayName,
           bio: "Comic book, cinema & series enthusiast.",
-          avatarUrl: "/comic-traffic-logo.svg",
+          avatarUrl: "/default-avatar.svg",
           role: "User",
           favoriteGenres,
           accessToken: `ct_gw_${crypto.randomBytes(24).toString("hex")}`,

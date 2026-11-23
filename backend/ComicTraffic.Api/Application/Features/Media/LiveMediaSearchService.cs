@@ -24,7 +24,7 @@ public sealed class LiveMediaSearchService
 {
     private const string PlaceholderPoster = "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&w=900&q=80";
     private const string PlaceholderBackdrop = "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&w=1600&q=80";
-    private const string UserAgent = "ComicTraffic/1.0 (+https://comictraffic.com)";
+    private const string UserAgent = "ComicTraffic/1.0 (+https://comictraffic.com; contact@comictraffic.com)";
     private const int MaxResults = 60;
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan ProviderTimeout = TimeSpan.FromSeconds(5.5);
@@ -134,7 +134,7 @@ public sealed class LiveMediaSearchService
     private static JsonElement? O(JsonElement e, string name) =>
         P(e, name) is { ValueKind: JsonValueKind.Object } o ? o : null;
 
-    public static ExternalRatingSource MakeSource(RatingProvider provider, string raw, double normalized, int votes)
+    public static ExternalRatingSource MakeSource(RatingProvider provider, string raw, double normalized, int votes, string sourceUrl = "")
     {
         var d = SourceDefs[provider];
         return new ExternalRatingSource
@@ -146,7 +146,8 @@ public sealed class LiveMediaSearchService
             NormalizedScore = Math.Round(Math.Clamp(normalized, 0, 100), 1),
             VoteCount = Math.Max(0, votes),
             DefaultWeight = d.Weight,
-            AccentColor = d.Color
+            AccentColor = d.Color,
+            SourceUrl = sourceUrl
         };
     }
 
@@ -432,8 +433,9 @@ public sealed class LiveMediaSearchService
 
         double avg = D(raw, "vote_average");
         int votes = (int)D(raw, "vote_count");
+        string tmdbUrl = tmdbId.HasValue ? $"https://www.themoviedb.org/{(isTv ? "tv" : "movie")}/{tmdbId.Value}" : "";
         if (avg > 0 && votes > 0)
-            item.Sources.Add(MakeSource(RatingProvider.Tmdb, $"{avg:F1} / 10", avg * 10, votes));
+            item.Sources.Add(MakeSource(RatingProvider.Tmdb, $"{avg:F1} / 10", avg * 10, votes, tmdbUrl));
         return item;
     }
 
@@ -526,10 +528,11 @@ public sealed class LiveMediaSearchService
         if (item.Year > 0 && omdbYear > 0 && Math.Abs(omdbYear - item.Year) > 1) return;
 
         item.ImdbId ??= S(d, "imdbID");
+        string imdbUrl = !string.IsNullOrEmpty(item.ImdbId) ? $"https://www.imdb.com/title/{Uri.EscapeDataString(item.ImdbId)}/" : "";
         if (double.TryParse(S(d, "imdbRating"), NumberStyles.Float, CultureInfo.InvariantCulture, out var imdb) && imdb > 0)
         {
             int.TryParse(S(d, "imdbVotes").Replace(",", ""), out int votes);
-            AddSource(item, MakeSource(RatingProvider.Imdb, $"{imdb:F1} / 10", imdb * 10, votes));
+            AddSource(item, MakeSource(RatingProvider.Imdb, $"{imdb:F1} / 10", imdb * 10, votes, imdbUrl));
         }
         foreach (var r in A(d, "Ratings"))
         {
@@ -788,7 +791,10 @@ public sealed class LiveMediaSearchService
             double rt = D(s, "averageRuntime") > 0 ? D(s, "averageRuntime") : D(s, "runtime");
             if (rt > 0) item.Runtime = $"{(int)rt} min / ep";
             if (O(s, "rating") is { } rating && D(rating, "average") is var avg && avg > 0)
-                item.Sources.Add(MakeSource(RatingProvider.TvMaze, $"{avg:0.#} / 10", avg * 10, 0));
+            {
+                string tvMazeUrl = S(s, "url") != "" ? S(s, "url") : "https://www.tvmaze.com";
+                item.Sources.Add(MakeSource(RatingProvider.TvMaze, $"{avg:0.#} / 10", avg * 10, 0, tvMazeUrl));
+            }
             list.Add(item);
         }
         return list;
@@ -902,7 +908,7 @@ query ($search: String) {
             }
             double score = D(m, "averageScore");
             if (score > 0)
-                item.Sources.Add(MakeSource(RatingProvider.AniList, $"{(int)score} / 100", score, (int)D(m, "popularity")));
+                item.Sources.Add(MakeSource(RatingProvider.AniList, $"{(int)score} / 100", score, (int)D(m, "popularity"), $"https://anilist.co/{kind}/{S(m, "id")}"));
             list.Add(item);
         }
 
@@ -943,7 +949,10 @@ query ($search: String) {
             item.Runtime = D(m, "chapters") > 0 ? $"{(int)D(m, "chapters")} Chapters" : D(m, "volumes") > 0 ? $"{(int)D(m, "volumes")} Volumes" : "";
             double score = D(m, "score");
             if (score > 0)
-                item.Sources.Add(MakeSource(RatingProvider.MyAnimeList, $"{score:0.##} / 10", score * 10, (int)D(m, "scored_by")));
+            {
+                string malUrl = S(m, "url") != "" ? S(m, "url") : $"https://myanimelist.net/manga/{S(m, "mal_id")}";
+                item.Sources.Add(MakeSource(RatingProvider.MyAnimeList, $"{score:0.##} / 10", score * 10, (int)D(m, "scored_by"), malUrl));
+            }
             list.Add(item);
         }
         return list;
@@ -1035,7 +1044,11 @@ query ($search: String) {
                 double rating = D(d, "rating");
                 int count = (int)D(d, "ratings_count");
                 if (rating > 0 && count > 0)
-                    item.Sources.Add(MakeSource(RatingProvider.Hardcover, $"{rating:F2} / 5", rating * 20, count));
+                {
+                    string slug = S(d, "slug");
+                    string hcUrl = slug != "" ? $"https://hardcover.app/books/{Uri.EscapeDataString(slug)}" : "https://hardcover.app";
+                    item.Sources.Add(MakeSource(RatingProvider.Hardcover, $"{rating:F2} / 5", rating * 20, count, hcUrl));
+                }
                 list.Add(item);
             }
             return list;
@@ -1086,7 +1099,7 @@ query ($search: String) {
             double avg = D(v, "averageRating");
             int count = (int)D(v, "ratingsCount");
             if (avg > 0 && count > 0)
-                item.Sources.Add(MakeSource(RatingProvider.GoogleBooks, $"{avg:F1} / 5", avg * 20, count));
+                item.Sources.Add(MakeSource(RatingProvider.GoogleBooks, $"{avg:F1} / 5", avg * 20, count, S(v, "infoLink") != "" ? S(v, "infoLink") : "https://books.google.com"));
             list.Add(item);
         }
         return list;
@@ -1122,7 +1135,7 @@ query ($search: String) {
             double avg = D(r, "averageUserRating");
             int count = (int)D(r, "userRatingCount");
             if (avg > 0 && count > 0)
-                item.Sources.Add(MakeSource(RatingProvider.AppleBooks, $"{avg:F1} / 5", avg * 20, count));
+                item.Sources.Add(MakeSource(RatingProvider.AppleBooks, $"{avg:F1} / 5", avg * 20, count, S(r, "trackViewUrl") != "" ? S(r, "trackViewUrl") : "https://books.apple.com"));
             list.Add(item);
         }
         return list;
@@ -1159,7 +1172,11 @@ query ($search: String) {
             double avg = D(d, "ratings_average");
             int count = (int)D(d, "ratings_count");
             if (avg > 0 && count > 0)
-                item.Sources.Add(MakeSource(RatingProvider.OpenLibrary, $"{avg:F2} / 5", avg * 20, count));
+            {
+                string olKey = S(d, "key");
+                string olUrl = olKey != "" ? $"https://openlibrary.org{olKey}" : "https://openlibrary.org";
+                item.Sources.Add(MakeSource(RatingProvider.OpenLibrary, $"{avg:F2} / 5", avg * 20, count, olUrl));
+            }
             list.Add(item);
         }
         return list;
@@ -1170,8 +1187,20 @@ query ($search: String) {
     private static void AddSource(LiveItem item, ExternalRatingSource source)
     {
         var existing = item.Sources.FirstOrDefault(s => s.SourceId == source.SourceId);
-        if (existing == null) item.Sources.Add(source);
-        else if (source.VoteCount > existing.VoteCount) item.Sources[item.Sources.IndexOf(existing)] = source;
+        if (existing == null)
+        {
+            item.Sources.Add(source);
+        }
+        else if (source.VoteCount > existing.VoteCount)
+        {
+            if (string.IsNullOrEmpty(source.SourceUrl) && !string.IsNullOrEmpty(existing.SourceUrl))
+                source.SourceUrl = existing.SourceUrl;
+            item.Sources[item.Sources.IndexOf(existing)] = source;
+        }
+        else if (string.IsNullOrEmpty(existing.SourceUrl) && !string.IsNullOrEmpty(source.SourceUrl))
+        {
+            existing.SourceUrl = source.SourceUrl;
+        }
     }
 
     private static bool YearsCompatible(LiveItem a, LiveItem b) =>

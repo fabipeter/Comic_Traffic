@@ -3107,3 +3107,236 @@ body,
   }
 }
 
+/* ==========================================================================
+   Non-Commercial Legal Attributions, Consent, Privacy & Moderation UI
+   ========================================================================== */
+.adx-footer-legal-bar {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adx-footer-tmdb-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.adx-footer-tmdb-row p {
+  margin: 0;
+  flex: 1;
+  min-width: 220px;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: var(--adx-text-muted, #94a3b8);
+}
+
+.adx-footer-tmdb-row a,
+.adx-footer-legal-links a,
+.ct-source-ext-link,
+.ct-source-attribution-note a,
+.ct-legal-consent-label a,
+.ct-privacy-legal-links a {
+  color: var(--adx-accent-bright, #60a5fa);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.adx-footer-legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--adx-text-muted, #94a3b8);
+}
+
+.ct-source-foot-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ct-source-ext-link {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.ct-source-attribution-note {
+  margin: 10px 0 0;
+  font-size: 0.76rem;
+  color: var(--adx-text-muted, #94a3b8);
+}
+
+.ct-review-item-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ct-review-mod-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ct-review-report-btn,
+.ct-review-delete-btn {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: transparent;
+  color: var(--adx-text-secondary, #cbd5e1);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.ct-review-report-btn:hover {
+  border-color: #f59e0b;
+  color: #fbbf24;
+}
+
+.ct-review-delete-btn:hover {
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+.ct-reported-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.ct-report-inline-box {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ct-report-inline-box label {
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.ct-report-inline-box select,
+.ct-report-inline-box input {
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--adx-border, rgba(148, 163, 184, 0.35));
+  background: var(--adx-bg-primary, #070d1b);
+  color: var(--adx-text-primary, #f8fafc);
+  font-size: 0.8rem;
+}
+
+.ct-report-inline-btns {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ct-legal-consent-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--adx-text-secondary, #cbd5e1);
+  cursor: pointer;
+}
+
+.ct-legal-consent-label input[type="checkbox"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+  accent-color: var(--adx-accent-bright, #3b82f6);
+}
+
+.ct-privacy-status {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+  font-size: 0.84rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.ct-privacy-actions {
+  margin-top: 12px;
+}
+
+.ct-privacy-legal-links {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--adx-text-muted, #94a3b8);
+}
+
+.ct-danger-panel {
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+.ct-danger-btn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.65);
+  background: rgba(220, 38, 38, 0.85);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: opacity 0.16s ease;
+}
+
+.ct-danger-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.ct-danger-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ct-delete-confirm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.ct-delete-confirm-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+body[data-adx-skin="daylight"] .ct-legal-consent-label,
+body[data-adx-skin="daylight"] .ct-review-report-btn,
+body[data-adx-skin="daylight"] .ct-review-delete-btn {
+  color: #334155;
+}
+
+body[data-adx-skin="daylight"] .ct-report-inline-box select,
+body[data-adx-skin="daylight"] .ct-report-inline-box input {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+

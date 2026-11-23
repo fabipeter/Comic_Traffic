@@ -332,11 +332,13 @@ using (var scope = app.Services.CreateScope())
                 await db.Database.ExecuteSqlAsync($"ALTER TABLE users ADD COLUMN IF NOT EXISTS \"PasswordResetToken\" VARCHAR(200);");
                 await db.Database.ExecuteSqlAsync($"ALTER TABLE users ADD COLUMN IF NOT EXISTS \"PasswordResetExpiresAt\" TIMESTAMP WITH TIME ZONE;");
                 await db.Database.ExecuteSqlAsync($"ALTER TABLE users ADD COLUMN IF NOT EXISTS \"PasswordResetFailedAttempts\" INTEGER NOT NULL DEFAULT 0;");
-                logger.LogInformation("PostgreSQL users table schema synchronized with PasswordReset columns.");
+                await db.Database.ExecuteSqlAsync($"ALTER TABLE users ADD COLUMN IF NOT EXISTS \"TermsAcceptedAt\" TIMESTAMP WITH TIME ZONE;");
+                await db.Database.ExecuteSqlAsync($"UPDATE users SET \"AvatarUrl\" = '/default-avatar.svg' WHERE \"AvatarUrl\" LIKE '%pinimg.com%';");
+                logger.LogInformation("PostgreSQL users table schema synchronized with PasswordReset, TermsAcceptedAt, and self-hosted avatar defaults.");
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Could not alter users table for PasswordReset columns.");
+                logger.LogWarning(ex, "Could not alter users table for schema sync.");
             }
 
             try
@@ -347,6 +349,26 @@ using (var scope = app.Services.CreateScope())
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Could not alter user_reviews table for UserAvatarUrl column.");
+            }
+
+            try
+            {
+                await db.Database.ExecuteSqlAsync($@"
+                    CREATE TABLE IF NOT EXISTS content_reports (
+                        ""Id"" UUID PRIMARY KEY,
+                        ""ReviewId"" UUID NULL,
+                        ""ExternalMediaId"" VARCHAR(128) NOT NULL DEFAULT '',
+                        ""ReporterUserId"" UUID NULL,
+                        ""Reason"" VARCHAR(80) NOT NULL DEFAULT 'Other',
+                        ""Details"" VARCHAR(1000) NOT NULL DEFAULT '',
+                        ""Status"" VARCHAR(32) NOT NULL DEFAULT 'Open',
+                        ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+                    );");
+                logger.LogInformation("PostgreSQL content_reports table schema synchronized.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Could not ensure content_reports table.");
             }
         }
 

@@ -1,9 +1,11 @@
 import { observer } from "mobx-react-lite";
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useStore } from "../../app/stores/store";
 import Nav from "./Nav";
 import Banner from "./Banner";
 import Row from "./Row";
+import { TmdbAttributionMark } from "../legal/LegalPages";
 import {
   CompareThreeSlotPicker,
   CommunityBottomDrawer,
@@ -119,7 +121,7 @@ const LandingPage = () => {
             ⚡ COMIC TRAFFIC TELEMETRY • AGGREGATING {RATING_SOURCE_DEFINITIONS.length} RATING APIS &amp; INDICES IN REAL TIME
           </span>
           <span className="ct-security-pill">
-            ✓ Real-Time Multi-Source Consensus Verified
+            ⚡ Multi-Source Rating Consensus
           </span>
         </div>
         <div className="ct-api-badges-scroll">
@@ -800,9 +802,9 @@ const LandingPage = () => {
               COMIC<span>TRAFFIC</span>
             </strong>
             <p>
-              Unified Multi-API Rating Consensus • Powered by{" "}
-              {RATING_SOURCE_DEFINITIONS.length} Live Rating Sources &amp;
-              Community Indices across Comic Books, Movies, and TV Series.
+              Non-Commercial Multi-API Rating Consensus • Aggregating{" "}
+              {RATING_SOURCE_DEFINITIONS.length} Rating Sources &amp; Community
+              Reviews across Comic Books, Movies, and TV Series.
             </p>
           </div>
           <div className="adx-footer-links">
@@ -830,6 +832,72 @@ const LandingPage = () => {
             >
               ⚔️ Compare Arena
             </button>
+          </div>
+        </div>
+
+        <div className="adx-footer-legal-bar">
+          <div className="adx-footer-tmdb-row">
+            <TmdbAttributionMark compact />
+            <p>
+              This website uses TMDB and the TMDB APIs but is not endorsed,
+              certified, or otherwise approved by TMDB. TV data from{" "}
+              <a
+                href="https://www.tvmaze.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                TVMaze
+              </a>{" "}
+              (
+              <a
+                href="https://creativecommons.org/licenses/by-sa/4.0/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                CC BY-SA 4.0
+              </a>
+              ) • Comic data from{" "}
+              <a
+                href="https://comicvine.gamespot.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Comic Vine
+              </a>{" "}
+              • Book data from{" "}
+              <a
+                href="https://openlibrary.org/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open Library
+              </a>
+              ,{" "}
+              <a
+                href="https://books.google.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Google Books
+              </a>{" "}
+              &amp;{" "}
+              <a
+                href="https://books.apple.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Apple Books
+              </a>
+              . All third-party trademarks, scores, and artwork belong to their
+              respective owners.
+            </p>
+          </div>
+          <div className="adx-footer-legal-links">
+            <Link to="/privacy">Privacy Policy</Link>
+            <span>•</span>
+            <Link to="/terms">Terms of Service</Link>
+            <span>•</span>
+            <Link to="/legal/attributions">API Attributions &amp; DMCA</Link>
           </div>
         </div>
       </footer>

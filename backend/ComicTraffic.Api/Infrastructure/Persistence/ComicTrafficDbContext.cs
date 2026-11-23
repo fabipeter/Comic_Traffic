@@ -15,6 +15,7 @@ public class ComicTrafficDbContext : DbContext
     public DbSet<UserReview> Reviews => Set<UserReview>();
     public DbSet<WatchlistItem> WatchlistItems => Set<WatchlistItem>();
     public DbSet<CustomMediaList> CustomLists => Set<CustomMediaList>();
+    public DbSet<ContentReport> ContentReports => Set<ContentReport>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -54,6 +55,13 @@ public class ComicTrafficDbContext : DbContext
         {
             entity.ToTable("custom_media_lists");
             entity.HasIndex(c => c.UserId);
+        });
+
+        modelBuilder.Entity<ContentReport>(entity =>
+        {
+            entity.ToTable("content_reports");
+            entity.HasIndex(r => r.ReviewId);
+            entity.HasIndex(r => r.Status);
         });
     }
 }

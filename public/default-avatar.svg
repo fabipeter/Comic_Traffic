@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Comic Traffic Default Avatar">
+  <defs>
+    <linearGradient id="ctAvatarBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a" />
+      <stop offset="55%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#7c3aed" />
+    </linearGradient>
+    <linearGradient id="ctAvatarGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#93c5fd" />
+      <stop offset="100%" stop-color="#e0e7ff" />
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="64" fill="url(#ctAvatarBg)" />
+  <circle cx="64" cy="48" r="22" fill="url(#ctAvatarGlow)" />
+  <path d="M26 112c4-22 20-34 38-34s34 12 38 34" fill="url(#ctAvatarGlow)" />
+</svg>

@@ -17,7 +17,7 @@ const PLACEHOLDER_POSTER =
   "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&w=900&q=80";
 const PLACEHOLDER_BACKDROP =
   "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&w=1600&q=80";
-const USER_AGENT = "ComicTraffic/1.0 (+https://comictraffic.com)";
+const USER_AGENT = "ComicTraffic/1.0 (+https://comictraffic.com; contact@comictraffic.com)";
 const MAX_RESULTS = 60;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 200;
@@ -47,7 +47,7 @@ const SOURCES = {
   appleBooks: { id: "apple_books", name: "Apple Books", category: "Audience", weight: 1.0, color: "#9ca3af" },
 };
 
-function makeSource(key, rawScoreDisplay, normalizedScore, voteCount) {
+function makeSource(key, rawScoreDisplay, normalizedScore, voteCount, sourceUrl = "") {
   const d = SOURCES[key];
   const score = Math.max(0, Math.min(100, Number(normalizedScore)));
   return {
@@ -59,6 +59,7 @@ function makeSource(key, rawScoreDisplay, normalizedScore, voteCount) {
     voteCount: Math.max(0, Math.round(Number(voteCount) || 0)),
     defaultWeight: d.weight,
     accentColor: d.color,
+    ...(sourceUrl ? { sourceUrl } : {}),
   };
 }
 
@@ -188,10 +189,13 @@ function tmdbToItem(raw, forcedCategory) {
     (forcedCategory !== "Movie" && (raw.media_type === "tv" || Boolean(raw.first_air_date)));
   const mediaType = isTv ? "TvSeries" : "Movie";
   const sources = [];
-  if (typeof raw.vote_average === "number" && raw.vote_average > 0 && raw.vote_count > 0) {
-    sources.push(makeSource("tmdb", `${raw.vote_average.toFixed(1)} / 10`, raw.vote_average * 10, raw.vote_count));
-  }
   const tmdbId = Number(raw.id);
+  const tmdbUrl = Number.isInteger(tmdbId) && tmdbId > 0
+    ? `https://www.themoviedb.org/${isTv ? "tv" : "movie"}/${tmdbId}`
+    : "";
+  if (typeof raw.vote_average === "number" && raw.vote_average > 0 && raw.vote_count > 0) {
+    sources.push(makeSource("tmdb", `${raw.vote_average.toFixed(1)} / 10`, raw.vote_average * 10, raw.vote_count, tmdbUrl));
+  }
   return baseItem({
     externalId: `tmdb-${mediaType.toLowerCase()}-${raw.id}`,
     tmdbId: Number.isInteger(tmdbId) && tmdbId > 0 ? tmdbId : undefined,
@@ -263,9 +267,10 @@ async function enrichWithOmdb(item, env) {
 
   item.imdbId = item.imdbId || d.imdbID;
   const imdb = parseFloat(d.imdbRating);
+  const imdbUrl = item.imdbId ? `https://www.imdb.com/title/${encodeURIComponent(item.imdbId)}/` : "";
   if (Number.isFinite(imdb) && imdb > 0) {
     const votes = parseInt(String(d.imdbVotes || "0").replace(/,/g, ""), 10) || 0;
-    addSource(item, makeSource("imdb", `${imdb.toFixed(1)} / 10`, imdb * 10, votes));
+    addSource(item, makeSource("imdb", `${imdb.toFixed(1)} / 10`, imdb * 10, votes, imdbUrl));
   }
   const rt = (d.Ratings || []).find((r) => r.Source === "Rotten Tomatoes");
   if (rt) {
@@ -457,7 +462,7 @@ async function searchTvMaze(q) {
     if (!show || !show.name) continue;
     const sources = [];
     const avg = show.rating && show.rating.average;
-    if (typeof avg === "number" && avg > 0) sources.push(makeSource("tvmaze", `${avg} / 10`, avg * 10, 0));
+    if (typeof avg === "number" && avg > 0) sources.push(makeSource("tvmaze", `${avg} / 10`, avg * 10, 0, show.url || "https://www.tvmaze.com"));
     items.push(
       baseItem({
         externalId: `tvmaze-${show.id}`,
@@ -549,7 +554,7 @@ async function searchAniList(q) {
     const isManga = kind === "manga";
     const sources = [];
     if (m.averageScore > 0) {
-      sources.push(makeSource("anilist", `${m.averageScore} / 100`, m.averageScore, m.popularity || 0));
+      sources.push(makeSource("anilist", `${m.averageScore} / 100`, m.averageScore, m.popularity || 0, `https://anilist.co/${kind}/${m.id}`));
     }
     const author =
       isManga && m.staff && m.staff.edges && m.staff.edges[0] && m.staff.edges[0].node
@@ -595,7 +600,7 @@ async function searchJikanManga(q) {
     if (!title) continue;
     const sources = [];
     if (typeof m.score === "number" && m.score > 0) {
-      sources.push(makeSource("mal", `${m.score} / 10`, m.score * 10, m.scored_by || 0));
+      sources.push(makeSource("mal", `${m.score} / 10`, m.score * 10, m.scored_by || 0, m.url || `https://myanimelist.net/manga/${m.mal_id}`));
     }
     const genreNames = [...(m.genres || []), ...(m.themes || [])].map((g) => g.name);
     items.push(
@@ -664,7 +669,8 @@ async function searchHardcover(q, env) {
     const genres = Array.isArray(doc.genres) ? doc.genres : [];
     const sources = [];
     if (typeof doc.rating === "number" && doc.rating > 0 && doc.ratings_count > 0) {
-      sources.push(makeSource("hardcover", `${doc.rating.toFixed(2)} / 5`, doc.rating * 20, doc.ratings_count));
+      const hcUrl = doc.slug ? `https://hardcover.app/books/${encodeURIComponent(doc.slug)}` : "https://hardcover.app";
+      sources.push(makeSource("hardcover", `${doc.rating.toFixed(2)} / 5`, doc.rating * 20, doc.ratings_count, hcUrl));
     }
     items.push(
       baseItem({
@@ -696,7 +702,7 @@ async function searchGoogleBooks(q, env) {
     if (!vi || !vi.title) continue;
     const sources = [];
     if (typeof vi.averageRating === "number" && vi.ratingsCount > 0) {
-      sources.push(makeSource("googleBooks", `${vi.averageRating.toFixed(1)} / 5`, vi.averageRating * 20, vi.ratingsCount));
+      sources.push(makeSource("googleBooks", `${vi.averageRating.toFixed(1)} / 5`, vi.averageRating * 20, vi.ratingsCount, vi.infoLink || "https://books.google.com"));
     }
     const poster = vi.imageLinks && (vi.imageLinks.thumbnail || vi.imageLinks.smallThumbnail);
     items.push(
@@ -729,7 +735,7 @@ async function searchAppleBooks(q) {
     if (!r.trackName) continue;
     const sources = [];
     if (typeof r.averageUserRating === "number" && r.averageUserRating > 0 && r.userRatingCount > 0) {
-      sources.push(makeSource("appleBooks", `${r.averageUserRating.toFixed(1)} / 5`, r.averageUserRating * 20, r.userRatingCount));
+      sources.push(makeSource("appleBooks", `${r.averageUserRating.toFixed(1)} / 5`, r.averageUserRating * 20, r.userRatingCount, r.trackViewUrl || "https://books.apple.com"));
     }
     items.push(
       baseItem({
@@ -760,7 +766,8 @@ async function searchOpenLibrary(q) {
     const key = String(doc.key || "").replace("/works/", "");
     const sources = [];
     if (typeof doc.ratings_average === "number" && doc.ratings_average > 0 && doc.ratings_count > 0) {
-      sources.push(makeSource("openlibrary", `${doc.ratings_average.toFixed(2)} / 5`, doc.ratings_average * 20, doc.ratings_count));
+      const olUrl = doc.key ? `https://openlibrary.org${doc.key}` : "https://openlibrary.org";
+      sources.push(makeSource("openlibrary", `${doc.ratings_average.toFixed(2)} / 5`, doc.ratings_average * 20, doc.ratings_count, olUrl));
     }
     const subjects = Array.isArray(doc.subject) ? doc.subject.slice(0, 6) : [];
     items.push(
@@ -799,6 +806,9 @@ function addSource(item, source) {
     existing.voteCount = source.voteCount;
     existing.defaultWeight = source.defaultWeight;
     existing.accentColor = source.accentColor;
+    if (source.sourceUrl) existing.sourceUrl = source.sourceUrl;
+  } else if (!existing.sourceUrl && source.sourceUrl) {
+    existing.sourceUrl = source.sourceUrl;
   }
 }
 

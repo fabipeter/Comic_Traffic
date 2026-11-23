@@ -8,7 +8,11 @@ import {
   WatchlistEntry,
   formatCumulativeScore,
 } from "../../app/api/ratingApis";
-import { sanitizeImageUrl, sanitizeUserText } from "../../app/security/inputSanitizer";
+import {
+  sanitizeExternalHttpUrl,
+  sanitizeImageUrl,
+  sanitizeUserText,
+} from "../../app/security/inputSanitizer";
 
 export const getScoreColor = (score: number): string => {
   if (score >= 88) return "#10b981";
@@ -353,7 +357,7 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
 });
 
 export const CumulativeDetailModal: React.FC = observer(() => {
-  const { ratingStore, userStore } = useStore();
+  const { ratingStore, userStore, commonStore } = useStore();
   const navigate = useNavigate();
   const item = ratingStore.activeSelectedItem;
 
@@ -363,6 +367,11 @@ export const CumulativeDetailModal: React.FC = observer(() => {
   const [containsSpoilers, setContainsSpoilers] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [personalScoreInput, setPersonalScoreInput] = useState<string>("");
+  const [reportingReviewId, setReportingReviewId] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState<
+    "Spam" | "Harassment" | "Spoilers" | "CopyrightDMCA" | "Other"
+  >("Spam");
+  const [reportDetails, setReportDetails] = useState<string>("");
 
   if (!item) return null;
 
@@ -666,19 +675,54 @@ export const CumulativeDetailModal: React.FC = observer(() => {
                     />
                   </div>
                   <div className="ct-source-card-foot">
-                    <span>{src.voteCount.toLocaleString()} verified votes</span>
                     <span>
+                      {src.voteCount > 0
+                        ? `${src.voteCount.toLocaleString()} reported votes`
+                        : "Reported rating"}
+                    </span>
+                    <span className="ct-source-foot-right">
                       Weight:{" "}
                       {(
                         ratingStore.customWeights[src.sourceId] ??
                         src.defaultWeight
                       ).toFixed(2)}
                       x
+                      {(() => {
+                        const safeUrl = sanitizeExternalHttpUrl(src.sourceUrl);
+                        if (!safeUrl) return null;
+                        return (
+                          <a
+                            href={safeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ct-source-ext-link"
+                          >
+                            {src.sourceId === "apple_books"
+                              ? "View on Apple Books ↗"
+                              : src.sourceId === "tvmaze"
+                              ? "TVMaze (CC BY-SA) ↗"
+                              : "Source ↗"}
+                          </a>
+                        );
+                      })()}
                     </span>
                   </div>
                 </div>
               ))}
             </div>
+          )}
+          {item.externalId.startsWith("comicvine-") && (
+            <p className="ct-source-attribution-note">
+              Comic metadata provided by{" "}
+              <a
+                href="https://comicvine.gamespot.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Comic Vine ↗
+              </a>{" "}
+              for non-commercial discovery.
+            </p>
           )}
         </div>
 
@@ -748,32 +792,138 @@ export const CumulativeDetailModal: React.FC = observer(() => {
                 contribute to its cumulative score!
               </p>
             ) : (
-              mediaReviews.map((rev) => (
-                <div key={rev.id} className="ct-review-item">
-                  <div className="ct-review-item-head">
-                    <div>
-                      <strong>@{rev.username}</strong>
-                      <span className="ct-review-date">
-                        {new Date(rev.createdAt).toLocaleDateString()}
-                      </span>
+              mediaReviews.map((rev) => {
+                const isAuthorOrAdmin =
+                  userStore.isLoggedIn &&
+                  (userStore.profile?.role === "Admin" ||
+                    userStore.profile?.id === rev.userId ||
+                    userStore.profile?.username?.toLowerCase() ===
+                      rev.username.toLowerCase());
+                const alreadyReported = ratingStore.reportedReviewIds.includes(
+                  rev.id
+                );
+                const isReportingThis = reportingReviewId === rev.id;
+
+                return (
+                  <div key={rev.id} className="ct-review-item">
+                    <div className="ct-review-item-head">
+                      <div>
+                        <strong>@{rev.username}</strong>
+                        <span className="ct-review-date">
+                          {new Date(rev.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="ct-review-score-pill">
+                        ★ {rev.score}% ({(rev.score / 10).toFixed(1)}/10)
+                      </div>
                     </div>
-                    <div className="ct-review-score-pill">
-                      ★ {rev.score}% ({(rev.score / 10).toFixed(1)}/10)
+                    <h4>{rev.headline}</h4>
+                    <p>{rev.reviewText}</p>
+                    <div className="ct-review-item-foot">
+                      <button
+                        type="button"
+                        className="ct-helpful-btn"
+                        onClick={() => ratingStore.voteReviewHelpful(rev.id)}
+                      >
+                        👍 Helpful ({rev.helpfulVotes})
+                      </button>
+
+                      <div className="ct-review-mod-actions">
+                        {isAuthorOrAdmin && (
+                          <button
+                            type="button"
+                            className="ct-review-delete-btn"
+                            onClick={() =>
+                              ratingStore.deleteReview(
+                                rev.id,
+                                commonStore.token || userStore.profile?.accessToken
+                              )
+                            }
+                          >
+                            🗑 Delete
+                          </button>
+                        )}
+                        {alreadyReported ? (
+                          <span className="ct-reported-pill">✓ Reported</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="ct-review-report-btn"
+                            onClick={() => {
+                              setReportingReviewId(
+                                isReportingThis ? null : rev.id
+                              );
+                              setReportReason("Spam");
+                              setReportDetails("");
+                            }}
+                          >
+                            ⚑ Report
+                          </button>
+                        )}
+                      </div>
                     </div>
+
+                    {isReportingThis && (
+                      <div className="ct-report-inline-box">
+                        <label htmlFor={`report-reason-${rev.id}`}>
+                          Report reason:
+                        </label>
+                        <select
+                          id={`report-reason-${rev.id}`}
+                          value={reportReason}
+                          onChange={(e) =>
+                            setReportReason(e.target.value as any)
+                          }
+                        >
+                          <option value="Spam">Spam / Bot</option>
+                          <option value="Harassment">Harassment / Abuse</option>
+                          <option value="Spoilers">Unmarked Spoilers</option>
+                          <option value="CopyrightDMCA">
+                            Copyright / DMCA Concern
+                          </option>
+                          <option value="Other">Other</option>
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="Optional details for moderation..."
+                          value={reportDetails}
+                          onChange={(e) => setReportDetails(e.target.value)}
+                          maxLength={300}
+                        />
+                        <div className="ct-report-inline-btns">
+                          <button
+                            type="button"
+                            className="ct-small-outline-btn"
+                            onClick={async () => {
+                              await ratingStore.reportReview(
+                                {
+                                  reviewId: rev.id,
+                                  externalMediaId: rev.externalMediaId,
+                                  reason: reportReason,
+                                  details: reportDetails,
+                                },
+                                commonStore.token ||
+                                  userStore.profile?.accessToken
+                              );
+                              setReportingReviewId(null);
+                              setReportDetails("");
+                            }}
+                          >
+                            Submit Report
+                          </button>
+                          <button
+                            type="button"
+                            className="ct-inline-link-btn"
+                            onClick={() => setReportingReviewId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <h4>{rev.headline}</h4>
-                  <p>{rev.reviewText}</p>
-                  <div className="ct-review-item-foot">
-                    <button
-                      type="button"
-                      className="ct-helpful-btn"
-                      onClick={() => ratingStore.voteReviewHelpful(rev.id)}
-                    >
-                      👍 Helpful ({rev.helpfulVotes})
-                    </button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -1165,7 +1315,8 @@ export const CommunityBottomDrawer: React.FC = observer(() => {
             </span>
           </strong>
           <span className="adx-online-pill">
-            🔥 {ratingStore.reviews.length + 124} Analysts Online
+            💬 {ratingStore.reviews.length} Community{" "}
+            {ratingStore.reviews.length === 1 ? "Review" : "Reviews"}
           </span>
         </div>
 

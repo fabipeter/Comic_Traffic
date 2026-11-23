@@ -658,4 +658,95 @@ public class ComicTrafficBackendTests
         Assert.True(result.Providers["mdblist"].Configured);
         Assert.Equal(1, result.Providers["mdblist"].Count);
     }
+
+    [Fact]
+    public async Task AuthCqrs_ExportUserData_AndDeleteAccount_RemovesAllUserDataAndRecalculatesAverage()
+    {
+        await using var db = CreateInMemoryDbContext();
+        var calculator = new CumulativeRatingCalculator();
+        var jwt = new JwtTokenService(CreateTestConfiguration());
+        await DatabaseSeeder.SeedAsync(db, calculator, jwt);
+
+        var regHandler = new RegisterUserCommandHandler(db, jwt);
+        var registered = await regHandler.Handle(
+            new RegisterUserCommand("privacy_tester", "privacy@comictraffic.io", "SafePass123!", "Privacy Tester", AcceptedTerms: true),
+            CancellationToken.None);
+
+        Assert.Equal("/default-avatar.svg", registered.AvatarUrl);
+
+        var reviewHandler = new SubmitReviewCommandHandler(db, calculator);
+        await reviewHandler.Handle(new SubmitReviewCommand(
+            registered.Id,
+            registered.Username,
+            "movie-spiderverse-2023",
+            "Spider-Man: Across the Spider-Verse",
+            "Movie",
+            96,
+            "Incredible animation",
+            "Pure visual art."
+        ), CancellationToken.None);
+
+        var exportHandler = new ExportUserDataQueryHandler(db);
+        var exported = await exportHandler.Handle(new ExportUserDataQuery(registered.Id), CancellationToken.None);
+        Assert.NotNull(exported);
+        Assert.Single(exported!.Reviews);
+
+        var deleteHandler = new DeleteUserAccountCommandHandler(db, jwt, calculator);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            deleteHandler.Handle(new DeleteUserAccountCommand(registered.Id, "WrongPassword!"), CancellationToken.None));
+
+        var deleted = await deleteHandler.Handle(
+            new DeleteUserAccountCommand(registered.Id, "SafePass123!"),
+            CancellationToken.None);
+
+        Assert.True(deleted.IsSuccessful);
+        Assert.Equal(1, deleted.RemovedReviews);
+        Assert.Null(await db.Users.FindAsync(registered.Id));
+        Assert.Empty(db.Reviews.Where(r => r.UserId == registered.Id));
+    }
+
+    [Fact]
+    public async Task ReviewsCqrs_ReportReview_AndAuthorDeleteReview_WorkAndEnforceOwnership()
+    {
+        await using var db = CreateInMemoryDbContext();
+        var calculator = new CumulativeRatingCalculator();
+        var jwt = new JwtTokenService(CreateTestConfiguration());
+        await DatabaseSeeder.SeedAsync(db, calculator, jwt);
+
+        var authorId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+
+        var submitHandler = new SubmitReviewCommandHandler(db, calculator);
+        var created = await submitHandler.Handle(new SubmitReviewCommand(
+            authorId,
+            "author_handle",
+            "movie-spiderverse-2023",
+            "Spider-Man: Across the Spider-Verse",
+            "Movie",
+            91,
+            "Great pacing",
+            "Loved every scene."
+        ), CancellationToken.None);
+
+        var reportHandler = new ReportReviewCommandHandler(db);
+        var report = await reportHandler.Handle(new ReportReviewCommand(
+            created.Review.Id,
+            "movie-spiderverse-2023",
+            otherUserId,
+            "CopyrightDMCA",
+            "Flagged for review"
+        ), CancellationToken.None);
+        Assert.Equal("CopyrightDMCA", report.Reason);
+        Assert.Equal("Open", report.Status);
+
+        var deleteHandler = new DeleteReviewCommandHandler(db, calculator);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            deleteHandler.Handle(new DeleteReviewCommand(created.Review.Id, otherUserId, "User"), CancellationToken.None));
+
+        bool removed = await deleteHandler.Handle(
+            new DeleteReviewCommand(created.Review.Id, authorId, "User"),
+            CancellationToken.None);
+        Assert.True(removed);
+        Assert.Null(await db.Reviews.FindAsync(created.Review.Id));
+    }
 }

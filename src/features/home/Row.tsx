@@ -35,7 +35,7 @@ const Row: React.FC<RowProps> = ({
       <div className="row__header_flex">
         <h2 className="row__title">{title}</h2>
         <span className="row__subtitle_badge">
-          Multi-API Cumulative Average Verified
+          Multi-API Cumulative Average
         </span>
       </div>
 

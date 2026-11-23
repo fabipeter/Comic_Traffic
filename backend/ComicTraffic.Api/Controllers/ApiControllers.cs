@@ -137,7 +137,54 @@ public class AuthController : ControllerBase
         var updated = await _mediator.Send(command with { UserId = userId }, ct);
         return Ok(new { isSuccessful = true, data = updated });
     }
+
+    [Authorize]
+    [HttpGet("export-data")]
+    [HttpPost("export-data")]
+    public async Task<IActionResult> ExportUserData(CancellationToken ct)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized();
+
+        var export = await _mediator.Send(new ExportUserDataQuery(userId), ct);
+        return export == null
+            ? NotFound(new { isSuccessful = false, responseMessage = "Account not found." })
+            : Ok(new { isSuccessful = true, data = export });
+    }
+
+    [Authorize]
+    [HttpPost("delete-account")]
+    [HttpDelete("account")]
+    [EnableRateLimiting("auth-sensitive")]
+    public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountRequestDto? request, CancellationToken ct)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized();
+
+        try
+        {
+            var result = await _mediator.Send(new DeleteUserAccountCommand(userId, request?.Password), ct);
+            return Ok(new { isSuccessful = true, data = result });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { isSuccessful = false, responseMessage = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { isSuccessful = false, responseMessage = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while deleting account.");
+            return StatusCode(500, new { isSuccessful = false, responseMessage = "Unable to delete account at this time." });
+        }
+    }
 }
+
+public record DeleteAccountRequestDto(string? Password = null);
 
 [ApiController]
 [Route("api/media")]
@@ -258,7 +305,71 @@ public class ReviewsController : ControllerBase
             ? NotFound(new { isSuccessful = false })
             : Ok(new { isSuccessful = true, data = updated });
     }
+
+    [Authorize]
+    [HttpDelete("{reviewId:guid}")]
+    public async Task<IActionResult> DeleteReviewByRoute(Guid reviewId, CancellationToken ct)
+    {
+        return await ExecuteDeleteReviewAsync(reviewId, ct);
+    }
+
+    [Authorize]
+    [HttpPost("delete")]
+    public async Task<IActionResult> DeleteReviewByBody([FromBody] DeleteReviewRequestDto request, CancellationToken ct)
+    {
+        return await ExecuteDeleteReviewAsync(request.ReviewId, ct);
+    }
+
+    private async Task<IActionResult> ExecuteDeleteReviewAsync(Guid reviewId, CancellationToken ct)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized();
+
+        string role = User.FindFirstValue(ClaimTypes.Role) ?? "User";
+        try
+        {
+            bool deleted = await _mediator.Send(new DeleteReviewCommand(reviewId, userId, role), ct);
+            return deleted
+                ? Ok(new { isSuccessful = true, message = "Review deleted." })
+                : NotFound(new { isSuccessful = false, responseMessage = "Review not found." });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+    }
+
+    [HttpPost("report")]
+    [HttpPost("{reviewId:guid}/report")]
+    public async Task<IActionResult> ReportReview(
+        [FromRoute] Guid? reviewId,
+        [FromBody] ReportReviewRequestDto request,
+        CancellationToken ct)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? reporterId = Guid.TryParse(userIdClaim, out var parsed) ? parsed : null;
+        Guid? effectiveReviewId = reviewId ?? request.ReviewId;
+
+        var report = await _mediator.Send(new ReportReviewCommand(
+            effectiveReviewId,
+            request.ExternalMediaId ?? string.Empty,
+            reporterId,
+            request.Reason ?? "Other",
+            request.Details ?? string.Empty
+        ), ct);
+
+        return Ok(new
+        {
+            isSuccessful = true,
+            message = "Thank you. Your report has been recorded for moderation review.",
+            data = new { report.Id, report.Reason, report.Status, report.CreatedAt }
+        });
+    }
 }
+
+public record DeleteReviewRequestDto(Guid ReviewId);
+public record ReportReviewRequestDto(Guid? ReviewId, string? ExternalMediaId, string? Reason, string? Details);
 
 [ApiController]
 [Route("api/dashboard")]

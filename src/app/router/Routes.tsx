@@ -6,6 +6,11 @@ import NotFound from "../../features/errors/NotFound";
 import LoginPage from "../../features/authentication/login/LoginPage";
 import RegisterPage from "../../features/authentication/register/RegisterPage";
 import ForgotPasswordPage from "../../features/authentication/forgot-password/ForgotPasswordPage";
+import {
+  PrivacyPolicyPage,
+  TermsOfServicePage,
+  AttributionsDmcaPage,
+} from "../../features/legal/LegalPages";
 import RequireAuth from "./RequireAuth";
 import { setAppNavigator } from "./navigation";
 
@@ -26,6 +31,11 @@ export const routes: RouteObject[] = [
       { path: "register", element: <RegisterPage /> },
       { path: "forgot-password", element: <ForgotPasswordPage /> },
       { path: "reset-password", element: <ForgotPasswordPage /> },
+      { path: "privacy", element: <PrivacyPolicyPage /> },
+      { path: "terms", element: <TermsOfServicePage /> },
+      { path: "legal/attributions", element: <AttributionsDmcaPage /> },
+      { path: "attributions", element: <AttributionsDmcaPage /> },
+      { path: "dmca", element: <AttributionsDmcaPage /> },
       { path: "not-found", element: <NotFound /> },
       { path: "*", element: <Navigate replace to="/not-found" /> },
     ],

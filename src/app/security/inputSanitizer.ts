@@ -65,12 +65,30 @@ export function sanitizeImageUrl(url: string, fallback: string = "/comic-traffic
   if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return trimmed;
   try {
     const parsed = new URL(trimmed);
+    if (parsed.hostname.toLowerCase().endsWith("pinimg.com")) {
+      return "/default-avatar.svg";
+    }
     if (parsed.protocol === "https:" || parsed.protocol === "http:") {
       return parsed.toString();
     }
     return fallback;
   } catch {
     return fallback;
+  }
+}
+
+export function sanitizeExternalHttpUrl(url: string | undefined | null): string | null {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+      return parsed.toString();
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 

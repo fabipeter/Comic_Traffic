@@ -12,13 +12,14 @@ CREATE TABLE IF NOT EXISTS users (
     "PasswordHash" TEXT NOT NULL,
     "DisplayName" VARCHAR(120) NOT NULL,
     "Bio" VARCHAR(600) NOT NULL DEFAULT '',
-    "AvatarUrl" TEXT NOT NULL DEFAULT '',
+    "AvatarUrl" TEXT NOT NULL DEFAULT '/default-avatar.svg',
     "Role" VARCHAR(32) NOT NULL DEFAULT 'User',
     "FavoriteGenresCsv" VARCHAR(500) NOT NULL DEFAULT '',
     "PreferredWeightsJson" JSONB NOT NULL DEFAULT '{}'::jsonb,
     "PasswordResetToken" VARCHAR(200),
     "PasswordResetExpiresAt" TIMESTAMPTZ,
     "PasswordResetFailedAttempts" INTEGER NOT NULL DEFAULT 0,
+    "TermsAcceptedAt" TIMESTAMPTZ,
     "CreatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -96,3 +97,17 @@ CREATE TABLE IF NOT EXISTS custom_media_lists (
 );
 
 CREATE INDEX IF NOT EXISTS idx_custom_lists_user ON custom_media_lists ("UserId");
+
+CREATE TABLE IF NOT EXISTS content_reports (
+    "Id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "ReviewId" UUID NULL,
+    "ExternalMediaId" VARCHAR(128) NOT NULL DEFAULT '',
+    "ReporterUserId" UUID NULL,
+    "Reason" VARCHAR(80) NOT NULL DEFAULT 'Other',
+    "Details" VARCHAR(1000) NOT NULL DEFAULT '',
+    "Status" VARCHAR(32) NOT NULL DEFAULT 'Open',
+    "CreatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_content_reports_review ON content_reports ("ReviewId");
+CREATE INDEX IF NOT EXISTS idx_content_reports_status ON content_reports ("Status");

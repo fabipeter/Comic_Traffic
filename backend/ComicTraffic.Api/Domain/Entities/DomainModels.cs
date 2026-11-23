@@ -23,7 +23,7 @@ public class AppUser
     public string DisplayName { get; set; } = string.Empty;
     [MaxLength(500)]
     public string Bio { get; set; } = "Comic book, cinema & series enthusiast.";
-    public string AvatarUrl { get; set; } = "https://i.pinimg.com/originals/95/8e/e6/958ee665c32ab3bbc9b3365f05c49c85.png";
+    public string AvatarUrl { get; set; } = "/default-avatar.svg";
     public string Role { get; set; } = "User";
     public string FavoriteGenresCsv { get; set; } = "Action,Sci-Fi,Superhero,Noir";
     public string PreferredWeightsJson { get; set; } = "{}";
@@ -31,6 +31,7 @@ public class AppUser
     public string? PasswordResetToken { get; set; }
     public DateTime? PasswordResetExpiresAt { get; set; }
     public int PasswordResetFailedAttempts { get; set; } = 0;
+    public DateTime? TermsAcceptedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
@@ -142,5 +143,22 @@ public class CustomMediaList
     public string Description { get; set; } = string.Empty;
     public bool IsPublic { get; set; } = true;
     public string ExternalMediaIdsCsv { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class ContentReport
+{
+    [Key]
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? ReviewId { get; set; }
+    [MaxLength(128)]
+    public string ExternalMediaId { get; set; } = string.Empty;
+    public Guid? ReporterUserId { get; set; }
+    [Required, MaxLength(80)]
+    public string Reason { get; set; } = "Other"; // Spam, Harassment, Spoilers, CopyrightDMCA, Other
+    [MaxLength(1000)]
+    public string Details { get; set; } = string.Empty;
+    [MaxLength(32)]
+    public string Status { get; set; } = "Open"; // Open, Reviewed, Dismissed, Actioned
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

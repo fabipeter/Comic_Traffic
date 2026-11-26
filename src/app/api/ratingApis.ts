@@ -10,7 +10,7 @@ import {
   isWebCryptoAvailable,
 } from "../security/payloadCrypto";
 
-export type MediaCategoryType = "Movie" | "TvSeries" | "ComicBook";
+export type MediaCategoryType = "Movie" | "TvSeries" | "ComicBook" | "Game";
 
 export interface ExternalRatingSource {
   sourceId: string;
@@ -86,6 +86,7 @@ export interface WatchlistEntry {
     | "PlanToWatch"
     | "Watching"
     | "Reading"
+    | "Playing"
     | "Completed"
     | "OnHold"
     | "Dropped";
@@ -223,6 +224,38 @@ export const RATING_SOURCE_DEFINITIONS: {
     defaultWeight: 1.0,
     color: "#9ca3af",
     badge: "Apple Books",
+  },
+  {
+    sourceId: "steam",
+    name: "Steam",
+    category: "Audience",
+    defaultWeight: 1.2,
+    color: "#1b9cfc",
+    badge: "Steam",
+  },
+  {
+    sourceId: "rawg",
+    name: "RAWG",
+    category: "Audience",
+    defaultWeight: 1.15,
+    color: "#f97316",
+    badge: "RAWG",
+  },
+  {
+    sourceId: "apple_app_store",
+    name: "App Store Games",
+    category: "Audience",
+    defaultWeight: 1.1,
+    color: "#38bdf8",
+    badge: "App Store",
+  },
+  {
+    sourceId: "bgg",
+    name: "BoardGameGeek",
+    category: "Audience",
+    defaultWeight: 1.2,
+    color: "#ff5100",
+    badge: "BGG",
   },
   {
     sourceId: "comictraffic_community",

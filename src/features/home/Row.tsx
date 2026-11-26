@@ -84,6 +84,8 @@ const Row: React.FC<RowProps> = ({
                     ? "📚 COMIC"
                     : item.mediaType === "TvSeries"
                     ? "📺 SERIES"
+                    : item.mediaType === "Game"
+                    ? "🎮 GAME"
                     : "🎬 MOVIE"}
                 </div>
               </div>

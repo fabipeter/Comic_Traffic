@@ -13,8 +13,8 @@ function App() {
   return (
     <div className="App">
       <Outlet />
-      <CumulativeDetailModal />
       <CompareModal />
+      <CumulativeDetailModal />
       <CustomWeightsModal />
       <KeyboardShortcutsModal />
       <ScrollToTopButton />

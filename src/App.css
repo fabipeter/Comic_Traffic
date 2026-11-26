@@ -915,6 +915,18 @@ body,
   padding: 24px 12px;
 }
 
+.ct-detail-modal-backdrop {
+  z-index: 1150;
+}
+
+.ct-weights-modal-backdrop {
+  z-index: 1200;
+}
+
+.ct-shortcuts-modal-backdrop {
+  z-index: 1250;
+}
+
 .ct-modal-container {
   position: relative;
   width: 100%;
@@ -3325,6 +3337,90 @@ body,
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.ct-type-game {
+  background: rgba(16, 185, 129, 0.22);
+  border: 1px solid rgba(16, 185, 129, 0.55);
+  color: #6ee7b7;
+}
+
+body[data-adx-skin="daylight"] .ct-type-game {
+  background: rgba(16, 185, 129, 0.14);
+  color: #047857;
+}
+
+.ct-slot-cat-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.ct-slot-cat-pill {
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: transparent;
+  color: var(--adx-text-secondary, #cbd5e1);
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ct-slot-cat-pill:hover,
+.ct-slot-cat-pill.active {
+  background: var(--adx-accent-soft, rgba(37, 99, 235, 0.28));
+  border-color: var(--adx-accent-bright, #3b82f6);
+  color: #ffffff;
+}
+
+body[data-adx-skin="daylight"] .ct-slot-cat-pills {
+  background: #f8fafc;
+}
+
+body[data-adx-skin="daylight"] .ct-slot-cat-pill {
+  color: #334155;
+}
+
+body[data-adx-skin="daylight"] .ct-slot-cat-pill.active {
+  color: #1d4ed8;
+}
+
+.ct-slot-picked-clickable {
+  cursor: pointer;
+  transition: border-color 0.16s ease, transform 0.16s ease;
+}
+
+.ct-slot-picked-clickable:hover {
+  border-color: var(--adx-accent-bright, #3b82f6);
+  transform: translateY(-1px);
+}
+
+.ct-compare-view-details-btn {
+  margin-top: 8px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--adx-border, rgba(59, 130, 246, 0.45));
+  background: var(--adx-accent-soft, rgba(37, 99, 235, 0.18));
+  color: var(--adx-text-primary, #f8fafc);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.16s ease;
+}
+
+.ct-compare-view-details-btn:hover {
+  border-color: var(--adx-accent-bright, #3b82f6);
+  background: rgba(37, 99, 235, 0.32);
+}
+
+body[data-adx-skin="daylight"] .ct-compare-view-details-btn {
+  color: #1e3a8a;
 }
 
 body[data-adx-skin="daylight"] .ct-legal-consent-label,

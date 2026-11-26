@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useStore } from "../../app/stores/store";
 import {
   AggregatedMediaItem,
+  MediaCategoryType,
   RATING_SOURCE_DEFINITIONS,
   WatchlistEntry,
   formatCumulativeScore,
@@ -31,6 +32,9 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
     "",
     "",
   ]);
+  const [slotCategories, setSlotCategories] = useState<
+    ["All" | MediaCategoryType, "All" | MediaCategoryType, "All" | MediaCategoryType]
+  >(["All", "All", "All"]);
   const [focusedSlot, setFocusedSlot] = useState<number | null>(null);
   const [slotSearching, setSlotSearching] = useState<[boolean, boolean, boolean]>([
     false,
@@ -164,12 +168,13 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
         {[0, 1, 2].map((slotIdx) => {
           const selectedItem = ratingStore.getComparisonSlotItem(slotIdx);
           const query = slotQueries[slotIdx];
+          const slotCat = slotCategories[slotIdx];
           const isSearching =
             slotSearching[slotIdx] ||
             (focusedSlot === slotIdx && ratingStore.isSearchInProgress);
 
           const suggestions = ratingStore
-            .searchSuggestions(query, 12)
+            .searchSuggestions(query, 16, slotCat)
             .filter(
               (cand) =>
                 !ratingStore.comparisonSlots.includes(cand.externalId) ||
@@ -206,7 +211,7 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
                   placeholder={
                     selectedItem
                       ? `Replace "${selectedItem.title}"...`
-                      : `Search comic, movie, or series for Slot #${slotIdx + 1}...`
+                      : `Search comic, movie, series, or game for Slot #${slotIdx + 1}...`
                   }
                   value={query}
                   onFocus={() => setFocusedSlot(slotIdx)}
@@ -263,7 +268,46 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
                       </button>
                     </div>
 
-                    {isSearching ? (
+                    <div
+                      className="ct-slot-cat-pills"
+                      role="group"
+                      aria-label={`Filter Compare Slot ${slotIdx + 1} by category`}
+                    >
+                      {(["All", "Game", "Movie", "TvSeries", "ComicBook"] as const).map(
+                        (cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            className={`ct-slot-cat-pill ${
+                              slotCat === cat ? "active" : ""
+                            }`}
+                            onClick={() =>
+                              setSlotCategories((prev) => {
+                                const copy = [...prev] as [
+                                  "All" | MediaCategoryType,
+                                  "All" | MediaCategoryType,
+                                  "All" | MediaCategoryType
+                                ];
+                                copy[slotIdx] = cat;
+                                return copy;
+                              })
+                            }
+                          >
+                            {cat === "All"
+                              ? "All"
+                              : cat === "Game"
+                              ? "🎮 Games"
+                              : cat === "Movie"
+                              ? "🎬 Movies"
+                              : cat === "TvSeries"
+                              ? "📺 TV"
+                              : "📚 Comics"}
+                          </button>
+                        )
+                      )}
+                    </div>
+
+                    {isSearching && suggestions.length === 0 ? (
                       <div className="ct-slot-dropdown-loading">
                         <span className="ct-loading-spinner" />
                         <span>
@@ -282,37 +326,49 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
                         </button>
                       </div>
                     ) : (
-                      suggestions.map((sug) => (
-                        <button
-                          key={sug.externalId}
-                          type="button"
-                          className="ct-slot-dropdown-option"
-                          onClick={() => handlePickItemForSlot(slotIdx, sug)}
-                        >
-                          <img src={sanitizeImageUrl(sug.posterUrl)} alt={sug.title} />
-                          <div className="ct-slot-opt-info">
-                            <strong>{sug.title}</strong>
-                            <small>
-                              {sug.mediaType === "ComicBook"
-                                ? "📚 Comic"
-                                : sug.mediaType === "TvSeries"
-                                ? "📺 TV Series"
-                                : "🎬 Movie"}{" "}
-                              • {sug.releaseYear}
-                            </small>
+                      <>
+                        {isSearching && (
+                          <div className="ct-slot-dropdown-loading">
+                            <span className="ct-loading-spinner" />
+                            <span>
+                              Searching live APIs for more &ldquo;{query.trim()}&rdquo; matches&hellip;
+                            </span>
                           </div>
-                          <span
-                            className="ct-slot-opt-score"
-                            style={{
-                              color: getScoreColor(
-                                sug.cumulativeRating.finalCumulativeAverage
-                              ),
-                            }}
+                        )}
+                        {suggestions.map((sug) => (
+                          <button
+                            key={sug.externalId}
+                            type="button"
+                            className="ct-slot-dropdown-option"
+                            onClick={() => handlePickItemForSlot(slotIdx, sug)}
                           >
-                            {formatCumulativeScore(sug.cumulativeRating, 1)}
-                          </span>
-                        </button>
-                      ))
+                            <img src={sanitizeImageUrl(sug.posterUrl)} alt={sug.title} />
+                            <div className="ct-slot-opt-info">
+                              <strong>{sug.title}</strong>
+                              <small>
+                                {sug.mediaType === "ComicBook"
+                                  ? "📚 Comic / Book"
+                                  : sug.mediaType === "TvSeries"
+                                  ? "📺 TV Series"
+                                  : sug.mediaType === "Game"
+                                  ? "🎮 Game"
+                                  : "🎬 Movie"}{" "}
+                                • {sug.releaseYear > 0 ? sug.releaseYear : "N/A"}
+                              </small>
+                            </div>
+                            <span
+                              className="ct-slot-opt-score"
+                              style={{
+                                color: getScoreColor(
+                                  sug.cumulativeRating.finalCumulativeAverage
+                                ),
+                              }}
+                            >
+                              {formatCumulativeScore(sug.cumulativeRating, 1)}
+                            </span>
+                          </button>
+                        ))}
+                      </>
                     )}
                   </div>
                 )}
@@ -320,7 +376,19 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
 
               {/* Currently Picked Item Summary */}
               {selectedItem ? (
-                <div className="ct-slot-picked-card">
+                <div
+                  className="ct-slot-picked-card ct-slot-picked-clickable"
+                  role="button"
+                  tabIndex={0}
+                  title="Open full Multi-Platform API Rating Breakdown"
+                  onClick={() => ratingStore.openDetailModal(selectedItem)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      ratingStore.openDetailModal(selectedItem);
+                    }
+                  }}
+                >
                   <img
                     src={sanitizeImageUrl(selectedItem.posterUrl)}
                     alt={selectedItem.title}
@@ -329,7 +397,14 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
                   <div className="ct-slot-picked-meta">
                     <strong>{selectedItem.title}</strong>
                     <span>
-                      {selectedItem.mediaType} • {selectedItem.releaseYear}
+                      {selectedItem.mediaType === "Game"
+                        ? "🎮 Game"
+                        : selectedItem.mediaType === "ComicBook"
+                        ? "📚 Comic / Book"
+                        : selectedItem.mediaType === "TvSeries"
+                        ? "📺 TV Series"
+                        : "🎬 Movie"}{" "}
+                      • {selectedItem.releaseYear > 0 ? selectedItem.releaseYear : "N/A"} • Details →
                     </span>
                   </div>
                   <div
@@ -345,7 +420,7 @@ export const CompareThreeSlotPicker: React.FC = observer(() => {
                 </div>
               ) : (
                 <div className="ct-slot-empty-placeholder">
-                  Use the search input above to pick a Comic, Movie, or TV Series for Slot #{slotIdx + 1}
+                  Use the search input above to pick a Comic, Movie, TV Series, or Game for Slot #{slotIdx + 1}
                 </div>
               )}
             </div>
@@ -421,10 +496,11 @@ export const CumulativeDetailModal: React.FC = observer(() => {
 
   return (
     <div
-      className="ct-modal-backdrop"
+      className="ct-modal-backdrop ct-detail-modal-backdrop"
       onClick={() => ratingStore.closeDetailModal()}
       role="dialog"
       aria-modal="true"
+      aria-label={`${item.title} rating details`}
     >
       <div
         className="ct-modal-container"
@@ -461,6 +537,8 @@ export const CumulativeDetailModal: React.FC = observer(() => {
                   ? "📚 Comic Book / Graphic Novel"
                   : item.mediaType === "TvSeries"
                   ? "📺 TV Series"
+                  : item.mediaType === "Game"
+                  ? "🎮 Video / Mobile Game"
                   : "🎬 Feature Movie"}
               </span>
               <span className="ct-meta-pill">{item.releaseYear}</span>
@@ -564,7 +642,11 @@ export const CumulativeDetailModal: React.FC = observer(() => {
             {(
               [
                 "PlanToWatch",
-                item.mediaType === "ComicBook" ? "Reading" : "Watching",
+                item.mediaType === "ComicBook"
+                  ? "Reading"
+                  : item.mediaType === "Game"
+                  ? "Playing"
+                  : "Watching",
                 "Completed",
                 "OnHold",
               ] as WatchlistEntry["status"][]
@@ -578,7 +660,7 @@ export const CumulativeDetailModal: React.FC = observer(() => {
                 onClick={() => handleWatchlistStatus(st)}
               >
                 {existingWatchlist?.status === st ? "✓ " : "+ "}
-                {st === "PlanToWatch" ? "Plan to Read/Watch" : st}
+                {st === "PlanToWatch" ? "Plan to Play/Read/Watch" : st}
               </button>
             ))}
           </div>
@@ -699,8 +781,16 @@ export const CumulativeDetailModal: React.FC = observer(() => {
                           >
                             {src.sourceId === "apple_books"
                               ? "View on Apple Books ↗"
+                              : src.sourceId === "apple_app_store"
+                              ? "View on App Store ↗"
                               : src.sourceId === "tvmaze"
                               ? "TVMaze (CC BY-SA) ↗"
+                              : src.sourceId === "rawg"
+                              ? "RAWG ↗"
+                              : src.sourceId === "steam"
+                              ? "Steam ↗"
+                              : src.sourceId === "bgg"
+                              ? "BoardGameGeek ↗"
                               : "Source ↗"}
                           </a>
                         );
@@ -757,7 +847,7 @@ export const CumulativeDetailModal: React.FC = observer(() => {
             </div>
             <textarea
               rows={3}
-              placeholder="Share your critique of the story, artwork, cinematography, or adaptation fidelity..."
+              placeholder="Share your critique of the story, gameplay, artwork, cinematography, or adaptation fidelity..."
               value={reviewText}
               onChange={(e) => setReviewText(e.target.value)}
               required
@@ -948,8 +1038,11 @@ export const CompareModal: React.FC = observer(() => {
 
   return (
     <div
-      className="ct-modal-backdrop"
+      className="ct-modal-backdrop ct-compare-modal-backdrop"
       onClick={() => ratingStore.setCompareModalOpen(false)}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Compare Arena"
     >
       <div
         className="ct-modal-container ct-compare-modal"
@@ -967,7 +1060,7 @@ export const CompareModal: React.FC = observer(() => {
           <h2>⚔️ Head-to-Head Cumulative Rating Arena (Max 3 Titles)</h2>
           <p className="ct-muted-text">
             Use the 3 search inputs below to search and pick up to 3 Comic Books,
-            Movies, or TV Series for side-by-side cumulative comparison.
+            Movies, TV Series, or Games for side-by-side cumulative comparison.
           </p>
 
           {/* 3 Search & Pick Inputs */}
@@ -1030,8 +1123,25 @@ export const CompareModal: React.FC = observer(() => {
                   <div className="ct-compare-card-headmeta">
                     <h3>{item.title}</h3>
                     <span className="ct-meta-pill">
-                      {item.mediaType} • {item.releaseYear}
+                      {item.mediaType === "Game"
+                        ? "🎮 Game"
+                        : item.mediaType === "ComicBook"
+                        ? "📚 Comic / Book"
+                        : item.mediaType === "TvSeries"
+                        ? "📺 TV Series"
+                        : "🎬 Movie"}{" "}
+                      • {item.releaseYear > 0 ? item.releaseYear : "N/A"}
                     </span>
+                    <button
+                      type="button"
+                      className="ct-compare-view-details-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        ratingStore.openDetailModal(item);
+                      }}
+                    >
+                      📊 View Full Details
+                    </button>
                   </div>
                 </div>
 
@@ -1114,8 +1224,11 @@ export const CustomWeightsModal: React.FC = observer(() => {
 
   return (
     <div
-      className="ct-modal-backdrop"
+      className="ct-modal-backdrop ct-weights-modal-backdrop"
       onClick={() => ratingStore.setWeightsModalOpen(false)}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Custom Source Weights"
     >
       <div
         className="ct-modal-container ct-modal-medium"
@@ -1124,6 +1237,7 @@ export const CustomWeightsModal: React.FC = observer(() => {
         <button
           className="ct-modal-close"
           onClick={() => ratingStore.setWeightsModalOpen(false)}
+          aria-label="Close source weights modal"
         >
           ✕
         </button>
@@ -1133,7 +1247,7 @@ export const CustomWeightsModal: React.FC = observer(() => {
           <p className="ct-muted-text">
             Adjust how much influence each rating API has on the{" "}
             <strong>Final Cumulative Average</strong>. Changes recalculate all
-            Movies, TV Series, and Comic Books in real time!
+            Movies, TV Series, Comic Books, and Games in real time!
           </p>
 
           <div className="ct-weights-sliders-list">
@@ -1204,10 +1318,11 @@ export const KeyboardShortcutsModal: React.FC = observer(() => {
 
   return (
     <div
-      className="ct-modal-backdrop"
+      className="ct-modal-backdrop ct-shortcuts-modal-backdrop"
       onClick={() => ratingStore.setShortcutsModalOpen(false)}
       role="dialog"
       aria-modal="true"
+      aria-label="Keyboard Shortcuts"
     >
       <div
         className="ct-modal-container ct-modal-medium"

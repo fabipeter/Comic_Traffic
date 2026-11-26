@@ -1180,4 +1180,235 @@ describe("ComicTraffic Cumulative Rating Platform Unit Tests", () => {
       postSpy.mockRestore();
     }
   });
+
+  test("22. Games Category Integration: curated PC/console/mobile games, Game filter, Playing watchlist status, and game rating source definitions", async () => {
+    const gameStore = new RatingStore();
+
+    // 1. Game rating sources are registered in RATING_SOURCE_DEFINITIONS
+    const sourceIds = RATING_SOURCE_DEFINITIONS.map((d) => d.sourceId);
+    expect(sourceIds).toEqual(
+      expect.arrayContaining(["steam", "rawg", "apple_app_store", "bgg"])
+    );
+
+    // 2. Filtering to "Game" returns both video games and mobile games
+    gameStore.setCategory("Game");
+    expect(gameStore.filteredCatalog.length).toBeGreaterThanOrEqual(10);
+    expect(gameStore.filteredCatalog.every((i) => i.mediaType === "Game")).toBe(true);
+    expect(gameStore.filteredCatalog.some((i) => i.title === "Elden Ring")).toBe(true);
+    expect(gameStore.filteredCatalog.some((i) => i.title === "Genshin Impact")).toBe(true);
+    expect(gameStore.filteredCatalog.some((i) => i.title === "Balatro")).toBe(true);
+
+    // 3. Searching "mobile game" or game title matches Game items
+    gameStore.setCategory("All");
+    expect(
+      gameStore.catalog.some(
+        (i) => i.mediaType === "Game" && matchesSearchItem(i, "mobile game")
+      )
+    ).toBe(true);
+
+    // 4. Tracking a Game with "Playing" status updates gamesCount metric
+    const postSpy = vi
+      .spyOn(encryptedBackendClient, "sendEncryptedPost")
+      .mockResolvedValue({
+        fromBackend: true,
+        data: { isSuccessful: true },
+        envelope: { encrypted: false, iv: "", payload: "", signature: "", timestamp: Date.now() },
+      });
+    try {
+      const hades = gameStore.catalog.find((i) => i.externalId === "game-hades-2020")!;
+      await gameStore.upsertWatchlistItem(hades, "Playing", 95);
+      expect(gameStore.dashboardMetrics.gamesCount).toBeGreaterThanOrEqual(1);
+    } finally {
+      postSpy.mockRestore();
+    }
+
+    // 5. LandingPage renders Games category filter and curated Games row
+    store.ratingStore.setCategory("All");
+    store.ratingStore.setSearchQuery("");
+    const { unmount } = render(
+      <MemoryRouter>
+        <LandingPage />
+      </MemoryRouter>
+    );
+    expect(screen.getByText(/Top Rated Video Games & Mobile Games/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Games$/i }));
+    expect(store.ratingStore.selectedCategory).toBe("Game");
+    unmount();
+    store.ratingStore.setCategory("All");
+  });
+
+  test("23. Games in Search & Compare Arena + Detail Modal Stacking above Compare Modal", () => {
+    // 1. Default compare suggestions include Games alongside Movies, TV, and Comics
+    const checkStore = new RatingStore();
+    const defaultSuggestions = checkStore.searchSuggestions("", 12);
+    expect(defaultSuggestions.some((i) => i.mediaType === "Game")).toBe(true);
+    expect(defaultSuggestions.some((i) => i.mediaType === "Movie")).toBe(true);
+    expect(defaultSuggestions.some((i) => i.mediaType === "TvSeries")).toBe(true);
+    expect(defaultSuggestions.some((i) => i.mediaType === "ComicBook")).toBe(true);
+
+    // Category-filtered suggestions return only Games
+    const gameOnlySuggestions = checkStore.searchSuggestions("", 12, "Game");
+    expect(gameOnlySuggestions.length).toBeGreaterThanOrEqual(8);
+    expect(gameOnlySuggestions.every((i) => i.mediaType === "Game")).toBe(true);
+
+    // 2. activeSearchMatches preserves curated Games even when live search only returned non-game titles
+    checkStore.liveSearchResultsByQuery = {
+      zelda: [
+        {
+          ...MOCK_BACKEND_CATALOG[0],
+          externalId: "book-zelda-hyrule",
+          title: "The Legend of Zelda: Hyrule Historia",
+          mediaType: "ComicBook",
+        },
+      ],
+    };
+    checkStore.searchQuery = "zelda";
+    expect(
+      checkStore.activeSearchMatches.some(
+        (i) => i.mediaType === "Game" && /Breath of the Wild/i.test(i.title)
+      )
+    ).toBe(true);
+
+    // 3. Full App rendering: pick a Game in Compare Arena, open its Detail Modal on top, and test Escape layering
+    const fullStore = new RatingStore();
+    store.ratingStore.catalog = [...fullStore.catalog];
+    store.ratingStore.comparisonSlots = [null, null, null];
+    store.ratingStore.closeDetailModal();
+    store.ratingStore.setWeightsModalOpen(false);
+    store.ratingStore.setShortcutsModalOpen(false);
+    store.ratingStore.setCompareModalOpen(true);
+
+    const origSearch = store.ratingStore.executeLiveMultiApiSearch;
+    store.ratingStore.executeLiveMultiApiSearch = vi
+      .fn()
+      .mockResolvedValue(undefined as any) as any;
+
+    try {
+      const { container, unmount } = render(
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/" element={<App />}>
+              <Route path="" element={<LandingPage />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      );
+
+      const compareDialog = screen.getByRole("dialog", { name: /Compare Arena/i });
+      const slot1Input = compareDialog.querySelector(
+        'input[aria-label="Search and pick item for Compare Slot 1"]'
+      ) as HTMLInputElement;
+      expect(slot1Input).toBeTruthy();
+
+      // Focus Slot 1 and filter to Games
+      act(() => {
+        fireEvent.focus(slot1Input);
+      });
+      const slot1CatGroup = compareDialog.querySelector(
+        '[aria-label="Filter Compare Slot 1 by category"]'
+      ) as HTMLElement;
+      expect(slot1CatGroup).toBeTruthy();
+      const gamesPill = Array.from(slot1CatGroup.querySelectorAll("button")).find(
+        (btn) => /Games/i.test(btn.textContent || "")
+      ) as HTMLButtonElement;
+      expect(gamesPill).toBeTruthy();
+      act(() => {
+        fireEvent.click(gamesPill);
+      });
+
+      // Search for Elden Ring inside Slot 1 and confirm it shows 🎮 Game label
+      act(() => {
+        fireEvent.change(slot1Input, { target: { value: "Elden Ring" } });
+      });
+      const eldenOption = Array.from(
+        compareDialog.querySelectorAll(".ct-slot-dropdown-option")
+      ).find((el) => /Elden Ring/i.test(el.textContent || "")) as HTMLButtonElement;
+      expect(eldenOption).toBeTruthy();
+      expect(eldenOption.textContent).toContain("🎮 Game");
+
+      // Pick Elden Ring into Slot 1
+      act(() => {
+        fireEvent.click(eldenOption);
+      });
+      expect(store.ratingStore.comparisonSlots[0]).toBe("game-elden-ring-2022");
+
+      // Click "📊 View Full Details" inside CompareModal -> Detail Modal opens visibly stacked AFTER CompareModal
+      const viewDetailsBtn = Array.from(
+        compareDialog.querySelectorAll(".ct-compare-view-details-btn")
+      ).find((el) => /View Full Details/i.test(el.textContent || "")) as HTMLButtonElement;
+      expect(viewDetailsBtn).toBeTruthy();
+      act(() => {
+        fireEvent.click(viewDetailsBtn);
+      });
+
+      const detailDialog = screen.getByRole("dialog", {
+        name: /Elden Ring rating details/i,
+      });
+      expect(detailDialog).toBeInTheDocument();
+      expect(detailDialog.classList.contains("ct-detail-modal-backdrop")).toBe(true);
+
+      // Detail modal must appear AFTER CompareModal in DOM order so it stacks on top
+      const backdrops = Array.from(container.querySelectorAll(".ct-modal-backdrop"));
+      const compareIdx = backdrops.indexOf(compareDialog);
+      const detailIdx = backdrops.indexOf(detailDialog);
+      expect(compareIdx).toBeGreaterThanOrEqual(0);
+      expect(detailIdx).toBeGreaterThan(compareIdx);
+
+      // Clicking "Customize Source Weights" inside Detail Modal stacks Weights modal on top of Detail Modal
+      const weightsBtn = Array.from(detailDialog.querySelectorAll("button")).find(
+        (btn) => /Customize Source Weights/i.test(btn.textContent || "")
+      ) as HTMLButtonElement;
+      expect(weightsBtn).toBeTruthy();
+      act(() => {
+        fireEvent.click(weightsBtn);
+      });
+      const weightsDialog = screen.getByRole("dialog", {
+        name: /Custom Source Weights/i,
+      });
+      expect(weightsDialog.classList.contains("ct-weights-modal-backdrop")).toBe(true);
+      const allBackdrops = Array.from(container.querySelectorAll(".ct-modal-backdrop"));
+      expect(allBackdrops.indexOf(weightsDialog)).toBeGreaterThan(
+        allBackdrops.indexOf(detailDialog)
+      );
+
+      // Escape closes one layer at a time: Weights -> Detail -> Compare
+      act(() => {
+        fireEvent.keyDown(window, { key: "Escape" });
+      });
+      expect(store.ratingStore.weightsModalOpen).toBe(false);
+      expect(store.ratingStore.selectedItem?.externalId).toBe("game-elden-ring-2022");
+      expect(store.ratingStore.compareModalOpen).toBe(true);
+
+      act(() => {
+        fireEvent.keyDown(window, { key: "Escape" });
+      });
+      expect(store.ratingStore.selectedItem).toBeNull();
+      expect(store.ratingStore.compareModalOpen).toBe(true);
+
+      act(() => {
+        fireEvent.keyDown(window, { key: "Escape" });
+      });
+      expect(store.ratingStore.compareModalOpen).toBe(false);
+
+      // Inline Compare Arena on LandingPage can also open Detail Modal directly
+      const inlineCompare = container.querySelector("#ct-compare-section") as HTMLElement;
+      const inlineDetailsBtn = inlineCompare.querySelector(
+        ".ct-compare-view-details-btn"
+      ) as HTMLButtonElement;
+      expect(inlineDetailsBtn).toBeTruthy();
+      act(() => {
+        fireEvent.click(inlineDetailsBtn);
+      });
+      expect(store.ratingStore.selectedItem?.externalId).toBe("game-elden-ring-2022");
+
+      unmount();
+    } finally {
+      store.ratingStore.executeLiveMultiApiSearch = origSearch;
+      store.ratingStore.closeDetailModal();
+      store.ratingStore.setCompareModalOpen(false);
+      store.ratingStore.setWeightsModalOpen(false);
+      store.ratingStore.setCategory("All");
+      store.ratingStore.setSearchQuery("");
+    }
+  });
 });

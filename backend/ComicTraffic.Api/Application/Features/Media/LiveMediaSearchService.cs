@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Xml.Linq;
 using ComicTraffic.Api.Domain.Entities;
 using ComicTraffic.Api.Infrastructure.Services;
 using Microsoft.AspNetCore.WebUtilities;
@@ -53,7 +54,11 @@ public sealed class LiveMediaSearchService
         OpenLibrary,
         GoogleBooks,
         Hardcover,
-        AppleBooks
+        AppleBooks,
+        Steam,
+        Rawg,
+        AppleAppStore,
+        BoardGameGeek
     }
 
     private sealed record SourceDef(string Id, string Name, string Category, double Weight, string Color);
@@ -73,7 +78,11 @@ public sealed class LiveMediaSearchService
         [RatingProvider.OpenLibrary] = new("openlibrary", "Open Library", "Audience", 1.0, "#059669"),
         [RatingProvider.GoogleBooks] = new("google_books", "Google Books", "Audience", 1.0, "#4285f4"),
         [RatingProvider.Hardcover] = new("hardcover", "Hardcover", "Audience", 1.25, "#7c3aed"),
-        [RatingProvider.AppleBooks] = new("apple_books", "Apple Books", "Audience", 1.0, "#9ca3af")
+        [RatingProvider.AppleBooks] = new("apple_books", "Apple Books", "Audience", 1.0, "#9ca3af"),
+        [RatingProvider.Steam] = new("steam", "Steam", "Audience", 1.2, "#1b9cfc"),
+        [RatingProvider.Rawg] = new("rawg", "RAWG", "Audience", 1.15, "#f97316"),
+        [RatingProvider.AppleAppStore] = new("apple_app_store", "App Store Games", "Audience", 1.1, "#38bdf8"),
+        [RatingProvider.BoardGameGeek] = new("bgg", "BoardGameGeek", "Audience", 1.2, "#ff5100")
     };
 
     public sealed class LiveItem
@@ -163,7 +172,10 @@ public sealed class LiveMediaSearchService
         "comicvine.gamespot.com",
         "api.hardcover.app",
         "www.googleapis.com",
-        "openlibrary.org"
+        "openlibrary.org",
+        "www.cheapshark.com",
+        "api.rawg.io",
+        "boardgamegeek.com"
     };
 
     public static string TitleKey(string? title)
@@ -242,7 +254,11 @@ public sealed class LiveMediaSearchService
         ComicVineSearch,
         HardcoverGraphQl,
         GoogleBooksVolumes,
-        OpenLibrarySearch
+        OpenLibrarySearch,
+        CheapSharkDeals,
+        RawgGames,
+        BggSearch,
+        BggThing
     }
 
     private static (string BaseUrl, string Host, string Path) ResolveEndpoint(ProviderEndpoint endpoint) => endpoint switch
@@ -264,6 +280,10 @@ public sealed class LiveMediaSearchService
         ProviderEndpoint.HardcoverGraphQl => ("https://api.hardcover.app/v1/graphql", "api.hardcover.app", "/v1/graphql"),
         ProviderEndpoint.GoogleBooksVolumes => ("https://www.googleapis.com/books/v1/volumes", "www.googleapis.com", "/books/v1/volumes"),
         ProviderEndpoint.OpenLibrarySearch => ("https://openlibrary.org/search.json", "openlibrary.org", "/search.json"),
+        ProviderEndpoint.CheapSharkDeals => ("https://www.cheapshark.com/api/1.0/deals", "www.cheapshark.com", "/api/1.0/deals"),
+        ProviderEndpoint.RawgGames => ("https://api.rawg.io/api/games", "api.rawg.io", "/api/games"),
+        ProviderEndpoint.BggSearch => ("https://boardgamegeek.com/xmlapi2/search", "boardgamegeek.com", "/xmlapi2/search"),
+        ProviderEndpoint.BggThing => ("https://boardgamegeek.com/xmlapi2/thing", "boardgamegeek.com", "/xmlapi2/thing"),
         _ => throw new ArgumentOutOfRangeException(nameof(endpoint), "Unsupported external media provider endpoint.")
     };
 
@@ -344,6 +364,47 @@ public sealed class LiveMediaSearchService
         if (!res.IsSuccessStatusCode) throw new HttpRequestException($"HTTP {(int)res.StatusCode}", null, res.StatusCode);
         string body = await res.Content.ReadAsStringAsync(cts.Token);
         return JsonDocument.Parse(body);
+    }
+
+    private async Task<string> GetTextAsync(
+        ProviderEndpoint endpoint,
+        CancellationToken ct,
+        IEnumerable<KeyValuePair<string, string?>>? queryParams = null,
+        string? bearerToken = null,
+        TimeSpan? timeout = null)
+    {
+        var (baseUrl, expectedHost, expectedPath) = ResolveEndpoint(endpoint);
+        string requestUrl = queryParams == null
+            ? baseUrl
+            : QueryHelpers.AddQueryString(baseUrl, queryParams);
+
+        if (!Uri.TryCreate(requestUrl, UriKind.Absolute, out var safeUri) ||
+            !string.Equals(safeUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+            !safeUri.IsDefaultPort ||
+            !string.Equals(safeUri.Host, expectedHost, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(safeUri.AbsolutePath, expectedPath, StringComparison.Ordinal) ||
+            !AllowedProviderHosts.Contains(safeUri.Host))
+        {
+            throw new InvalidOperationException("Blocked outbound request to unapproved provider URL.");
+        }
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(timeout ?? ProviderTimeout);
+        using var req = new HttpRequestMessage(HttpMethod.Get, safeUri);
+        req.Headers.UserAgent.ParseAdd(UserAgent);
+        req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml"));
+        req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/xml"));
+        if (!string.IsNullOrWhiteSpace(bearerToken))
+        {
+            string cleanToken = new string(bearerToken.Where(ch => !char.IsControl(ch)).ToArray()).Trim();
+            if (cleanToken.Length > 0)
+            {
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cleanToken);
+            }
+        }
+        using var res = await _http.SendAsync(req, HttpCompletionOption.ResponseContentRead, cts.Token);
+        if (!res.IsSuccessStatusCode) throw new HttpRequestException($"HTTP {(int)res.StatusCode}", null, res.StatusCode);
+        return await res.Content.ReadAsStringAsync(cts.Token);
     }
 
     public async Task<List<MediaItemDto>> FetchTmdbCuratedAsync(string category, string? forcedMediaType, CancellationToken ct)
@@ -1182,6 +1243,292 @@ query ($search: String) {
         return list;
     }
 
+    private async Task<List<LiveItem>> SearchCheapSharkGamesAsync(string q, CancellationToken ct)
+    {
+        var queryParams = new KeyValuePair<string, string?>[]
+        {
+            new("title", q),
+            new("pageSize", "30"),
+            new("sortBy", "Metacritic")
+        };
+        using var doc = await GetJsonAsync(ProviderEndpoint.CheapSharkDeals, ct, queryParams: queryParams);
+        var byGame = new Dictionary<string, LiveItem>(StringComparer.OrdinalIgnoreCase);
+        foreach (var d in doc.RootElement.ValueKind == JsonValueKind.Array ? doc.RootElement.EnumerateArray() : Enumerable.Empty<JsonElement>())
+        {
+            string title = S(d, "title");
+            if (title == "") continue;
+            string gameId = S(d, "gameID");
+            string steamAppId = S(d, "steamAppID");
+            string key = steamAppId != "" ? $"steam:{steamAppId}" : (gameId != "" ? $"cs:{gameId}" : TitleKey(title));
+
+            int year = 0;
+            long relTs = (long)ParseOptionalDouble(d, "releaseDate");
+            if (relTs > 0)
+            {
+                try { year = DateTimeOffset.FromUnixTimeSeconds(relTs).Year; } catch { year = 0; }
+            }
+
+            string poster = steamAppId != ""
+                ? $"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{steamAppId}/header.jpg"
+                : UpgradeToHttps(S(d, "thumb"));
+
+            if (!byGame.TryGetValue(key, out var item))
+            {
+                item = new LiveItem
+                {
+                    ExternalId = steamAppId != "" ? $"cheapshark-steam-{steamAppId}" : $"cheapshark-{gameId}",
+                    Title = title,
+                    MediaType = "Game",
+                    YearLoose = true,
+                    Year = year,
+                    PosterUrl = poster,
+                    BackdropUrl = poster,
+                    Publisher = "PC / Steam",
+                    Runtime = "PC Video Game"
+                };
+                item.Genres.Add("Video Game");
+                item.Genres.Add("PC");
+                byGame[key] = item;
+            }
+            else
+            {
+                if (item.Year == 0 && year > 0) item.Year = year;
+                if (item.PosterUrl == "" && poster != "") { item.PosterUrl = poster; item.BackdropUrl = poster; }
+            }
+
+            double steamPct = ParseOptionalDouble(d, "steamRatingPercent");
+            int steamCount = (int)ParseOptionalDouble(d, "steamRatingCount");
+            if (steamPct > 0 && steamCount > 0)
+            {
+                string steamUrl = steamAppId != "" ? $"https://store.steampowered.com/app/{steamAppId}/" : "https://www.cheapshark.com";
+                AddSource(item, MakeSource(RatingProvider.Steam, $"{(int)Math.Round(steamPct)}%", steamPct, steamCount, steamUrl));
+            }
+
+            double meta = ParseOptionalDouble(d, "metacriticScore");
+            if (meta > 0)
+            {
+                string metaLink = S(d, "metacriticLink");
+                string metaUrl = metaLink.StartsWith("/", StringComparison.Ordinal)
+                    ? $"https://www.metacritic.com{metaLink}"
+                    : "https://www.metacritic.com";
+                AddSource(item, MakeSource(RatingProvider.Metacritic, $"{(int)Math.Round(meta)} / 100", meta, 0, metaUrl));
+            }
+        }
+        return byGame.Values.ToList();
+    }
+
+    private async Task<List<LiveItem>> SearchAppleAppStoreGamesAsync(string q, CancellationToken ct)
+    {
+        var queryParams = new KeyValuePair<string, string?>[]
+        {
+            new("term", q),
+            new("media", "software"),
+            new("entity", "software"),
+            new("country", "us"),
+            new("limit", "25")
+        };
+        using var doc = await GetJsonAsync(ProviderEndpoint.ItunesSearch, ct, queryParams: queryParams);
+        var list = new List<LiveItem>();
+        foreach (var r in A(doc.RootElement, "results"))
+        {
+            string name = S(r, "trackName");
+            if (name == "") continue;
+            string primaryGenre = S(r, "primaryGenreName");
+            bool isGame = string.Equals(primaryGenre, "Games", StringComparison.OrdinalIgnoreCase) ||
+                          A(r, "genreIds").Any(g => string.Equals(g.GetString(), "6014", StringComparison.Ordinal));
+            if (!isGame) continue;
+
+            string artwork = S(r, "artworkUrl512") != "" ? UpgradeToHttps(S(r, "artworkUrl512")) : UpgradeArtwork(S(r, "artworkUrl100"));
+            string backdrop = A(r, "screenshotUrls").Select(u => UpgradeToHttps(u.GetString())).FirstOrDefault(u => u != "") ?? artwork;
+
+            var item = new LiveItem
+            {
+                ExternalId = $"appstore-game-{S(r, "trackId")}",
+                Title = name,
+                MediaType = "Game",
+                YearLoose = true,
+                Year = ToYear(S(r, "releaseDate")),
+                Overview = StripHtml(S(r, "description")),
+                PosterUrl = artwork,
+                BackdropUrl = backdrop,
+                Publisher = S(r, "sellerName") != "" ? S(r, "sellerName") : S(r, "artistName"),
+                Creator = S(r, "artistName"),
+                Runtime = "Mobile Game (iOS)",
+                AgeRating = S(r, "contentAdvisoryRating")
+            };
+            item.Genres.Add("Mobile Game");
+            foreach (var g in A(r, "genres"))
+            {
+                if (g.GetString() is { Length: > 0 } gs && !item.Genres.Contains(gs, StringComparer.OrdinalIgnoreCase))
+                    item.Genres.Add(gs);
+            }
+
+            double avg = D(r, "averageUserRating");
+            int count = (int)D(r, "userRatingCount");
+            if (avg > 0 && count > 0)
+            {
+                string storeUrl = S(r, "trackViewUrl") != "" ? S(r, "trackViewUrl") : "https://apps.apple.com";
+                item.Sources.Add(MakeSource(RatingProvider.AppleAppStore, $"{avg:F1} / 5", avg * 20, count, storeUrl));
+            }
+            list.Add(item);
+        }
+        return list;
+    }
+
+    private async Task<List<LiveItem>> SearchRawgGamesAsync(string q, string key, CancellationToken ct)
+    {
+        var queryParams = new KeyValuePair<string, string?>[]
+        {
+            new("key", key),
+            new("search", q),
+            new("page_size", "20")
+        };
+        using var doc = await GetJsonAsync(ProviderEndpoint.RawgGames, ct, queryParams: queryParams);
+        var list = new List<LiveItem>();
+        foreach (var g in A(doc.RootElement, "results"))
+        {
+            string name = S(g, "name");
+            if (name == "") continue;
+            var platforms = A(g, "platforms")
+                .Select(p => O(p, "platform") is { } pl ? S(pl, "name") : "")
+                .Where(x => x != "")
+                .Take(4)
+                .ToList();
+            string bg = UpgradeToHttps(S(g, "background_image"));
+            string slug = S(g, "slug");
+            string rawgUrl = slug != "" ? $"https://rawg.io/games/{Uri.EscapeDataString(slug)}" : "https://rawg.io";
+
+            var item = new LiveItem
+            {
+                ExternalId = $"rawg-{S(g, "id")}",
+                Title = name,
+                MediaType = "Game",
+                YearLoose = true,
+                Year = ToYear(S(g, "released")),
+                PosterUrl = bg,
+                BackdropUrl = bg,
+                Publisher = platforms.Count > 0 ? string.Join(" / ", platforms) : "Multi-Platform",
+                Runtime = platforms.Count > 0 ? string.Join(", ", platforms) : "Video Game",
+                AgeRating = O(g, "esrb_rating") is { } esrb ? S(esrb, "name") : ""
+            };
+            item.Genres.Add("Video Game");
+            foreach (var genre in A(g, "genres"))
+            {
+                if (S(genre, "name") is { Length: > 0 } gn && !item.Genres.Contains(gn, StringComparer.OrdinalIgnoreCase))
+                    item.Genres.Add(gn);
+            }
+
+            double rating = D(g, "rating");
+            int ratingsCount = (int)D(g, "ratings_count");
+            if (rating > 0 && ratingsCount > 0)
+            {
+                item.Sources.Add(MakeSource(RatingProvider.Rawg, $"{rating:F2} / 5", rating * 20, ratingsCount, rawgUrl));
+            }
+            double meta = D(g, "metacritic");
+            if (meta > 0)
+            {
+                item.Sources.Add(MakeSource(RatingProvider.Metacritic, $"{(int)Math.Round(meta)} / 100", meta, 0, rawgUrl));
+            }
+            list.Add(item);
+        }
+        return list;
+    }
+
+    private async Task<List<LiveItem>> SearchBoardGameGeekAsync(string q, string token, CancellationToken ct)
+    {
+        string searchXml = await GetTextAsync(
+            ProviderEndpoint.BggSearch,
+            ct,
+            queryParams: new KeyValuePair<string, string?>[]
+            {
+                new("query", q),
+                new("type", "boardgame")
+            },
+            bearerToken: token);
+
+        var searchDoc = XDocument.Parse(searchXml);
+        var ids = searchDoc.Root?
+            .Elements("item")
+            .Select(el => el.Attribute("id")?.Value ?? "")
+            .Where(id => id != "")
+            .Distinct()
+            .Take(10)
+            .ToList() ?? new List<string>();
+        if (ids.Count == 0) return new List<LiveItem>();
+
+        string thingXml = await GetTextAsync(
+            ProviderEndpoint.BggThing,
+            ct,
+            queryParams: new KeyValuePair<string, string?>[]
+            {
+                new("id", string.Join(",", ids)),
+                new("stats", "1")
+            },
+            bearerToken: token);
+
+        var thingDoc = XDocument.Parse(thingXml);
+        var list = new List<LiveItem>();
+        foreach (var el in thingDoc.Root?.Elements("item") ?? Enumerable.Empty<XElement>())
+        {
+            string id = el.Attribute("id")?.Value ?? "";
+            string name = el.Elements("name")
+                .FirstOrDefault(n => string.Equals(n.Attribute("type")?.Value, "primary", StringComparison.OrdinalIgnoreCase))
+                ?.Attribute("value")?.Value
+                ?? el.Element("name")?.Attribute("value")?.Value
+                ?? "";
+            if (id == "" || name == "") continue;
+
+            int year = int.TryParse(el.Element("yearpublished")?.Attribute("value")?.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var y) ? y : 0;
+            string image = UpgradeToHttps(el.Element("image")?.Value ?? el.Element("thumbnail")?.Value);
+            string desc = StripHtml(el.Element("description")?.Value);
+            string designer = el.Elements("link")
+                .Where(l => string.Equals(l.Attribute("type")?.Value, "boardgamedesigner", StringComparison.OrdinalIgnoreCase))
+                .Select(l => l.Attribute("value")?.Value ?? "")
+                .FirstOrDefault(x => x != "") ?? "";
+            string publisher = el.Elements("link")
+                .Where(l => string.Equals(l.Attribute("type")?.Value, "boardgamepublisher", StringComparison.OrdinalIgnoreCase))
+                .Select(l => l.Attribute("value")?.Value ?? "")
+                .FirstOrDefault(x => x != "") ?? "Tabletop";
+            string minPlayers = el.Element("minplayers")?.Attribute("value")?.Value ?? "";
+            string maxPlayers = el.Element("maxplayers")?.Attribute("value")?.Value ?? "";
+            string runtime = minPlayers != "" && maxPlayers != "" ? $"{minPlayers}–{maxPlayers} Players" : "Board Game";
+
+            var item = new LiveItem
+            {
+                ExternalId = $"bgg-{id}",
+                Title = name,
+                MediaType = "Game",
+                YearLoose = true,
+                Year = year,
+                Overview = desc,
+                PosterUrl = image,
+                BackdropUrl = image,
+                Publisher = publisher,
+                Creator = designer,
+                Runtime = runtime
+            };
+            item.Genres.Add("Board Game");
+            foreach (var cat in el.Elements("link")
+                .Where(l => string.Equals(l.Attribute("type")?.Value, "boardgamecategory", StringComparison.OrdinalIgnoreCase))
+                .Select(l => l.Attribute("value")?.Value ?? "")
+                .Where(x => x != "")
+                .Take(4))
+            {
+                item.Genres.Add(cat);
+            }
+
+            var ratingsEl = el.Element("statistics")?.Element("ratings");
+            double avg = double.TryParse(ratingsEl?.Element("average")?.Attribute("value")?.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var aVal) ? aVal : 0;
+            int votes = int.TryParse(ratingsEl?.Element("usersrated")?.Attribute("value")?.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var vVal) ? vVal : 0;
+            if (avg > 0 && votes > 0)
+            {
+                item.Sources.Add(MakeSource(RatingProvider.BoardGameGeek, $"{avg:F1} / 10", avg * 10, votes, $"https://boardgamegeek.com/boardgame/{id}"));
+            }
+            list.Add(item);
+        }
+        return list;
+    }
+
     // ------------------------------------------------------------------ merge / rank
 
     private static void AddSource(LiveItem item, ExternalRatingSource source)
@@ -1283,7 +1630,7 @@ query ($search: String) {
     {
         string poster = item.PosterUrl != "" ? item.PosterUrl : PlaceholderPoster;
         var genres = item.Genres.Take(8).ToList();
-        if (genres.Count == 0) genres.Add(item.MediaType == "TvSeries" ? "TV Series" : item.MediaType == "Movie" ? "Movie" : "Book");
+        if (genres.Count == 0) genres.Add(item.MediaType == "TvSeries" ? "TV Series" : item.MediaType == "Movie" ? "Movie" : item.MediaType == "Game" ? "Video Game" : "Book");
         return new MediaItemDto
         {
             Id = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(item.ExternalId))[..16]),
@@ -1324,6 +1671,8 @@ query ($search: String) {
         string mdbList = _key("MDBLIST_API_KEY") ?? "";
         string comicVine = _key("COMICVINE_API_KEY") ?? "";
         string hardcover = _key("HARDCOVER_API_TOKEN") ?? "";
+        string rawg = _key("RAWG_API_KEY") ?? "";
+        string bgg = _key("BGG_API_TOKEN") ?? "";
 
         // Order = merge priority: earlier providers win ids and primary metadata.
         var providers = new List<(string Name, bool Configured, Func<Task<List<LiveItem>>> Run)>
@@ -1338,7 +1687,11 @@ query ($search: String) {
             ("hardcover", hardcover != "", () => SearchHardcoverAsync(clean, hardcover, ct)),
             ("google_books", true, () => SearchGoogleBooksAsync(clean, ct)),
             ("apple_books", true, () => SearchAppleBooksAsync(clean, ct)),
-            ("open_library", true, () => SearchOpenLibraryAsync(clean, ct))
+            ("open_library", true, () => SearchOpenLibraryAsync(clean, ct)),
+            ("rawg", rawg != "", () => SearchRawgGamesAsync(clean, rawg, ct)),
+            ("cheapshark_games", true, () => SearchCheapSharkGamesAsync(clean, ct)),
+            ("apple_app_store_games", true, () => SearchAppleAppStoreGamesAsync(clean, ct)),
+            ("boardgamegeek", bgg != "", () => SearchBoardGameGeekAsync(clean, bgg, ct))
         };
 
         var tasks = providers.Select(async p =>

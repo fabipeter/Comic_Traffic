@@ -111,3 +111,21 @@ CREATE TABLE IF NOT EXISTS content_reports (
 
 CREATE INDEX IF NOT EXISTS idx_content_reports_review ON content_reports ("ReviewId");
 CREATE INDEX IF NOT EXISTS idx_content_reports_status ON content_reports ("Status");
+
+-- Backend-only access hardening (blocks PostgREST anon/authenticated roles while letting table owner/backend operate)
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE media_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE watchlist_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE custom_media_lists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE content_reports ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+        REVOKE ALL ON TABLE users, media_items, user_reviews, watchlist_items, custom_media_lists, content_reports FROM anon;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+        REVOKE ALL ON TABLE users, media_items, user_reviews, watchlist_items, custom_media_lists, content_reports FROM authenticated;
+    END IF;
+END $$;

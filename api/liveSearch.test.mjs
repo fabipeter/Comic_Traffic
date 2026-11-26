@@ -199,4 +199,118 @@ describe("executeLiveSearch", () => {
     ]);
     expect(providers.mdblist).toEqual({ configured: true, count: 1 });
   });
+
+  it("merges PC/Steam, RAWG, and Mobile App Store game ratings and parses BoardGameGeek tabletop games", async () => {
+    const text = (body, ok = true, status = 200) =>
+      Promise.resolve({ ok, status, text: () => Promise.resolve(body) });
+
+    vi.stubGlobal(
+      "fetch",
+      routeFetch([
+        [
+          "cheapshark.com/api/1.0/deals",
+          [
+            {
+              title: "Stardew Valley",
+              gameID: "147800",
+              steamAppID: "413150",
+              steamRatingPercent: "98",
+              steamRatingCount: "680000",
+              metacriticScore: "89",
+              metacriticLink: "/game/pc/stardew-valley",
+              releaseDate: 1456444800,
+              thumb: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/413150/header.jpg",
+            },
+          ],
+        ],
+        [
+          "api.rawg.io/api/games",
+          {
+            results: [
+              {
+                id: 654,
+                slug: "stardew-valley",
+                name: "Stardew Valley",
+                released: "2016-02-26",
+                rating: 4.41,
+                ratings_count: 3500,
+                metacritic: 89,
+                background_image: "https://media.rawg.io/media/games/stardew.jpg",
+                genres: [{ name: "RPG" }, { name: "Indie" }],
+                platforms: [{ platform: { name: "PC" } }, { platform: { name: "iOS" } }],
+                esrb_rating: { name: "Everyone 10+" },
+              },
+            ],
+          },
+        ],
+        [
+          "itunes.apple.com/search?term=stardew&media=software",
+          {
+            results: [
+              {
+                trackId: 1406710800,
+                trackName: "Stardew Valley",
+                primaryGenreName: "Games",
+                genreIds: ["6014", "7014"],
+                genres: ["Games", "Role Playing"],
+                averageUserRating: 4.8,
+                userRatingCount: 215000,
+                releaseDate: "2018-10-24T07:00:00Z",
+                artistName: "ConcernedApe",
+                artworkUrl512: "https://is1-ssl.mzstatic.com/image/thumb/stardew/512x512bb.jpg",
+                trackViewUrl: "https://apps.apple.com/us/app/stardew-valley/id1406710800",
+                contentAdvisoryRating: "12+",
+              },
+              {
+                trackId: 99999,
+                trackName: "Stardew Guide Utility",
+                primaryGenreName: "Utilities",
+                genreIds: ["6002"],
+                averageUserRating: 4.1,
+                userRatingCount: 50,
+              },
+            ],
+          },
+        ],
+        [
+          "boardgamegeek.com/xmlapi2/search",
+          () => text(`<items><item type="boardgame" id="332290"><name type="primary" value="Stardew Valley: The Board Game"/></item></items>`),
+        ],
+        [
+          "boardgamegeek.com/xmlapi2/thing",
+          () =>
+            text(
+              `<items><item type="boardgame" id="332290"><name type="primary" value="Stardew Valley: The Board Game"/><yearpublished value="2021"/><minplayers value="1"/><maxplayers value="4"/><image>https://cf.geekdo-images.com/svbg.jpg</image><statistics><ratings><usersrated value="9800"/><average value="7.6"/></ratings></statistics></item></items>`
+            ),
+        ],
+      ])
+    );
+
+    const { items, providers } = await executeLiveSearch("stardew", {
+      env: { RAWG_API_KEY: "rawg_k", BGG_API_TOKEN: "bgg_tok" },
+      calculateCumulativeSummary: calc,
+    });
+
+    const stardew = items.find((i) => i.title === "Stardew Valley");
+    expect(stardew).toBeDefined();
+    expect(stardew.mediaType).toBe("Game");
+    expect(stardew.cumulativeRating.sources.map((s) => s.sourceId).sort()).toEqual([
+      "apple_app_store",
+      "metacritic",
+      "rawg",
+      "steam",
+    ]);
+    // Non-game Utilities app must be filtered out
+    expect(items.find((i) => i.title === "Stardew Guide Utility")).toBeUndefined();
+
+    // Board game parsed from BGG XML API2
+    const boardGame = items.find((i) => i.title === "Stardew Valley: The Board Game");
+    expect(boardGame).toBeDefined();
+    expect(boardGame.mediaType).toBe("Game");
+    expect(boardGame.cumulativeRating.sources.map((s) => s.sourceId)).toEqual(["bgg"]);
+    expect(providers.rawg.configured).toBe(true);
+    expect(providers.cheapshark_games.count).toBe(1);
+    expect(providers.apple_app_store_games.count).toBe(1);
+    expect(providers.boardgamegeek.count).toBe(1);
+  });
 });

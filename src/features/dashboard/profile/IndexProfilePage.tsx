@@ -126,7 +126,7 @@ const IndexProfilePage: React.FC = () => {
             <strong className="ct-kpi-value">{metrics.totalTracked}</strong>
             <span className="ct-kpi-sub">
               📚 {metrics.comicsCount} Comics • 🎬 {metrics.moviesCount} Movies • 📺{" "}
-              {metrics.tvCount} Series
+              {metrics.tvCount} Series • 🎮 {metrics.gamesCount} Games
             </span>
           </div>
 
@@ -208,10 +208,10 @@ const IndexProfilePage: React.FC = () => {
               <h3>📈 Cumulative Score Comparison by Media Type</h3>
               <p className="ct-muted-text">
                 Aggregated average across all {RATING_SOURCE_DEFINITIONS.length}{" "}
-                live rating sources for Comic Books, Movies, and TV Series.
+                live rating sources for Comic Books, Movies, TV Series, and Games.
               </p>
 
-              {(["ComicBook", "Movie", "TvSeries"] as const).map((type) => {
+              {(["ComicBook", "Movie", "TvSeries", "Game"] as const).map((type) => {
                 const itemsOfType = ratingStore.catalog.filter(
                   (c) => c.mediaType === type
                 );
@@ -227,6 +227,8 @@ const IndexProfilePage: React.FC = () => {
                     ? "📚 Comic Books & Graphic Novels"
                     : type === "TvSeries"
                     ? "📺 Television Series"
+                    : type === "Game"
+                    ? "🎮 Video & Mobile Games"
                     : "🎬 Feature Films";
 
                 return (
@@ -247,6 +249,8 @@ const IndexProfilePage: React.FC = () => {
                               ? "#a855f7"
                               : type === "Movie"
                               ? "#ef4444"
+                              : type === "Game"
+                              ? "#10b981"
                               : "#3b82f6",
                         }}
                       />
@@ -319,7 +323,7 @@ const IndexProfilePage: React.FC = () => {
             <div className="ct-section-header-flex">
               <h3>📌 Your Watchlist & Comic Reading Tracker</h3>
               <div className="ct-status-filter-pills">
-                {["All", "Reading", "Watching", "PlanToWatch", "Completed", "OnHold"].map(
+                {["All", "Playing", "Reading", "Watching", "PlanToWatch", "Completed", "OnHold"].map(
                   (st) => (
                     <button
                       key={st}
@@ -385,7 +389,8 @@ const IndexProfilePage: React.FC = () => {
                           }
                         }}
                       >
-                        <option value="PlanToWatch">Plan to Watch/Read</option>
+                        <option value="PlanToWatch">Plan to Play/Watch/Read</option>
+                        <option value="Playing">Playing</option>
                         <option value="Reading">Reading</option>
                         <option value="Watching">Watching</option>
                         <option value="Completed">Completed</option>

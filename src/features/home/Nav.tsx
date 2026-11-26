@@ -59,13 +59,22 @@ const Nav = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (ratingStore.shortcutsModalOpen) {
+          ratingStore.setShortcutsModalOpen(false);
+          return;
+        }
+        if (ratingStore.weightsModalOpen) {
+          ratingStore.setWeightsModalOpen(false);
+          return;
+        }
+        if (ratingStore.selectedItem) {
+          ratingStore.closeDetailModal();
+          return;
+        }
         setDrawerOpen(false);
         setSkinMenuOpen(false);
         setDesktopSearchFocused(false);
         ratingStore.setCompareModalOpen(false);
-        ratingStore.setWeightsModalOpen(false);
-        ratingStore.setShortcutsModalOpen(false);
-        ratingStore.closeDetailModal();
         return;
       }
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
@@ -233,6 +242,18 @@ const Nav = () => {
             >
               TV Series
             </button>
+            <button
+              type="button"
+              className={`nav__link__btn ${
+                ratingStore.selectedCategory === "Game" &&
+                location.pathname === "/"
+                  ? "active"
+                  : ""
+              }`}
+              onClick={() => handleCategorySelect("Game")}
+            >
+              Games
+            </button>
           </div>
         </div>
 
@@ -317,6 +338,8 @@ const Nav = () => {
                                 ? "📚 Comic"
                                 : item.mediaType === "Movie"
                                 ? "🎬 Movie"
+                                : item.mediaType === "Game"
+                                ? "🎮 Game"
                                 : "📺 TV"}
                             </span>
                             <span className="nav__desktop_sugg_year">
@@ -434,7 +457,7 @@ const Nav = () => {
               <div className="nav__panel_section nav__panel_mobile_cats">
                 <span className="nav__panel_heading">BROWSE CATEGORIES</span>
                 <div className="nav__panel_cat_grid">
-                  {(["All", "ComicBook", "Movie", "TvSeries"] as const).map(
+                  {(["All", "ComicBook", "Movie", "TvSeries", "Game"] as const).map(
                     (cat) => (
                       <button
                         key={cat}
@@ -453,6 +476,8 @@ const Nav = () => {
                           ? "📚 Comics"
                           : cat === "Movie"
                           ? "🎬 Movies"
+                          : cat === "Game"
+                          ? "🎮 Games"
                           : "📺 TV Series"}
                       </button>
                     )
@@ -470,8 +495,8 @@ const Nav = () => {
                   <input
                     type="text"
                     className="nav__panel_search_input"
-                    placeholder="Search comics, movies, series..."
-                    aria-label="General search across comics, movies, and series"
+                    placeholder="Search comics, movies, series, games..."
+                    aria-label="General search across comics, movies, series, and games"
                     value={ratingStore.searchQuery}
                     onChange={(e) => ratingStore.setSearchQuery(e.target.value)}
                   />
@@ -512,7 +537,14 @@ const Nav = () => {
                         <div className="nav__search_opt_meta">
                           <strong>{item.title}</strong>
                           <small>
-                            {item.mediaType} • {item.releaseYear > 0 ? item.releaseYear : "N/A"}
+                            {item.mediaType === "ComicBook"
+                              ? "📚 Comic / Book"
+                              : item.mediaType === "Movie"
+                              ? "🎬 Movie"
+                              : item.mediaType === "Game"
+                              ? "🎮 Game"
+                              : "📺 TV"}{" "}
+                            • {item.releaseYear > 0 ? item.releaseYear : "N/A"}
                           </small>
                         </div>
                         <span className="nav__search_opt_score">

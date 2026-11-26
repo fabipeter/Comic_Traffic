@@ -749,4 +749,33 @@ public class ComicTrafficBackendTests
         Assert.True(removed);
         Assert.Null(await db.Reviews.FindAsync(created.Review.Id));
     }
+
+    [Fact]
+    public async Task LiveMediaSearchService_MergesVideoGamesMobileGamesAndBoardGamesWithRealRatings()
+    {
+        var handler = new RouteStubHttpHandler(new List<(string, string)>
+        {
+            ("cheapshark.com/api/1.0/deals", """[{"title":"Stardew Valley","gameID":"147800","steamAppID":"413150","steamRatingPercent":"98","steamRatingCount":"680000","metacriticScore":"89","metacriticLink":"/game/pc/stardew-valley","releaseDate":1456444800}]"""),
+            ("api.rawg.io/api/games", """{"results":[{"id":654,"slug":"stardew-valley","name":"Stardew Valley","released":"2016-02-26","rating":4.41,"ratings_count":3500,"metacritic":89,"background_image":"https://media.rawg.io/media/games/stardew.jpg","genres":[{"name":"RPG"}],"platforms":[{"platform":{"name":"PC"}}],"esrb_rating":{"name":"Everyone 10+"}}]}"""),
+            ("itunes.apple.com/search?term=stardew&media=software", """{"results":[{"trackId":1406710800,"trackName":"Stardew Valley","primaryGenreName":"Games","genreIds":["6014"],"genres":["Games","RPG"],"averageUserRating":4.8,"userRatingCount":215000,"releaseDate":"2018-10-24T07:00:00Z","artistName":"ConcernedApe","artworkUrl512":"https://is1-ssl.mzstatic.com/image/thumb/stardew/512x512bb.jpg","trackViewUrl":"https://apps.apple.com/us/app/stardew-valley/id1406710800"},{"trackId":999,"trackName":"Not A Game App","primaryGenreName":"Utilities","genreIds":["6002"],"averageUserRating":4.2,"userRatingCount":100}]}"""),
+            ("boardgamegeek.com/xmlapi2/search", """<items><item type="boardgame" id="332290"><name type="primary" value="Stardew Valley: The Board Game"/></item></items>"""),
+            ("boardgamegeek.com/xmlapi2/thing", """<items><item type="boardgame" id="332290"><name type="primary" value="Stardew Valley: The Board Game"/><yearpublished value="2021"/><minplayers value="1"/><maxplayers value="4"/><image>https://cf.geekdo-images.com/svbg.jpg</image><statistics><ratings><usersrated value="9800"/><average value="7.6"/></ratings></statistics></item></items>""")
+        });
+        using var http = new HttpClient(handler);
+        var keys = new Dictionary<string, string?> { ["RAWG_API_KEY"] = "rawg_k", ["BGG_API_TOKEN"] = "bgg_tok" };
+        var service = new LiveMediaSearchService(http, k => keys.GetValueOrDefault(k), new CumulativeRatingCalculator());
+
+        var result = await service.SearchAsync("stardew", CancellationToken.None);
+
+        var stardew = Assert.Single(result.Items, i => i.Title == "Stardew Valley");
+        Assert.Equal("Game", stardew.MediaType);
+        Assert.Equal(
+            new[] { "apple_app_store", "metacritic", "rawg", "steam" },
+            stardew.CumulativeRating.Sources.Select(s => s.SourceId).OrderBy(s => s).ToArray());
+        Assert.DoesNotContain(result.Items, i => i.Title == "Not A Game App");
+
+        var boardGame = Assert.Single(result.Items, i => i.Title == "Stardew Valley: The Board Game");
+        Assert.Equal("Game", boardGame.MediaType);
+        Assert.Equal(new[] { "bgg" }, boardGame.CumulativeRating.Sources.Select(s => s.SourceId).ToArray());
+    }
 }

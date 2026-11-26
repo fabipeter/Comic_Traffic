@@ -15,6 +15,7 @@ public class UserDashboardSummaryDto
     public int MoviesTrackedCount { get; set; }
     public int TvSeriesTrackedCount { get; set; }
     public int ComicBooksTrackedCount { get; set; }
+    public int GamesTrackedCount { get; set; }
     public double UserAveragePersonalScore { get; set; }
     public double GlobalAverageOfTrackedItems { get; set; }
     public double UserVsGlobalDelta { get; set; }
@@ -99,6 +100,7 @@ public class GetUserDashboardQueryHandler : IRequestHandler<GetUserDashboardQuer
             MoviesTrackedCount = watchlist.Count(w => w.MediaType == MediaCategory.Movie),
             TvSeriesTrackedCount = watchlist.Count(w => w.MediaType == MediaCategory.TvSeries),
             ComicBooksTrackedCount = watchlist.Count(w => w.MediaType == MediaCategory.ComicBook),
+            GamesTrackedCount = watchlist.Count(w => w.MediaType == MediaCategory.Game),
             UserAveragePersonalScore = avgPersonal,
             GlobalAverageOfTrackedItems = avgGlobal,
             UserVsGlobalDelta = Math.Round(avgPersonal - avgGlobal, 1),

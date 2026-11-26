@@ -254,6 +254,7 @@ export function scoreSearchMatch(
       item.mediaType === "ComicBook" ? "comic comic book graphic novel" : "",
       item.mediaType === "TvSeries" ? "tv television series streaming show" : "",
       item.mediaType === "Movie" ? "movie cinema film blockbuster" : "",
+      item.mediaType === "Game" ? "game video game mobile game pc console board game tabletop" : "",
       String(item.releaseYear),
       item.cumulativeRating?.consensusTier || "",
       ...(item.genres || []),
@@ -338,6 +339,10 @@ const LIVE_EXTERNAL_ID_PREFIXES = [
   "googlebooks-",
   "applebooks-",
   "book-ol-",
+  "rawg-",
+  "cheapshark-",
+  "appstore-game-",
+  "bgg-",
 ];
 
 export function isLiveExternalId(externalId: string): boolean {
@@ -375,7 +380,7 @@ function itemsMatchCanonical(
   const ka = canonicalTitleKey(a.title);
   const kb = canonicalTitleKey(b.title);
   if (!ka || ka !== kb) return false;
-  if (a.mediaType === "ComicBook") return true;
+  if (a.mediaType === "ComicBook" || a.mediaType === "Game") return true;
   if (!a.releaseYear || !b.releaseYear) return true;
   return Math.abs(a.releaseYear - b.releaseYear) <= 1;
 }
@@ -912,7 +917,16 @@ export default class RatingStore {
     }
     const live = this.activeLiveResults;
     if (live !== null) {
-      return [...live];
+      const merged: AggregatedMediaItem[] = [...live];
+      const seenIds = new Set(live.map((i) => i.externalId));
+      for (const item of this.catalog) {
+        if (scoreSearchMatch(item, activeQuery) <= 0) continue;
+        if (seenIds.has(item.externalId)) continue;
+        if (merged.some((existing) => itemsMatchCanonical(existing, item))) continue;
+        seenIds.add(item.externalId);
+        merged.push(item);
+      }
+      return merged;
     }
     return this.catalog.filter((item) => scoreSearchMatch(item, activeQuery) > 0);
   }
@@ -1012,37 +1026,103 @@ export default class RatingStore {
     }
   };
 
-  searchSuggestions = (term: string, limit: number = 12): AggregatedMediaItem[] => {
+  searchSuggestions = (
+    term: string,
+    limit: number = 12,
+    categoryFilter: "All" | MediaCategoryType = "All"
+  ): AggregatedMediaItem[] => {
     const clean = term.trim();
+    const matchesCategory = (item: AggregatedMediaItem) =>
+      categoryFilter === "All" || item.mediaType === categoryFilter;
+
     if (!clean) {
-      return this.catalog.slice(0, limit);
+      if (categoryFilter !== "All") {
+        return this.catalog.filter(matchesCategory).slice(0, limit);
+      }
+      // Return a balanced default mix across all 4 categories so Games, Movies, TV, and Comics
+      // are all immediately discoverable in Compare Arena before the user even types.
+      const categories: MediaCategoryType[] = [
+        "Game",
+        "Movie",
+        "TvSeries",
+        "ComicBook",
+      ];
+      const perCat = Math.max(1, Math.floor(limit / categories.length));
+      const balanced: AggregatedMediaItem[] = [];
+      const seenDefault = new Set<string>();
+      for (const cat of categories) {
+        const picked = this.catalog
+          .filter((item) => item.mediaType === cat)
+          .slice(0, perCat);
+        for (const item of picked) {
+          if (!seenDefault.has(item.externalId)) {
+            seenDefault.add(item.externalId);
+            balanced.push(item);
+          }
+        }
+      }
+      for (const item of this.catalog) {
+        if (balanced.length >= limit) break;
+        if (!seenDefault.has(item.externalId)) {
+          seenDefault.add(item.externalId);
+          balanced.push(item);
+        }
+      }
+      return balanced.slice(0, limit);
     }
+
     const key = clean.toLowerCase();
-    if (
-      Object.prototype.hasOwnProperty.call(this.liveSearchResultsByQuery, key) &&
-      this.liveSearchResultsByQuery[key].length > 0
-    ) {
-      return this.liveSearchResultsByQuery[key].slice(0, limit);
-    }
+    const liveForQuery = Object.prototype.hasOwnProperty.call(
+      this.liveSearchResultsByQuery,
+      key
+    )
+      ? this.liveSearchResultsByQuery[key]
+      : [];
 
     const seen = new Set<string>();
     const pool: AggregatedMediaItem[] = [];
+    const pushUnique = (item: AggregatedMediaItem) => {
+      if (!matchesCategory(item)) return;
+      if (seen.has(item.externalId)) return;
+      if (pool.some((existing) => itemsMatchCanonical(existing, item))) return;
+      seen.add(item.externalId);
+      pool.push(item);
+    };
+
+    for (const item of liveForQuery) {
+      pushUnique(item);
+    }
     for (const item of Object.values(this.liveItemsByExternalId)) {
-      if (!seen.has(item.externalId)) {
-        seen.add(item.externalId);
-        pool.push(item);
+      if (scoreSearchMatch(item, clean) > 0) {
+        pushUnique(item);
       }
     }
     for (const item of this.catalog) {
-      if (!seen.has(item.externalId)) {
-        seen.add(item.externalId);
-        pool.push(item);
+      if (scoreSearchMatch(item, clean) > 0) {
+        pushUnique(item);
       }
     }
 
-    const scored = pool
-      .map((item) => ({ item, score: scoreSearchMatch(item, clean) }))
-      .filter((entry) => entry.score > 0);
+    if (liveForQuery.length > 0 && categoryFilter === "All") {
+      // Preserve live search relevance first, followed by any matching catalog items (e.g., Games)
+      // that live providers didn't return in the top slice.
+      const liveIds = new Set(liveForQuery.map((i) => i.externalId));
+      const liveSlice = pool.filter((i) => liveIds.has(i.externalId));
+      const extraCatalog = pool
+        .filter((i) => !liveIds.has(i.externalId))
+        .sort(
+          (a, b) =>
+            scoreSearchMatch(b, clean) - scoreSearchMatch(a, clean) ||
+            b.cumulativeRating.finalCumulativeAverage -
+              a.cumulativeRating.finalCumulativeAverage
+        );
+      return [...liveSlice, ...extraCatalog].slice(0, limit);
+    }
+
+    const scored = pool.map((item) => ({
+      item,
+      score: scoreSearchMatch(item, clean),
+    }));
 
     scored.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
@@ -1615,6 +1695,9 @@ export default class RatingStore {
     const comicsCount = this.watchlist.filter(
       (w) => w.mediaType === "ComicBook"
     ).length;
+    const gamesCount = this.watchlist.filter(
+      (w) => w.mediaType === "Game"
+    ).length;
 
     const scored = this.watchlist.filter(
       (w) =>
@@ -1645,6 +1728,7 @@ export default class RatingStore {
       moviesCount,
       tvCount,
       comicsCount,
+      gamesCount,
       avgPersonal,
       avgGlobal,
       delta,

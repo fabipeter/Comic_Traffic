@@ -13,6 +13,8 @@ const AVAILABLE_GENRE_OPTIONS = [
   "Fantasy",
   "Horror",
   "Indie Comic",
+  "Video Games",
+  "Mobile Games",
 ];
 
 const RegisterPage = () => {

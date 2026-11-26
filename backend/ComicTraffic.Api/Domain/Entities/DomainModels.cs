@@ -6,7 +6,8 @@ public enum MediaCategory
 {
     Movie = 0,
     TvSeries = 1,
-    ComicBook = 2
+    ComicBook = 2,
+    Game = 3
 }
 
 public class AppUser

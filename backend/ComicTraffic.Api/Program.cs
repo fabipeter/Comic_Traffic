@@ -370,6 +370,33 @@ using (var scope = app.Services.CreateScope())
             {
                 logger.LogWarning(ex, "Could not ensure content_reports table.");
             }
+
+            try
+            {
+                // All DB access is backend-only (EF Core via DATABASE_URL). Enable RLS with no public
+                // policies so PostgREST/Supabase anon & authenticated roles cannot access tables directly.
+                await db.Database.ExecuteSqlAsync($"ALTER TABLE IF EXISTS users ENABLE ROW LEVEL SECURITY;");
+                await db.Database.ExecuteSqlAsync($"ALTER TABLE IF EXISTS media_items ENABLE ROW LEVEL SECURITY;");
+                await db.Database.ExecuteSqlAsync($"ALTER TABLE IF EXISTS user_reviews ENABLE ROW LEVEL SECURITY;");
+                await db.Database.ExecuteSqlAsync($"ALTER TABLE IF EXISTS watchlist_items ENABLE ROW LEVEL SECURITY;");
+                await db.Database.ExecuteSqlAsync($"ALTER TABLE IF EXISTS custom_media_lists ENABLE ROW LEVEL SECURITY;");
+                await db.Database.ExecuteSqlAsync($"ALTER TABLE IF EXISTS content_reports ENABLE ROW LEVEL SECURITY;");
+                await db.Database.ExecuteSqlAsync($@"
+                    DO $$
+                    BEGIN
+                        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+                            REVOKE ALL ON TABLE users, media_items, user_reviews, watchlist_items, custom_media_lists, content_reports FROM anon;
+                        END IF;
+                        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+                            REVOKE ALL ON TABLE users, media_items, user_reviews, watchlist_items, custom_media_lists, content_reports FROM authenticated;
+                        END IF;
+                    END $$;");
+                logger.LogInformation("PostgreSQL Row Level Security enabled across public tables (backend-only access).");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Could not enforce Row Level Security on PostgreSQL tables.");
+            }
         }
 
         await DatabaseSeeder.SeedAsync(db, calculator, jwtService);

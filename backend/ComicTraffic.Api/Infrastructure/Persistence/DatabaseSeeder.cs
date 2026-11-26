@@ -19,7 +19,10 @@ public static class DatabaseSeeder
         IJwtTokenService jwtTokenService)
     {
         if (await db.MediaItems.AnyAsync())
+        {
+            await EnsureSeededGamesPresentAsync(db, calculator);
             return;
+        }
 
         // 1. Seed Demo Users (Save first to satisfy foreign key constraints)
         string demoAdminUsername = Environment.GetEnvironmentVariable("SEED_ADMIN_USER")
@@ -649,6 +652,8 @@ public static class DatabaseSeeder
                 })
         };
 
+        items.AddRange(BuildSeededGames(calculator));
+
         if (!await db.MediaItems.AnyAsync())
         {
             db.MediaItems.AddRange(items);
@@ -892,6 +897,268 @@ public static class DatabaseSeeder
                 Console.WriteLine($"[DatabaseSeeder] SanitizeSeededSources note: {ex.Message}");
             }
         }
+    }
+
+    private static async Task EnsureSeededGamesPresentAsync(
+        ComicTrafficDbContext db,
+        ICumulativeRatingCalculator calculator)
+    {
+        if (await db.MediaItems.AnyAsync(m => m.MediaType == MediaCategory.Game))
+            return;
+
+        db.MediaItems.AddRange(BuildSeededGames(calculator));
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DatabaseSeeder] Games backfill note: {ex.Message}");
+        }
+    }
+
+    private static List<MediaItem> BuildSeededGames(ICumulativeRatingCalculator calculator)
+    {
+        return new List<MediaItem>
+        {
+            CreateSeededItem(calculator,
+                externalId: "game-elden-ring-2022",
+                title: "Elden Ring",
+                category: MediaCategory.Game,
+                year: 2022,
+                publisher: "FromSoftware / Bandai Namco",
+                creator: "Hidetaka Miyazaki, George R. R. Martin",
+                runtime: "PC / PS5 / Xbox Series X|S",
+                ageRating: "M (17+)",
+                genres: "Video Game,Action RPG,Open World,Fantasy,PC",
+                posterUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg",
+                backdropUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg",
+                overview: "Rise, Tarnished, and be guided by grace to brandish the power of the Elden Ring and become an Elden Lord in the Lands Between.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "96 / 100", NormalizedScore = 96.0, VoteCount = 85, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "steam", SourceName = "Steam", Category = "Audience", RawScoreDisplay = "92%", NormalizedScore = 92.0, VoteCount = 720000, DefaultWeight = 1.2, AccentColor = "#1b9cfc", SourceUrl = "https://store.steampowered.com/app/1245620/" },
+                    new() { SourceId = "rawg", SourceName = "RAWG", Category = "Audience", RawScoreDisplay = "4.41 / 5", NormalizedScore = 88.2, VoteCount = 4100, DefaultWeight = 1.15, AccentColor = "#f97316", SourceUrl = "https://rawg.io/games/elden-ring" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "game-baldurs-gate-3-2023",
+                title: "Baldur's Gate 3",
+                category: MediaCategory.Game,
+                year: 2023,
+                publisher: "Larian Studios",
+                creator: "Swen Vincke",
+                runtime: "PC / PS5 / Xbox Series X|S / macOS",
+                ageRating: "M (17+)",
+                genres: "Video Game,RPG,Strategy,Fantasy,PC",
+                posterUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1086940/header.jpg",
+                backdropUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1086940/header.jpg",
+                overview: "Gather your party and return to the Forgotten Realms in a tale of fellowship, betrayal, sacrifice, and the lure of absolute power.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "96 / 100", NormalizedScore = 96.0, VoteCount = 124, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "steam", SourceName = "Steam", Category = "Audience", RawScoreDisplay = "96%", NormalizedScore = 96.0, VoteCount = 640000, DefaultWeight = 1.2, AccentColor = "#1b9cfc", SourceUrl = "https://store.steampowered.com/app/1086940/" },
+                    new() { SourceId = "rawg", SourceName = "RAWG", Category = "Audience", RawScoreDisplay = "4.46 / 5", NormalizedScore = 89.2, VoteCount = 2600, DefaultWeight = 1.15, AccentColor = "#f97316", SourceUrl = "https://rawg.io/games/baldurs-gate-3" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "game-hades-2020",
+                title: "Hades",
+                category: MediaCategory.Game,
+                year: 2020,
+                publisher: "Supergiant Games",
+                creator: "Greg Kasavin, Amir Rao",
+                runtime: "PC / Console / Switch / Mobile (iOS)",
+                ageRating: "T (13+)",
+                genres: "Video Game,Mobile Game,Roguelike,Action,Indie",
+                posterUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1145360/header.jpg",
+                backdropUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1145360/header.jpg",
+                overview: "Defy the god of the dead as you hack and slash out of the Underworld in this rogue-like dungeon crawler from the creators of Bastion and Transistor.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "93 / 100", NormalizedScore = 93.0, VoteCount = 62, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "steam", SourceName = "Steam", Category = "Audience", RawScoreDisplay = "98%", NormalizedScore = 98.0, VoteCount = 250000, DefaultWeight = 1.2, AccentColor = "#1b9cfc", SourceUrl = "https://store.steampowered.com/app/1145360/" },
+                    new() { SourceId = "apple_app_store", SourceName = "App Store Games", Category = "Audience", RawScoreDisplay = "4.8 / 5", NormalizedScore = 96.0, VoteCount = 12400, DefaultWeight = 1.1, AccentColor = "#38bdf8", SourceUrl = "https://apps.apple.com" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "game-hollow-knight-2017",
+                title: "Hollow Knight",
+                category: MediaCategory.Game,
+                year: 2017,
+                publisher: "Team Cherry",
+                creator: "Ari Gibson, William Pellen",
+                runtime: "PC / Switch / PS4 / Xbox",
+                ageRating: "E10+",
+                genres: "Video Game,Metroidvania,Indie,Action,Adventure",
+                posterUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/367520/header.jpg",
+                backdropUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/367520/header.jpg",
+                overview: "Forge your own path in Hollow Knight — an epic action adventure through a vast ruined kingdom of insects and heroes.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "90 / 100", NormalizedScore = 90.0, VoteCount = 28, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "steam", SourceName = "Steam", Category = "Audience", RawScoreDisplay = "97%", NormalizedScore = 97.0, VoteCount = 340000, DefaultWeight = 1.2, AccentColor = "#1b9cfc", SourceUrl = "https://store.steampowered.com/app/367520/" },
+                    new() { SourceId = "rawg", SourceName = "RAWG", Category = "Audience", RawScoreDisplay = "4.41 / 5", NormalizedScore = 88.2, VoteCount = 4600, DefaultWeight = 1.15, AccentColor = "#f97316", SourceUrl = "https://rawg.io/games/hollow-knight" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "game-stardew-valley-2016",
+                title: "Stardew Valley",
+                category: MediaCategory.Game,
+                year: 2016,
+                publisher: "ConcernedApe",
+                creator: "Eric Barone",
+                runtime: "PC / Console / Mobile (iOS & Android)",
+                ageRating: "E10+",
+                genres: "Video Game,Mobile Game,Simulation,RPG,Indie",
+                posterUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/413150/header.jpg",
+                backdropUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/413150/header.jpg",
+                overview: "You've inherited your grandfather's old farm plot in Stardew Valley. Armed with hand-me-down tools and a few coins, you set out to begin your new life.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "89 / 100", NormalizedScore = 89.0, VoteCount = 37, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "steam", SourceName = "Steam", Category = "Audience", RawScoreDisplay = "98%", NormalizedScore = 98.0, VoteCount = 680000, DefaultWeight = 1.2, AccentColor = "#1b9cfc", SourceUrl = "https://store.steampowered.com/app/413150/" },
+                    new() { SourceId = "apple_app_store", SourceName = "App Store Games", Category = "Audience", RawScoreDisplay = "4.8 / 5", NormalizedScore = 96.0, VoteCount = 215000, DefaultWeight = 1.1, AccentColor = "#38bdf8", SourceUrl = "https://apps.apple.com" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "game-balatro-2024",
+                title: "Balatro",
+                category: MediaCategory.Game,
+                year: 2024,
+                publisher: "Playstack",
+                creator: "LocalThunk",
+                runtime: "PC / Console / Mobile (iOS & Android)",
+                ageRating: "E10+",
+                genres: "Video Game,Mobile Game,Card Game,Roguelike,Indie",
+                posterUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2379780/header.jpg",
+                backdropUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2379780/header.jpg",
+                overview: "The poker roguelike deckbuilder where you play illegal poker hands, discover game-changing jokers, and trigger adrenaline-pumping combos.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "90 / 100", NormalizedScore = 90.0, VoteCount = 44, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "steam", SourceName = "Steam", Category = "Audience", RawScoreDisplay = "98%", NormalizedScore = 98.0, VoteCount = 95000, DefaultWeight = 1.2, AccentColor = "#1b9cfc", SourceUrl = "https://store.steampowered.com/app/2379780/" },
+                    new() { SourceId = "apple_app_store", SourceName = "App Store Games", Category = "Audience", RawScoreDisplay = "4.9 / 5", NormalizedScore = 98.0, VoteCount = 48000, DefaultWeight = 1.1, AccentColor = "#38bdf8", SourceUrl = "https://apps.apple.com" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "game-witcher-3-2015",
+                title: "The Witcher 3: Wild Hunt",
+                category: MediaCategory.Game,
+                year: 2015,
+                publisher: "CD PROJEKT RED",
+                creator: "Konrad Tomaszkiewicz",
+                runtime: "PC / PS5 / Xbox / Switch",
+                ageRating: "M (17+)",
+                genres: "Video Game,Action RPG,Open World,Fantasy,PC",
+                posterUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/292030/header.jpg",
+                backdropUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/292030/header.jpg",
+                overview: "You are Geralt of Rivia, mercenary monster slayer, searching a war-torn continent for Ciri — the Child of Prophecy.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "93 / 100", NormalizedScore = 93.0, VoteCount = 32, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "steam", SourceName = "Steam", Category = "Audience", RawScoreDisplay = "96%", NormalizedScore = 96.0, VoteCount = 740000, DefaultWeight = 1.2, AccentColor = "#1b9cfc", SourceUrl = "https://store.steampowered.com/app/292030/" },
+                    new() { SourceId = "rawg", SourceName = "RAWG", Category = "Audience", RawScoreDisplay = "4.65 / 5", NormalizedScore = 93.0, VoteCount = 6700, DefaultWeight = 1.15, AccentColor = "#f97316", SourceUrl = "https://rawg.io/games/the-witcher-3-wild-hunt" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "game-rdr2-2018",
+                title: "Red Dead Redemption 2",
+                category: MediaCategory.Game,
+                year: 2018,
+                publisher: "Rockstar Games",
+                creator: "Rockstar Studios",
+                runtime: "PC / PS4 / Xbox",
+                ageRating: "M (17+)",
+                genres: "Video Game,Action,Adventure,Open World,Western",
+                posterUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1174180/header.jpg",
+                backdropUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1174180/header.jpg",
+                overview: "America, 1899. Arthur Morgan and the Van der Linde gang are outlaws on the run as the era of the Wild West draws to a close.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "97 / 100", NormalizedScore = 97.0, VoteCount = 99, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "steam", SourceName = "Steam", Category = "Audience", RawScoreDisplay = "91%", NormalizedScore = 91.0, VoteCount = 610000, DefaultWeight = 1.2, AccentColor = "#1b9cfc", SourceUrl = "https://store.steampowered.com/app/1174180/" },
+                    new() { SourceId = "rawg", SourceName = "RAWG", Category = "Audience", RawScoreDisplay = "4.59 / 5", NormalizedScore = 91.8, VoteCount = 5200, DefaultWeight = 1.15, AccentColor = "#f97316", SourceUrl = "https://rawg.io/games/red-dead-redemption-2" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "game-genshin-impact-2020",
+                title: "Genshin Impact",
+                category: MediaCategory.Game,
+                year: 2020,
+                publisher: "HoYoverse",
+                creator: "miHoYo",
+                runtime: "Mobile (iOS & Android) / PC / PS5",
+                ageRating: "T (12+)",
+                genres: "Mobile Game,Video Game,Action RPG,Open World,Anime",
+                posterUrl: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=900&q=80",
+                backdropUrl: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1600&q=80",
+                overview: "Step into Teyvat, a vast world teeming with life and flowing with elemental energy, in this cross-platform open-world action RPG.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "84 / 100", NormalizedScore = 84.0, VoteCount = 24, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "apple_app_store", SourceName = "App Store Games", Category = "Audience", RawScoreDisplay = "4.7 / 5", NormalizedScore = 94.0, VoteCount = 890000, DefaultWeight = 1.1, AccentColor = "#38bdf8", SourceUrl = "https://apps.apple.com" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "game-monument-valley-2014",
+                title: "Monument Valley",
+                category: MediaCategory.Game,
+                year: 2014,
+                publisher: "ustwo games",
+                creator: "Ken Wong",
+                runtime: "Mobile (iOS & Android) / PC",
+                ageRating: "E (4+)",
+                genres: "Mobile Game,Puzzle,Indie,Artistic",
+                posterUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1927720/header.jpg",
+                backdropUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1927720/header.jpg",
+                overview: "Manipulate impossible architecture and guide a silent princess through a stunningly beautiful world of optical illusions.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "89 / 100", NormalizedScore = 89.0, VoteCount = 29, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "apple_app_store", SourceName = "App Store Games", Category = "Audience", RawScoreDisplay = "4.8 / 5", NormalizedScore = 96.0, VoteCount = 135000, DefaultWeight = 1.1, AccentColor = "#38bdf8", SourceUrl = "https://apps.apple.com" },
+                    new() { SourceId = "steam", SourceName = "Steam", Category = "Audience", RawScoreDisplay = "97%", NormalizedScore = 97.0, VoteCount = 4200, DefaultWeight = 1.2, AccentColor = "#1b9cfc", SourceUrl = "https://store.steampowered.com/app/1927720/" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "game-botw-2017",
+                title: "The Legend of Zelda: Breath of the Wild",
+                category: MediaCategory.Game,
+                year: 2017,
+                publisher: "Nintendo",
+                creator: "Hidemaro Fujibayashi, Eiji Aonuma",
+                runtime: "Nintendo Switch / Wii U",
+                ageRating: "E10+",
+                genres: "Video Game,Action,Adventure,Open World,Fantasy",
+                posterUrl: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=900&q=80",
+                backdropUrl: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1600&q=80",
+                overview: "Step into a world of discovery, exploration, and adventure across the vast wilds of Hyrule in Nintendo's landmark open-air Zelda epic.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "97 / 100", NormalizedScore = 97.0, VoteCount = 109, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "rawg", SourceName = "RAWG", Category = "Audience", RawScoreDisplay = "4.59 / 5", NormalizedScore = 91.8, VoteCount = 3800, DefaultWeight = 1.15, AccentColor = "#f97316", SourceUrl = "https://rawg.io/games/the-legend-of-zelda-breath-of-the-wild" }
+                }),
+
+            CreateSeededItem(calculator,
+                externalId: "game-minecraft-2011",
+                title: "Minecraft",
+                category: MediaCategory.Game,
+                year: 2011,
+                publisher: "Mojang Studios / Xbox Game Studios",
+                creator: "Markus Persson, Jens Bergensten",
+                runtime: "PC / Console / Mobile (iOS & Android)",
+                ageRating: "E10+",
+                genres: "Video Game,Mobile Game,Sandbox,Survival,Adventure",
+                posterUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=900&q=80",
+                backdropUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1600&q=80",
+                overview: "Explore infinite procedurally generated worlds and build everything from the simplest of homes to the grandest of castles across PC, console, and mobile.",
+                sources: new List<ExternalRatingSource>
+                {
+                    new() { SourceId = "metacritic", SourceName = "Metacritic", Category = "Critic", RawScoreDisplay = "93 / 100", NormalizedScore = 93.0, VoteCount = 33, DefaultWeight = 1.2, AccentColor = "#ffcc33" },
+                    new() { SourceId = "apple_app_store", SourceName = "App Store Games", Category = "Audience", RawScoreDisplay = "4.6 / 5", NormalizedScore = 92.0, VoteCount = 1250000, DefaultWeight = 1.1, AccentColor = "#38bdf8", SourceUrl = "https://apps.apple.com" },
+                    new() { SourceId = "rawg", SourceName = "RAWG", Category = "Audience", RawScoreDisplay = "4.42 / 5", NormalizedScore = 88.4, VoteCount = 4900, DefaultWeight = 1.15, AccentColor = "#f97316", SourceUrl = "https://rawg.io/games/minecraft" }
+                })
+        };
     }
 
     private static MediaItem CreateSeededItem(

@@ -575,6 +575,58 @@ export const AttributionsDmcaPage: React.FC = () => (
                 <tr>
                   <td>
                     <a
+                      href="https://rawg.io/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      RAWG Video Games Database
+                    </a>
+                  </td>
+                  <td>PC, console, indie &amp; mobile game metadata, ratings &amp; Metacritic</td>
+                  <td>Non-commercial RAWG API; requires attribution link back to RAWG.</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a
+                      href="https://www.cheapshark.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      CheapShark / Steam
+                    </a>
+                  </td>
+                  <td>PC &amp; Steam game user review percentages and Metacritic scores</td>
+                  <td>Public CheapShark API; links back to Steam / Metacritic.</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a
+                      href="https://apps.apple.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Apple App Store Games
+                    </a>
+                  </td>
+                  <td>Mobile games (iOS/iPadOS) ratings, icons &amp; store links</td>
+                  <td>Apple iTunes Search API; links direct back to the App Store.</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a
+                      href="https://boardgamegeek.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      BoardGameGeek
+                    </a>
+                  </td>
+                  <td>Board &amp; tabletop game ratings, player counts &amp; artwork</td>
+                  <td>BoardGameGeek XML API2 (non-commercial, attributed link-back).</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a
                       href="https://unsplash.com/"
                       target="_blank"
                       rel="noopener noreferrer"

@@ -79,6 +79,8 @@ const Banner = () => {
                   ? "📚 Comic Book / Graphic Novel / Book"
                   : featured.mediaType === "TvSeries"
                   ? "📺 TV Series"
+                  : featured.mediaType === "Game"
+                  ? "🎮 Video / Mobile Game"
                   : "🎬 Movie"}
               </span>
               <span className="ct-banner-tag-tier">
@@ -178,11 +180,11 @@ const Banner = () => {
               </button>
             </div>
 
-            {/* Search Bar across Movies, TV Series, and Comic Books */}
+            {/* Search Bar across Movies, TV Series, Comic Books, Books, and Games */}
             <form onSubmit={handleSearch} className="ct-hero-search-form">
               <input
                 type="text"
-                placeholder="Search any Movie, Series, Comic Book, Graphic Novel, or Literature (e.g. Watchmen, Dune, Batman, Sandman, Invincible, Lord of the Rings)..."
+                placeholder="Search any Movie, Series, Comic, Book, or Video/Mobile Game (e.g. Watchmen, Elden Ring, Genshin Impact, Dune, Hades)..."
                 value={searchInput}
                 onChange={(e) => {
                   setSearchInput(e.target.value);

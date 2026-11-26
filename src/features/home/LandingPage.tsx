@@ -49,6 +49,9 @@ const LandingPage = () => {
   const tvMatchesCount = allMatchingSearch.filter(
     (i) => i.mediaType === "TvSeries"
   ).length;
+  const gameMatchesCount = allMatchingSearch.filter(
+    (i) => i.mediaType === "Game"
+  ).length;
 
   const movieItems = [...ratingStore.catalog]
     .filter((c) => c.mediaType === "Movie")
@@ -68,6 +71,14 @@ const LandingPage = () => {
 
   const tvItems = [...ratingStore.catalog]
     .filter((c) => c.mediaType === "TvSeries")
+    .sort(
+      (a, b) =>
+        b.cumulativeRating.finalCumulativeAverage -
+        a.cumulativeRating.finalCumulativeAverage
+    );
+
+  const gameItems = [...ratingStore.catalog]
+    .filter((c) => c.mediaType === "Game")
     .sort(
       (a, b) =>
         b.cumulativeRating.finalCumulativeAverage -
@@ -167,7 +178,7 @@ const LandingPage = () => {
               <p>
                 {isSearchLoading ? (
                   <>
-                    Querying live cinema, TV, comic, manga &amp; literature APIs
+                    Querying live cinema, TV, comic, manga, book &amp; game APIs
                     for &ldquo;<strong>{ratingStore.searchQuery.trim()}</strong>
                     &rdquo;&hellip;
                   </>
@@ -182,7 +193,7 @@ const LandingPage = () => {
                   </>
                 ) : (
                   <>
-                    Every Movie, TV Series, Comic Book, Graphic Novel, and Book ranked by its unified{" "}
+                    Every Movie, TV Series, Comic Book, Book, and Video/Mobile Game ranked by its unified{" "}
                     <strong>Final Cumulative Average</strong> (Bayesian +
                     Multi-API Weighted Consensus).
                   </>
@@ -193,7 +204,7 @@ const LandingPage = () => {
             <div className="adx-toolbar-right-cluster">
               {/* Category Quick Tabs */}
               <div className="ct-category-pill-bar">
-                {(["All", "ComicBook", "Movie", "TvSeries"] as const).map(
+                {(["All", "ComicBook", "Movie", "TvSeries", "Game"] as const).map(
                   (cat) => {
                     const countLabel = isSearching
                       ? cat === "All"
@@ -202,6 +213,8 @@ const LandingPage = () => {
                         ? ` (${comicMatchesCount})`
                         : cat === "Movie"
                         ? ` (${movieMatchesCount})`
+                        : cat === "Game"
+                        ? ` (${gameMatchesCount})`
                         : ` (${tvMatchesCount})`
                       : "";
                     return (
@@ -223,6 +236,8 @@ const LandingPage = () => {
                           ? `📚 Comics & Books${countLabel}`
                           : cat === "Movie"
                           ? `🎬 Movies${countLabel}`
+                          : cat === "Game"
+                          ? `🎮 Games${countLabel}`
                           : `📺 TV Series${countLabel}`}
                       </button>
                     );
@@ -266,7 +281,7 @@ const LandingPage = () => {
             <input
               type="text"
               className="ct-general-search-input"
-              placeholder="Search any Movie, Series, Comic Book, Graphic Novel, or Literature (e.g. Watchmen, Dune, Batman, Sandman, Invincible, Lord of the Rings)..."
+              placeholder="Search any Movie, Series, Comic, Book, or Video/Mobile Game (e.g. Watchmen, Elden Ring, Genshin Impact, Dune, Hades, Balatro)..."
               aria-label="General catalog search"
               value={ratingStore.searchQuery}
               onChange={(e) => ratingStore.setSearchQuery(e.target.value)}
@@ -307,7 +322,7 @@ const LandingPage = () => {
                         <> (showing top {visibleCount})</>
                       )}
                       {ratingStore.selectedCategory !== "All" && (
-                        <> in {ratingStore.selectedCategory === "ComicBook" ? "Comics" : ratingStore.selectedCategory === "Movie" ? "Movies" : "TV Series"}</>
+                        <> in {ratingStore.selectedCategory === "ComicBook" ? "Comics & Books" : ratingStore.selectedCategory === "Movie" ? "Movies" : ratingStore.selectedCategory === "Game" ? "Games" : "TV Series"}</>
                       )}
                       {ratingStore.selectedCategory !== "All" && totalSearchMatches > filtered.length && (
                         <span className="ct-search-other-cat-hint">
@@ -428,7 +443,8 @@ const LandingPage = () => {
                 </h3>
                 <p>
                   Aggregating real ratings across TMDB, OMDb, TVMaze, iTunes, AniList,
-                  MyAnimeList, ComicVine, Hardcover, Google Books, Apple Books &amp; Open Library.
+                  MyAnimeList, ComicVine, Hardcover, Google Books, Apple Books, Open Library,
+                  Steam, RAWG, App Store Games &amp; BoardGameGeek.
                 </p>
               </div>
             </div>
@@ -476,16 +492,17 @@ const LandingPage = () => {
                 <div className="ct-search-chip-group">
                   {[
                     "Watchmen",
+                    "Elden Ring",
+                    "Genshin Impact",
+                    "Balatro",
                     "Dune",
                     "The Dark Knight",
                     "The Sandman",
                     "Spider-Man",
                     "Invincible",
-                    "Lord of the Rings",
+                    "Hades",
                     "Berserk",
-                    "Saga",
-                    "Alan Moore",
-                    "Stephen King",
+                    "Minecraft",
                   ].map((keyword) => (
                     <button
                       key={keyword}
@@ -509,7 +526,7 @@ const LandingPage = () => {
                     ratingStore.setCategory("All");
                   }}
                 >
-                  Clear Search & View All Titles (44+)
+                  Clear Search & View All Titles ({ratingStore.catalog.length}+)
                 </button>
               </div>
             )}
@@ -547,6 +564,8 @@ const LandingPage = () => {
                         ? "📚 Comic / Book"
                         : item.mediaType === "TvSeries"
                         ? "📺 TV Series"
+                        : item.mediaType === "Game"
+                        ? "🎮 Game"
                         : "🎬 Movie"}
                     </div>
                     <div className="ct-card-cumulative-Orb">
@@ -695,8 +714,8 @@ const LandingPage = () => {
               </h2>
               <p className="ct-muted-text">
                 Use the 3 search inputs below to find and pick any Comic Book,
-                Movie, or TV Series and compare their Final Cumulative Averages
-                side-by-side.
+                Movie, TV Series, or Game and compare their Final Cumulative
+                Averages side-by-side.
               </p>
             </div>
             <button
@@ -717,11 +736,23 @@ const LandingPage = () => {
             <div className="ct-compare-grid">
               {ratingStore.comparisonItems.map((item) => (
                 <div key={item.externalId} className="ct-compare-column">
-                  <div className="ct-compare-col-head">
+                  <div
+                    className="ct-compare-col-head"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => ratingStore.openDetailModal(item)}
+                    title="Open full Multi-Platform API Rating Breakdown"
+                  >
                     <div>
                       <h4>{item.title}</h4>
                       <span className="ct-meta-pill">
-                        {item.mediaType} • {item.releaseYear}
+                        {item.mediaType === "Game"
+                          ? "🎮 Game"
+                          : item.mediaType === "ComicBook"
+                          ? "📚 Comic / Book"
+                          : item.mediaType === "TvSeries"
+                          ? "📺 TV Series"
+                          : "🎬 Movie"}{" "}
+                        • {item.releaseYear > 0 ? item.releaseYear : "N/A"}
                       </span>
                     </div>
                     <strong
@@ -758,6 +789,13 @@ const LandingPage = () => {
                       </strong>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    className="ct-compare-view-details-btn"
+                    onClick={() => ratingStore.openDetailModal(item)}
+                  >
+                    📊 View Full Details &amp; Breakdown
+                  </button>
                 </div>
               ))}
             </div>
@@ -779,6 +817,11 @@ const LandingPage = () => {
       <Row
         title="📺 Highest Rated TV Series & Streaming Originals"
         items={tvItems}
+        isLargeRow
+      />
+      <Row
+        title="🎮 Top Rated Video Games & Mobile Games"
+        items={gameItems}
         isLargeRow
       />
       <Row
@@ -804,7 +847,7 @@ const LandingPage = () => {
             <p>
               Non-Commercial Multi-API Rating Consensus • Aggregating{" "}
               {RATING_SOURCE_DEFINITIONS.length} Rating Sources &amp; Community
-              Reviews across Comic Books, Movies, and TV Series.
+              Reviews across Comic Books, Movies, TV Series, Books, and Games.
             </p>
           </div>
           <div className="adx-footer-links">
@@ -887,6 +930,38 @@ const LandingPage = () => {
                 rel="noopener noreferrer"
               >
                 Apple Books
+              </a>{" "}
+              • Game data from{" "}
+              <a
+                href="https://rawg.io/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                RAWG
+              </a>
+              ,{" "}
+              <a
+                href="https://www.cheapshark.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                CheapShark / Steam
+              </a>
+              ,{" "}
+              <a
+                href="https://apps.apple.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Apple App Store
+              </a>{" "}
+              &amp;{" "}
+              <a
+                href="https://boardgamegeek.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                BoardGameGeek
               </a>
               . All third-party trademarks, scores, and artwork belong to their
               respective owners.

@@ -45,6 +45,10 @@ const SOURCES = {
   googleBooks: { id: "google_books", name: "Google Books", category: "Audience", weight: 1.0, color: "#4285f4" },
   hardcover: { id: "hardcover", name: "Hardcover", category: "Audience", weight: 1.25, color: "#7c3aed" },
   appleBooks: { id: "apple_books", name: "Apple Books", category: "Audience", weight: 1.0, color: "#9ca3af" },
+  steam: { id: "steam", name: "Steam", category: "Audience", weight: 1.2, color: "#1b9cfc" },
+  rawg: { id: "rawg", name: "RAWG", category: "Audience", weight: 1.15, color: "#f97316" },
+  appleAppStore: { id: "apple_app_store", name: "App Store Games", category: "Audience", weight: 1.1, color: "#38bdf8" },
+  bgg: { id: "bgg", name: "BoardGameGeek", category: "Audience", weight: 1.2, color: "#ff5100" },
 };
 
 function makeSource(key, rawScoreDisplay, normalizedScore, voteCount, sourceUrl = "") {
@@ -118,6 +122,9 @@ const ALLOWED_PROVIDER_HOSTS = new Set([
   "api.hardcover.app",
   "www.googleapis.com",
   "openlibrary.org",
+  "www.cheapshark.com",
+  "api.rawg.io",
+  "boardgamegeek.com",
 ]);
 
 function upgradeToHttps(rawUrl) {
@@ -153,6 +160,31 @@ async function getJson(url, { headers = {}, method = "GET", body, timeoutMs = 55
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function getText(url, { headers = {}, timeoutMs = 5500 } = {}) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error("Blocked invalid provider URL");
+  }
+  if (parsed.protocol !== "https:" || !ALLOWED_PROVIDER_HOSTS.has(parsed.hostname)) {
+    throw new Error("Blocked outbound request to unapproved provider host");
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(parsed.toString(), {
+      method: "GET",
+      headers: { "User-Agent": USER_AGENT, Accept: "application/xml, text/xml", ...headers },
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.text();
   } finally {
     clearTimeout(timer);
   }
@@ -789,6 +821,262 @@ async function searchOpenLibrary(q) {
   return items;
 }
 
+async function searchCheapSharkGames(q) {
+  const data = await getJson(
+    `https://www.cheapshark.com/api/1.0/deals?title=${encodeURIComponent(q)}&pageSize=30&sortBy=Metacritic`
+  );
+  const byGame = new Map();
+  for (const d of Array.isArray(data) ? data : []) {
+    const title = d && d.title ? String(d.title).trim() : "";
+    if (!title) continue;
+    const steamAppId = d.steamAppID ? String(d.steamAppID).trim() : "";
+    const gameId = d.gameID ? String(d.gameID).trim() : "";
+    const key = steamAppId ? `steam:${steamAppId}` : gameId ? `cs:${gameId}` : titleKey(title);
+
+    let year = 0;
+    const relTs = Number(d.releaseDate);
+    if (Number.isFinite(relTs) && relTs > 0) {
+      const y = new Date(relTs * 1000).getUTCFullYear();
+      if (y >= 1970 && y <= 2100) year = y;
+    }
+
+    const poster = steamAppId
+      ? `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${encodeURIComponent(steamAppId)}/header.jpg`
+      : upgradeToHttps(d.thumb || "");
+
+    let item = byGame.get(key);
+    if (!item) {
+      item = baseItem({
+        externalId: steamAppId ? `cheapshark-steam-${steamAppId}` : `cheapshark-${gameId}`,
+        title,
+        mediaType: "Game",
+        yearLoose: true,
+        releaseYear: year,
+        posterUrl: poster,
+        backdropUrl: poster,
+        genres: ["Video Game", "PC"],
+        publisherOrStudio: "PC / Steam",
+        runtimeOrIssueCount: "PC Video Game",
+      });
+      byGame.set(key, item);
+    } else {
+      if (!item.releaseYear && year) item.releaseYear = year;
+      if (!item.posterUrl && poster) {
+        item.posterUrl = poster;
+        item.backdropUrl = poster;
+      }
+    }
+
+    const steamPct = parseFloat(d.steamRatingPercent);
+    const steamCount = parseInt(String(d.steamRatingCount || "0"), 10) || 0;
+    if (Number.isFinite(steamPct) && steamPct > 0 && steamCount > 0) {
+      const steamUrl = steamAppId ? `https://store.steampowered.com/app/${encodeURIComponent(steamAppId)}/` : "https://www.cheapshark.com";
+      addSource(item, makeSource("steam", `${Math.round(steamPct)}%`, steamPct, steamCount, steamUrl));
+    }
+
+    const meta = parseInt(String(d.metacriticScore || "0"), 10);
+    if (Number.isFinite(meta) && meta > 0) {
+      const metaLink = typeof d.metacriticLink === "string" && d.metacriticLink.startsWith("/")
+        ? `https://www.metacritic.com${d.metacriticLink}`
+        : "https://www.metacritic.com";
+      addSource(item, makeSource("metacritic", `${meta} / 100`, meta, 0, metaLink));
+    }
+  }
+  return Array.from(byGame.values());
+}
+
+async function searchAppleAppStoreGames(q) {
+  const data = await getJson(
+    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=software&entity=software&country=us&limit=25`
+  );
+  const items = [];
+  for (const r of data.results || []) {
+    if (!r.trackName) continue;
+    const isGame =
+      String(r.primaryGenreName || "").toLowerCase() === "games" ||
+      (Array.isArray(r.genreIds) && r.genreIds.map(String).includes("6014"));
+    if (!isGame) continue;
+
+    const artwork = r.artworkUrl512
+      ? upgradeToHttps(String(r.artworkUrl512))
+      : r.artworkUrl100
+      ? upgradeToHttps(String(r.artworkUrl100).replace("/100x100bb", "/600x600bb"))
+      : "";
+    const backdrop =
+      Array.isArray(r.screenshotUrls) && r.screenshotUrls[0]
+        ? upgradeToHttps(String(r.screenshotUrls[0]))
+        : artwork;
+
+    const genres = ["Mobile Game"];
+    for (const g of Array.isArray(r.genres) ? r.genres : []) {
+      if (g && !genres.some((x) => x.toLowerCase() === String(g).toLowerCase())) {
+        genres.push(String(g));
+      }
+    }
+
+    const sources = [];
+    if (typeof r.averageUserRating === "number" && r.averageUserRating > 0 && r.userRatingCount > 0) {
+      sources.push(
+        makeSource(
+          "appleAppStore",
+          `${r.averageUserRating.toFixed(1)} / 5`,
+          r.averageUserRating * 20,
+          r.userRatingCount,
+          r.trackViewUrl || "https://apps.apple.com"
+        )
+      );
+    }
+
+    items.push(
+      baseItem({
+        externalId: `appstore-game-${r.trackId}`,
+        title: r.trackName,
+        mediaType: "Game",
+        yearLoose: true,
+        releaseYear: toYear(r.releaseDate),
+        overview: stripHtml(r.description || ""),
+        posterUrl: artwork,
+        backdropUrl: backdrop,
+        genres,
+        publisherOrStudio: r.sellerName || r.artistName || "",
+        creatorOrDirector: r.artistName || "",
+        runtimeOrIssueCount: "Mobile Game (iOS)",
+        ageRating: r.contentAdvisoryRating || "",
+        sources,
+      })
+    );
+  }
+  return items;
+}
+
+async function searchRawgGames(q, env) {
+  const key = env.RAWG_API_KEY;
+  const data = await getJson(
+    `https://api.rawg.io/api/games?key=${encodeURIComponent(key)}&search=${encodeURIComponent(q)}&page_size=20`
+  );
+  const items = [];
+  for (const g of data.results || []) {
+    if (!g.name) continue;
+    const platforms = (g.platforms || [])
+      .map((p) => p && p.platform && p.platform.name)
+      .filter(Boolean)
+      .slice(0, 4);
+    const bg = upgradeToHttps(g.background_image || "");
+    const rawgUrl = g.slug ? `https://rawg.io/games/${encodeURIComponent(g.slug)}` : "https://rawg.io";
+    const genres = ["Video Game"];
+    for (const genre of g.genres || []) {
+      if (genre && genre.name && !genres.some((x) => x.toLowerCase() === genre.name.toLowerCase())) {
+        genres.push(genre.name);
+      }
+    }
+    const sources = [];
+    if (typeof g.rating === "number" && g.rating > 0 && g.ratings_count > 0) {
+      sources.push(makeSource("rawg", `${g.rating.toFixed(2)} / 5`, g.rating * 20, g.ratings_count, rawgUrl));
+    }
+    if (typeof g.metacritic === "number" && g.metacritic > 0) {
+      sources.push(makeSource("metacritic", `${Math.round(g.metacritic)} / 100`, g.metacritic, 0, rawgUrl));
+    }
+    items.push(
+      baseItem({
+        externalId: `rawg-${g.id}`,
+        title: g.name,
+        mediaType: "Game",
+        yearLoose: true,
+        releaseYear: toYear(g.released),
+        posterUrl: bg,
+        backdropUrl: bg,
+        genres,
+        publisherOrStudio: platforms.length ? platforms.join(" / ") : "Multi-Platform",
+        runtimeOrIssueCount: platforms.length ? platforms.join(", ") : "Video Game",
+        ageRating: (g.esrb_rating && g.esrb_rating.name) || "",
+        sources,
+      })
+    );
+  }
+  return items;
+}
+
+function readXmlTagValue(xml, tagName) {
+  const m = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, "i").exec(xml);
+  return m ? stripHtml(m[1]) : "";
+}
+
+function readXmlAttr(xml, tagName, attrName) {
+  const m = new RegExp(`<${tagName}[^>]*\\b${attrName}="([^"]*)"`, "i").exec(xml);
+  return m ? stripHtml(m[1]) : "";
+}
+
+async function searchBoardGameGeek(q, env) {
+  const token = String(env.BGG_API_TOKEN || "").replace(/^Bearer\s+/i, "").trim();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const searchXml = await getText(
+    `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(q)}&type=boardgame`,
+    { headers }
+  );
+  const ids = [];
+  const idRegex = /<item[^>]*\bid="(\d+)"/gi;
+  let match;
+  while ((match = idRegex.exec(searchXml)) !== null && ids.length < 10) {
+    if (!ids.includes(match[1])) ids.push(match[1]);
+  }
+  if (ids.length === 0) return [];
+
+  const thingXml = await getText(
+    `https://boardgamegeek.com/xmlapi2/thing?id=${ids.join(",")}&stats=1`,
+    { headers }
+  );
+  const items = [];
+  const itemRegex = /<item[^>]*\bid="(\d+)"[^>]*>([\s\S]*?)<\/item>/gi;
+  let im;
+  while ((im = itemRegex.exec(thingXml)) !== null) {
+    const id = im[1];
+    const block = im[2];
+    const primaryMatch = /<name[^>]*\btype="primary"[^>]*\bvalue="([^"]*)"/i.exec(block);
+    const title = primaryMatch ? stripHtml(primaryMatch[1]) : readXmlAttr(block, "name", "value");
+    if (!title) continue;
+    const year = parseInt(readXmlAttr(block, "yearpublished", "value"), 10) || 0;
+    const image = upgradeToHttps(readXmlTagValue(block, "image") || readXmlTagValue(block, "thumbnail"));
+    const overview = readXmlTagValue(block, "description");
+    const minP = readXmlAttr(block, "minplayers", "value");
+    const maxP = readXmlAttr(block, "maxplayers", "value");
+    const designerMatch = /<link[^>]*\btype="boardgamedesigner"[^>]*\bvalue="([^"]*)"/i.exec(block);
+    const pubMatch = /<link[^>]*\btype="boardgamepublisher"[^>]*\bvalue="([^"]*)"/i.exec(block);
+    const genres = ["Board Game"];
+    const catRegex = /<link[^>]*\btype="boardgamecategory"[^>]*\bvalue="([^"]*)"/gi;
+    let cm;
+    while ((cm = catRegex.exec(block)) !== null && genres.length < 5) {
+      const catName = stripHtml(cm[1]);
+      if (catName) genres.push(catName);
+    }
+
+    const avg = parseFloat(readXmlAttr(block, "average", "value"));
+    const votes = parseInt(readXmlAttr(block, "usersrated", "value"), 10) || 0;
+    const sources = [];
+    if (Number.isFinite(avg) && avg > 0 && votes > 0) {
+      sources.push(makeSource("bgg", `${avg.toFixed(1)} / 10`, avg * 10, votes, `https://boardgamegeek.com/boardgame/${id}`));
+    }
+
+    items.push(
+      baseItem({
+        externalId: `bgg-${id}`,
+        title,
+        mediaType: "Game",
+        yearLoose: true,
+        releaseYear: year,
+        overview,
+        posterUrl: image,
+        backdropUrl: image,
+        genres,
+        publisherOrStudio: pubMatch ? stripHtml(pubMatch[1]) : "Tabletop",
+        creatorOrDirector: designerMatch ? stripHtml(designerMatch[1]) : "",
+        runtimeOrIssueCount: minP && maxP ? `${minP}–${maxP} Players` : "Board Game",
+        sources,
+      })
+    );
+  }
+  return items;
+}
+
 // ---------------------------------------------------------------------------
 // Merge, rank, finalise
 // ---------------------------------------------------------------------------
@@ -907,7 +1195,14 @@ function finalizeItem(item, calculateCumulativeSummary) {
     ...rest
   } = item;
   const poster = rest.posterUrl || PLACEHOLDER_POSTER;
-  const defaultGenres = rest.mediaType === "TvSeries" ? ["TV Series"] : rest.mediaType === "Movie" ? ["Movie"] : ["Book"];
+  const defaultGenres =
+    rest.mediaType === "TvSeries"
+      ? ["TV Series"]
+      : rest.mediaType === "Movie"
+      ? ["Movie"]
+      : rest.mediaType === "Game"
+      ? ["Video Game"]
+      : ["Book"];
   return {
     id: rest.externalId,
     ...rest,
@@ -977,6 +1272,10 @@ async function executeLiveSearch(query, { env = process.env, calculateCumulative
     { name: "google_books", run: () => searchGoogleBooks(cleanQuery, env) },
     { name: "apple_books", run: () => searchAppleBooks(cleanQuery) },
     { name: "open_library", run: () => searchOpenLibrary(cleanQuery) },
+    { name: "rawg", needs: "RAWG_API_KEY", run: () => searchRawgGames(cleanQuery, env) },
+    { name: "cheapshark_games", run: () => searchCheapSharkGames(cleanQuery) },
+    { name: "apple_app_store_games", run: () => searchAppleAppStoreGames(cleanQuery) },
+    { name: "boardgamegeek", needs: "BGG_API_TOKEN", run: () => searchBoardGameGeek(cleanQuery, env) },
   ];
 
   const diagnostics = {};
